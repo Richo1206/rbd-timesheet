@@ -161,17 +161,22 @@
         const start = encodeURIComponent(origin);
         const end = encodeURIComponent(document.getElementById('destination').value);
         if (end) {
-            // On iOS home-screen web apps, window.open shows an in-app
-            // browser overlay. Using a maps:// URL scheme opens Apple Maps
-            // directly; for Google Maps we use the comgooglemaps:// scheme
-            // with a fallback to the web URL in a regular Safari tab.
             let url = `https://www.google.com/maps/dir/${start}/${end}`;
-            let isStandalone = window.navigator.standalone;
-            if (isStandalone) {
-                // Opens in Safari outside the web app shell
+            // On iOS home-screen apps, redirect so it opens in Safari
+            // cleanly (avoids the in-app browser overlay).
+            // On desktop/other browsers, use a temp anchor link which
+            // avoids popup blocker issues in Edge/Chrome.
+            if (window.navigator.standalone) {
                 location.href = url;
             } else {
-                window.open(url, '_blank');
+                let a = document.createElement('a');
+                a.href = url;
+                a.target = '_blank';
+                a.rel = 'noopener';
+                a.style.display = 'none';
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
             }
         }
     }
