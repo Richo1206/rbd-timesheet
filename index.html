@@ -29,16 +29,34 @@
         .notes { font-size: 10px; color: #666; margin-top: 10px; padding-top: 8px; border-top: 1px dashed #ccc; }
         .footer-note { font-size: 9px; color: #999; text-align: center; margin-top: 20px; font-style: italic; }
         .hidden { display: none; }
-        @media print { .no-print, .toggle-btn, input, label, .day-toggle-section, .route-box { display: none !important; } .card { box-shadow: none; border: none; } }
+        .section-header { display: flex; align-items: center; justify-content: space-between; }
+        .info-btn { width: 22px; height: 22px; border-radius: 50%; border: 2px solid #004a99; background: white; color: #004a99; font-size: 13px; font-weight: bold; font-style: italic; font-family: Georgia, serif; cursor: pointer; display: inline-flex; align-items: center; justify-content: center; padding: 0; line-height: 1; flex-shrink: 0; }
+        .info-btn:hover { background: #004a99; color: white; }
+        .info-panel { background: #f0f6fc; border: 1px solid #c8ddf0; border-radius: 8px; padding: 12px; margin: 0 0 12px 0; font-size: 12px; color: #333; line-height: 1.6; display: none; }
+        .info-panel.open { display: block; }
+        .info-panel strong { color: #004a99; }
+        .info-panel ul { margin: 6px 0; padding-left: 18px; }
+        .info-panel li { margin-bottom: 4px; }
+        @media print { .no-print, .toggle-btn, input, label, .day-toggle-section, .route-box, .info-btn, .info-panel { display: none !important; } .card { box-shadow: none; border: none; } }
     </style>
 </head>
 <body>
- 
+
 <div class="card">
     <h2>RBD Timesheet Calculator</h2>
     <div class="sub">EA 2025 &amp; Handbook Rev 8.0</div>
- 
-    <div class="section-header no-print">Google Maps Travel Tool</div>
+    <div class="sub no-print" style="margin-bottom: 8px; font-size: 10px; color: #999; font-style: italic;">For more information on each section, click the <span style="display:inline-flex; align-items:center; justify-content:center; width:16px; height:16px; border-radius:50%; border:1.5px solid #004a99; color:#004a99; font-size:10px; font-weight:bold; font-family:Georgia,serif; vertical-align:middle;">i</span> button to the right of the page.</div>
+
+    <div class="section-header no-print"><span>Google Maps Travel Tool</span><button class="info-btn" onclick="toggleInfo('infoMaps')">i</button></div>
+    <div id="infoMaps" class="info-panel no-print">
+        <strong>How to use:</strong> This tool helps you verify your travel time using Google Maps.
+        <ul>
+            <li>Select your <strong>start location</strong> — Devonport Office, Hobart Office, or enter a Custom address (e.g. accommodation).</li>
+            <li>Enter the <strong>destination</strong> (site address).</li>
+            <li>Tap <strong>Verify Route</strong> to open Google Maps and check the travel time.</li>
+            <li>Enter the travel time from Google Maps into the <strong>Travel Hrs/Mins</strong> fields — this will auto-calculate your "Arrived on Site" time based on when you left.</li>
+        </ul>
+    </div>
     <div class="route-box no-print">
         <label>Start (Office / Custom):</label>
         <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 6px; margin-bottom: 8px;">
@@ -63,8 +81,33 @@
             </div>
         </div>
     </div>
- 
-    <div class="section-header">Time Entries</div>
+
+    <div class="section-header"><span>Time Entries</span><button class="info-btn no-print" onclick="toggleInfo('infoTime')">i</button></div>
+    <div id="infoTime" class="info-panel no-print">
+        <strong>How to fill this in:</strong>
+        <ul>
+            <li><strong>Left Workshop/Accom</strong> — the time you left the workshop or accommodation.</li>
+            <li><strong>Arrived on Site</strong> — the time you arrived at the job site.</li>
+            <li><strong>Left Site</strong> — the time you left the job site at the end of the day.</li>
+            <li><strong>Arrived at Workshop/Accom</strong> — the time you got back to workshop or accommodation.</li>
+        </ul>
+        <strong>Toggle buttons:</strong>
+        <ul>
+            <li><strong>Start Workshop / Start Site</strong> — select where your paid work began. Start Workshop means you did tasks at the workshop first and was requested to by your project manager or supervisor. Start Site means you travelled directly to site from home, the workshop or from an arranged meeting point.</li>
+            <li><strong>Finish Workshop / Finish Site</strong> — select where your paid work ended. For example, if your site supervisor or project manager requested that you un-load a trailer or prepare for a task the following day/week, then you would select finished at workshop.</li>
+            <li><strong>Weekday / Weekend / Pub Holiday</strong> — select the day type. Weekday pays NT then OT. Weekend/PH pays double time for all work hours. PH also includes 8 hours NT (Public Holiday) entitlement.</li>
+            <li><strong>Company Car</strong> — select if a company vehicle was provided or offered. If off, Fares Allowance (FTR) applies.</li>
+            <li><strong>INC-1</strong> — select when staying at accommodation on a distant job (>20 min from urban area, employer pays for accom without meals). All accom-to-site travel is paid. TAT and Fares do not apply.</li>
+            <li><strong>Unnotified OT</strong> — select if you were required to work 2+ hours overtime without being notified the previous day. Triggers the $15.50 meal allowance.</li>
+        </ul>
+        <strong>Key rules:</strong>
+        <ul>
+            <li>Ordinary hours are <strong>6am–6pm</strong> (Cl 55.a). Work outside this window is overtime.</li>
+            <li>The first <strong>30 minutes</strong> of travel each way is unpaid (Travel Boundary, Cl 64.1) unless INC-1 is active.</li>
+            <li>Overtime on weekdays: <strong>first 2 hours at time-and-a-half (TH)</strong>, then <strong>double time (DT)</strong> (Cl 62.2.a.i).</li>
+            <li>If you work <strong>12+ hours</strong>, your lunch break is paid (Cl 60.a).</li>
+        </ul>
+    </div>
     <div class="input-grid">
         <div id="leftWorkshopWrap">
             <label id="startLabel">Left Workshop/Accom:</label>
@@ -83,36 +126,57 @@
             <input type="time" id="arriveWorkshop" value="16:30" oninput="calculate()">
         </div>
     </div>
- 
+
     <div class="toggle-section">
         <div id="btnStartWork" class="toggle-btn" onclick="setStart('Work')">Start Workshop</div>
         <div id="btnStartSite" class="toggle-btn active" onclick="setStart('Site')">Start Site</div>
         <div id="btnFinWork" class="toggle-btn" onclick="setFinish('Work')">Finish Workshop</div>
         <div id="btnFinSite" class="toggle-btn active" onclick="setFinish('Site')">Finish Site</div>
     </div>
- 
+
     <div class="day-toggle-section">
         <div id="btnWeekday" class="toggle-btn active" onclick="toggleDay('Weekday')">Weekday</div>
         <div id="btnWeekend" class="toggle-btn" onclick="toggleDay('Weekend')">Weekend</div>
         <div id="btnPH" class="toggle-btn" onclick="toggleDay('PH')">Pub Holiday</div>
     </div>
- 
+
     <div class="day-toggle-section" style="border-top:none; padding-top:0;">
         <div id="btnCo" class="toggle-btn active" onclick="toggle('Co')">Company Car</div>
         <div id="btnInc1" class="toggle-btn" onclick="toggle('Inc1')">INC-1 (>20Min Urb)</div>
         <div id="btnUnnotifiedOT" class="toggle-btn" onclick="toggle('UnnotifiedOT')">Unnotified OT</div>
     </div>
- 
+
     <div id="results">
+        <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 4px;">
+            <span></span>
+            <button class="info-btn no-print" onclick="toggleInfo('infoResults')">i</button>
+        </div>
+        <div id="infoResults" class="info-panel no-print">
+            <strong>Understanding your timesheet codes:</strong>
+            <ul>
+                <li><strong>NT</strong> — Normal Time. Your ordinary 8-hour day paid at the base rate.</li>
+                <li><strong>NT (RDO, AL or LWOP)</strong> — Hours short of a full 8-hour NT day. Must be covered by a Rostered Day Off, Annual Leave, or Leave Without Pay (LWOP requires management approval).</li>
+                <li><strong>NT (Public Holiday)</strong> — 8 hours paid automatically as your Public Holiday entitlement, in addition to DT for hours worked.</li>
+                <li><strong>TH</strong> — Time and a Half. The first 2 hours of weekday overtime (Cl 62.2.a.i).</li>
+                <li><strong>DT</strong> — Double Time. Weekday overtime beyond the first 2 hours, or all work hours on weekends/public holidays.</li>
+                <li><strong>TT (Morning)</strong> — Travel Time (single rate). Paid travel from workshop/accom to site, outside the 30-min Travel Boundary, during ordinary hours (6am–6pm).</li>
+                <li><strong>TT+ (Morning)</strong> — Travel Time (time and a half). Morning travel outside the boundary that falls before 6am, or all travel on weekends/PH.</li>
+                <li><strong>TT (Return)</strong> — Return travel at single rate, when total work + travel hasn't exceeded 8 hours.</li>
+                <li><strong>TT+ (Return)</strong> — Return travel at time and a half, when total work + travel exceeds 8 hours, or on weekends/PH.</li>
+                <li><strong>TAT</strong> — Travel Time Allowance. A flat daily unit (25% of hourly rate) when your day starts at a worksite, not the workshop.</li>
+                <li><strong>Fares (FTR)</strong> — Fares Allowance ($14.61/day). Paid when you use your own vehicle and no company car was offered.</li>
+                <li><strong>Meal Allow ($15.50)</strong> — Meal Allowance for unnotified overtime of 2+ hours (Cl 60.1.a).</li>
+            </ul>
+        </div>
         <div id="calcOutput"></div>
     </div>
- 
+
     <button class="no-print" style="width:100%; margin-top:15px; padding:16px; background:#28a745; color:white; border:none; border-radius:10px; font-weight:bold; cursor:pointer; font-size:16px;" onclick="window.print()">Save to PDF / Print</button>
     <div class="footer-note" style="font-size: 9px; color: #999; text-align: center; margin-top: 20px; line-height: 1.5;">
         <strong style="color:#666;">Disclaimer:</strong> This calculator is a guide only and does not override the RBD Enterprise Agreement 2025 or RBD Handbook Rev 8.0. It covers time and travel-related hours only. On-call, call-in, shift work, and other allowances (e.g. Site Allowances, Industrial Allowances, HV allowances, HSM allowances etc) are not calculated here and may be applicable. Always refer to the EA for definitive entitlements.
     </div>
 </div>
- 
+
 <script>
     // ------------------------------------------------------------------
     // RBD Timesheet Calculator
@@ -121,7 +185,7 @@
     // 64.3(a) TK1 km rate, 64.4 (TK2 between-site km rate),
     // 60.1 (Meal Allowance for unnotified 2+ hr OT).
     // ------------------------------------------------------------------
- 
+
     let flags = {
         Start: 'Site',
         Fin: 'Site',
@@ -131,13 +195,17 @@
         UnnotifiedOT: false, // triggers $15.50 meal allowance (Cl 60.1)
         Office: null       // 'Dev' or 'Hob' — must be selected before verifying route
     };
- 
+
     const OFFICES = {
         Dev: '3 Bay Drive, Quoiba, TAS 7310',
         Hob: '6 Lampton Avenue, Derwent Park, TAS 7009'
     };
- 
+
     // ---------- utilities ----------
+    function toggleInfo(id) {
+        document.getElementById(id).classList.toggle('open');
+    }
+
     function setOffice(code) {
         flags.Office = code;
         document.getElementById('btnOfficeDev').classList.toggle('active', code === 'Dev');
@@ -145,7 +213,7 @@
         document.getElementById('btnOfficeCustom').classList.toggle('active', code === 'Custom');
         document.getElementById('customOriginWrap').classList.toggle('hidden', code !== 'Custom');
     }
- 
+
     function checkRoute() {
         if (!flags.Office) {
             alert('Please select a start location (Devonport, Hobart, or Custom).');
@@ -180,7 +248,7 @@
             }
         }
     }
- 
+
     function syncArriveTime() {
         const hInput = document.getElementById('manualHours').value;
         const mInput = document.getElementById('manualMinutes').value;
@@ -192,7 +260,7 @@
         }
         calculate();
     }
- 
+
     function setStart(type) {
         flags.Start = type;
         document.getElementById('btnStartWork').classList.toggle('active', type === 'Work');
@@ -201,7 +269,7 @@
         document.getElementById('startLabel').innerText = (type === 'Work') ? "Workshop Start:" : "Left Workshop/Accom:";
         calculate();
     }
- 
+
     function setFinish(type) {
         flags.Fin = type;
         document.getElementById('btnFinWork').classList.toggle('active', type === 'Work');
@@ -210,7 +278,7 @@
         document.getElementById('finishLabel').innerText = (type === 'Work') ? "Workshop Finish:" : "Arrived at Workshop/Accom:";
         calculate();
     }
- 
+
     function toggleDay(type) {
         flags.Day = type;
         document.getElementById('btnWeekday').classList.toggle('active', type === 'Weekday');
@@ -218,43 +286,44 @@
         document.getElementById('btnPH').classList.toggle('active', type === 'PH');
         calculate();
     }
- 
+
     function toggle(id) {
         flags[id] = !flags[id];
         document.getElementById('btn' + id).classList.toggle('active');
         calculate();
     }
- 
+
     function timeToMin(t) {
         if (!t) return 0;
         let parts = t.split(':');
         return parseInt(parts[0]) * 60 + parseInt(parts[1]);
     }
- 
+
     function minToTime(m) {
         let h = Math.floor(m / 60) % 24;
         let mins = m % 60;
         return String(h).padStart(2, '0') + ":" + String(mins).padStart(2, '0');
     }
- 
+
     function roundTo15(totalMins) {
         if (totalMins <= 0) return 0;
         let intervals = Math.floor(totalMins / 15);
         let remainder = totalMins % 15;
         return (remainder >= 8) ? (intervals + 1) * 15 : intervals * 15;
     }
- 
+
     // ---------- main calculation ----------
     function calculate() {
         let tLeftBase   = timeToMin(document.getElementById('leftWorkshop').value);
         let tArriveSite = timeToMin(document.getElementById('arriveSite').value);
         let tLeaveSite  = timeToMin(document.getElementById('leaveSite').value);
         let tArriveBase = timeToMin(document.getElementById('arriveWorkshop').value);
- 
+
         let results = {
             "TT+ (Morning)": 0,
             "TT (Morning)": 0,
             "NT": 0,
+            "NT (RDO, AL or LWOP)": 0,
             "NT (Public Holiday)": 0,
             "TH": 0,
             "DT": 0,
@@ -264,11 +333,11 @@
             "Fares (FTR)": 0,
             "Meal Allow ($15.50)": 0
         };
- 
+
         // Paid work span depends on Start/Finish mode
         let paidWorkStart = (flags.Start === 'Work') ? tLeftBase   : tArriveSite;
         let paidWorkEnd   = (flags.Fin   === 'Work') ? tArriveBase : tLeaveSite;
- 
+
         // ----------------------------------------------------------
         // 1) EARLY TRAVEL DEEMING (Cl 64.3.d)
         //    Weekday, start at site, left base before 0630, and travel
@@ -285,11 +354,11 @@
             tLeftBase < 390 &&
             morningTravelTotal > 60
         );
- 
+
         // Deemed workday starts at 0700 when early travel applies
         let deemedWorkMins = isEarlyTravel ? Math.max(0, tArriveSite - 420) : 0;
         let spanOfWork = (paidWorkEnd - paidWorkStart) + deemedWorkMins;
- 
+
         // ----------------------------------------------------------
         // 2) MEAL BREAK (Cl 60.a)
         //    Unpaid 30 min lunch — BUT if the Employee works a 12-hour
@@ -297,7 +366,7 @@
         // ----------------------------------------------------------
         let mealDeduct = (spanOfWork >= 720) ? 0 : 30;
         let netWorkMins = roundTo15(Math.max(0, spanOfWork - mealDeduct));
- 
+
         // ----------------------------------------------------------
         // 3) TRAVEL POOLS (Cl 64.3, Cl 55.a, Cl 62.2.a.i)
         //    The first 30 minutes of travel in each direction is the
@@ -315,7 +384,7 @@
         // ----------------------------------------------------------
         let morningTTPlus = 0; // pre-06:00 outside-boundary morning travel (TT+)
         let morningTT    = 0; // 06:00+ outside-boundary morning travel (TT)
- 
+
         if (flags.Start === 'Site') {
             if (flags.Inc1) {
                 // Cl 64.5 — Travel Whilst Working Away.
@@ -330,12 +399,12 @@
                 let windowEnd = isEarlyTravel
                     ? Math.min(420, tArriveSite) // cap at deemed 07:00 start
                     : tArriveSite;
- 
+
                 // Portion before 06:00 (360 min) → TT+
                 morningTTPlus = Math.max(0, Math.min(360, windowEnd) - boundaryCrossTime);
                 // Portion from 06:00 onwards → TT
                 morningTT = Math.max(0, windowEnd - Math.max(360, boundaryCrossTime));
- 
+
                 // Cl 64.3.d.i minimum: at least 30 min TT when early-travel engages
                 if (isEarlyTravel) {
                     let totalMorningPool = morningTTPlus + morningTT;
@@ -345,11 +414,11 @@
                 }
             }
         }
- 
+
         let returnTransitGross = (flags.Fin === 'Site')
             ? Math.max(0, tArriveBase - tLeaveSite)
             : 0;
- 
+
         // ----------------------------------------------------------
         // 4) TIME-OF-DAY SPLIT (Cl 55.a + Cl 62.2.a.i)
         //    Ordinary hours are 6am–6pm (360–1080 min). Work outside
@@ -367,53 +436,53 @@
         // Work window (after meal deduction applied proportionally)
         let grossWorkMins = spanOfWork; // before meal deduction
         let mealRatio = grossWorkMins > 0 ? netWorkMins / grossWorkMins : 0;
- 
+
         // Minutes of work outside 6am-6pm (pre-6am + post-6pm)
         let pre6am  = Math.max(0, Math.min(paidWorkStart + grossWorkMins, 360) - paidWorkStart);
         let post6pm = Math.max(0, (paidWorkStart + grossWorkMins) - Math.max(paidWorkStart, 1080));
         let outsideOrdinaryGross = pre6am + post6pm;
         // Apply meal ratio so we're working with net minutes
         let outsideOT = roundTo15(Math.round(outsideOrdinaryGross * mealRatio));
- 
+
         // Within-window work (net)
         let withinWindowNet = Math.max(0, netWorkMins - outsideOT);
         let withinNT = Math.min(480, withinWindowNet);
         let withinOT = Math.max(0, withinWindowNet - 480);
- 
+
         // Total overtime from work hours
         let totalWorkOT = outsideOT + withinOT;
- 
+
         // NT top-up from travel pools (only TT, not TT+)
         let ntRemaining = Math.max(0, 480 - withinNT);
- 
+
         let topUpMorning = Math.min(ntRemaining, morningTT);
         ntRemaining -= topUpMorning;
         morningTT -= topUpMorning;
- 
+
         // Return transit used to top up NT carries no boundary deduction
         let topUpReturn = Math.min(ntRemaining, returnTransitGross);
         ntRemaining -= topUpReturn;
         let returnTransitPayable = returnTransitGross - topUpReturn;
- 
+
         // ----------------------------------------------------------
         // 5) OVERTIME & TRAVEL OVERFLOW (Cl 62.2 / 64.3)
         // ----------------------------------------------------------
         if (flags.Day === 'Weekday') {
             results.NT = roundTo15(withinNT + topUpMorning + topUpReturn) / 60;
- 
+
             // Weekday OT: first 2h at time & half, rest at double time (Cl 62.2.a.i)
             let workOT = totalWorkOT;
             results.TH = Math.min(120, workOT) / 60;
             results.DT = Math.max(0, workOT - 120) / 60;
- 
+
             // Morning travel overflow (remaining pools after NT top-up)
             results["TT (Morning)"]  = roundTo15(morningTT) / 60;
             results["TT+ (Morning)"] = roundTo15(morningTTPlus) / 60;
- 
+
             // Return transit net of 30-min boundary deduction
             // (no deduction under Inc-1 — Cl 64.5 Travel Whilst Working Away)
             let returnTransitNet = Math.max(0, returnTransitPayable - (flags.Inc1 ? 0 : 30));
- 
+
             // If the day reached 8.0 hours of paid work, return travel = TT+ (Cl 64.3.c.ii)
             if (results.NT + results.TH + results.DT >= 8.0) {
                 results["TT+ (Return)"] = roundTo15(returnTransitNet) / 60;
@@ -434,12 +503,12 @@
             let workDT = Math.max(240, roundTo15(netWorkMins)) / 60;
             results.DT = workDT;
             results.NT = 0; // NT does not apply on weekends/PH
- 
+
             // Public Holiday entitlement: 8 hours NT automatically
             if (flags.Day === 'PH') {
                 results["NT (Public Holiday)"] = 8;
             }
- 
+
             if (flags.Inc1) {
                 // Under Inc-1, morning is TT (Cl 64.5.a.i), return is TT+
                 // (Cl 64.5.a.ii weekends/PH branch). No boundary deduction.
@@ -455,7 +524,7 @@
                 results["TT+ (Return)"]  = roundTo15(returnTransitNet) / 60;
             }
         }
- 
+
         // ----------------------------------------------------------
         // 6) ALLOWANCES
         //    TAT (Cl 64.2): one unit per day when working day commences
@@ -468,18 +537,23 @@
         // ----------------------------------------------------------
         if (!flags.Inc1) {
             if (flags.Start === 'Site') results.TAT = 1;
- 
+
             if (!flags.Co && (flags.Start === 'Site' || flags.Fin === 'Site')) {
                 results["Fares (FTR)"] = 1;
             }
         }
- 
+
+        // NT shortfall — show RDO/AL/LWOP gap on weekdays
+        if (flags.Day === 'Weekday' && results.NT > 0.001 && results.NT < 7.999) {
+            results["NT (RDO, AL or LWOP)"] = Math.round((8 - results.NT) * 100) / 100;
+        }
+
         // Meal Allowance — unnotified 2+ hour OT (Cl 60.1.a)
         let totalOT = (results.TH || 0) + (results.DT || 0);
         if (flags.Day === 'Weekday' && flags.UnnotifiedOT && totalOT >= 2) {
             results["Meal Allow ($15.50)"] = 1;
         }
- 
+
         // ----------------------------------------------------------
         // 7) Render
         // ----------------------------------------------------------
@@ -490,7 +564,7 @@
                 html += `<div class="code-row"><span>${code}</span><span>${results[code].toFixed(2)} ${unit}</span></div>`;
             }
         }
- 
+
         // Status notes
         let notes = [];
         if (isEarlyTravel) notes.push("Early travel rule applied (Cl 64.3.d): 30m TT + deemed 0700 start.");
@@ -500,13 +574,14 @@
             notes.push("Morning travel within 30-min Travel Boundary — no TT (Cl 64.1).");
         }
         if (flags.Inc1) notes.push("Incidentals 1 active — TAT and Fares not payable for accom↔site travel (Cl 64.5.a.iii).");
+        if (results["NT (RDO, AL or LWOP)"] > 0.001) notes.push("Less than 8 hours NT worked — remaining hours must be covered by RDO, Annual Leave, or LWOP. Note: LWOP is only allowed if approved by management.");
         if (notes.length) {
             html += `<div class="notes">${notes.join('<br>')}</div>`;
         }
- 
+
         document.getElementById('calcOutput').innerHTML = html;
     }
- 
+
     window.onload = calculate;
 </script>
 </body>
