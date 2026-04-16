@@ -37,7 +37,17 @@
         .info-panel strong { color: #004a99; }
         .info-panel ul { margin: 6px 0; padding-left: 18px; }
         .info-panel li { margin-bottom: 4px; }
-        @media print { .no-print, .toggle-btn, input, label, .day-toggle-section, .route-box, .info-btn, .info-panel { display: none !important; } .card { box-shadow: none; border: none; } }
+        .allow-panel { background: #f8fafc; border: 2px solid #e1e8ed; border-radius: 10px; padding: 12px; margin: 10px 0; display: none; max-height: 400px; overflow-y: auto; }
+        .allow-panel.open { display: block; }
+        .allow-group-title { font-size: 10px; font-weight: 800; color: #004a99; text-transform: uppercase; margin: 12px 0 4px; letter-spacing: 0.5px; }
+        .allow-group-title:first-child { margin-top: 0; }
+        .allow-item { display: flex; align-items: center; padding: 8px 0; border-bottom: 1px solid #f0f0f0; font-size: 13px; }
+        .allow-item:last-child { border-bottom: none; }
+        .allow-item label { display: flex; align-items: center; gap: 8px; margin: 0; font-weight: 400; flex: 1; cursor: pointer; font-size: 12px; line-height: 1.3; }
+        .allow-item input[type="checkbox"] { width: 20px; height: 20px; accent-color: #004a99; cursor: pointer; flex-shrink: 0; }
+        .allow-rate { color: #888; font-size: 11px; white-space: nowrap; width: 65px; text-align: right; flex-shrink: 0; }
+        .allow-input { width: 70px; min-width: 70px; max-width: 70px; padding: 8px 4px; border: 2px solid #e1e8ed; border-radius: 8px; font-size: 11px; text-align: center; margin-left: 6px; flex-shrink: 0; flex-grow: 0; }
+        @media print { .no-print, .toggle-btn, input, label, .day-toggle-section, .route-box, .info-btn, .info-panel, .allow-panel { display: none !important; } .card { box-shadow: none; border: none; } }
     </style>
 </head>
 <body>
@@ -45,7 +55,7 @@
 <div class="card">
     <h2>RBD Timesheet Calculator</h2>
     <div class="sub">EA 2025 &amp; Handbook Rev 8.0</div>
-    <div class="sub no-print" style="margin-bottom: 8px; font-size: 10px; color: #999; font-style: italic;">For more information on each section, click the <span style="display:inline-flex; align-items:center; justify-content:center; width:16px; height:16px; border-radius:50%; border:1.5px solid #004a99; color:#004a99; font-size:10px; font-weight:bold; font-family:Georgia,serif; vertical-align:middle;">i</span> button to the right of the page.</div>
+    <div class="sub no-print" style="margin-bottom: 8px; font-size: 10px; color: #999; font-style: italic;">For more information on each section, click the <span style="display:inline-flex; align-items:center; justify-content:center; width:16px; height:16px; border-radius:50%; border:1.5px solid #004a99; color:#004a99; font-size:10px; font-weight:bold; font-family:Georgia,serif; vertical-align:middle;">i</span> button to the right.</div>
 
     <div class="section-header no-print"><span>Google Maps Travel Tool</span><button class="info-btn" onclick="toggleInfo('infoMaps')">i</button></div>
     <div id="infoMaps" class="info-panel no-print">
@@ -142,7 +152,7 @@
 
     <div class="day-toggle-section" style="border-top:none; padding-top:0;">
         <div id="btnCo" class="toggle-btn active" onclick="toggle('Co')">Company Car</div>
-        <div id="btnInc1" class="toggle-btn" onclick="toggle('Inc1')">INC-1 (>20Min Urb)</div>
+        <div id="btnInc1" class="toggle-btn" onclick="toggle('Inc1')">Incidentals-1 Claimed</div>
         <div id="btnUnnotifiedOT" class="toggle-btn" onclick="toggle('UnnotifiedOT')">Unnotified OT</div>
     </div>
 
@@ -170,6 +180,9 @@
         </div>
         <div id="calcOutput"></div>
     </div>
+
+    <button id="allowanceBtn" class="no-print" style="width:100%; margin-top:10px; padding:14px; background:#004a99; color:white; border:none; border-radius:8px; font-weight:bold; cursor:pointer; font-size:14px;" onclick="let p=document.getElementById('allowPanel'); p.classList.toggle('open'); this.textContent=p.classList.contains('open')?'Extra Allowances \u25B2':'Extra Allowances \u25BC'">Extra Allowances &#x25BC;</button>
+    <div id="allowPanel" class="allow-panel no-print"></div>
 
     <button class="no-print" style="width:100%; margin-top:15px; padding:16px; background:#28a745; color:white; border:none; border-radius:10px; font-weight:bold; cursor:pointer; font-size:16px;" onclick="window.print()">Save to PDF / Print</button>
     <div class="footer-note" style="font-size: 9px; color: #999; text-align: center; margin-top: 20px; line-height: 1.5;">
@@ -200,6 +213,78 @@
         Dev: '3 Bay Drive, Quoiba, TAS 7310',
         Hob: '6 Lampton Avenue, Derwent Park, TAS 7009'
     };
+
+    // ---------- extra allowances data ----------
+    const EXTRA_ALLOWANCES = [
+        // Site & Industrial
+        { id: 'industrial', name: 'Industrial Allowance', rate: 2.50, unit: 'hr', group: 'Site & Industrial' },
+        { id: 'site', name: 'Site Allowance', rate: 2.50, unit: 'hr', group: 'Site & Industrial' },
+        { id: 'firmus', name: 'Firmus Allowance', rate: 5.00, unit: 'hr', group: 'Site & Industrial' },
+        { id: 'hsm', name: 'HSM Allowance', rate: 10.00, unit: 'custom_hr', group: 'Site & Industrial' },
+        { id: 'inclement', name: 'Inclement Weather', rate: 2.50, unit: 'custom_hr', group: 'Site & Industrial' },
+        // Living Away
+        { id: 'mealOvernight', name: 'Meal Allowance (Overnight)', rate: 120.00, unit: 'day', group: 'Living Away' },
+        { id: 'inc1Allow', name: 'Incidentals 1 ($20)', rate: 20.00, unit: 'day', group: 'Living Away' },
+        { id: 'inc2Allow', name: 'Incidentals 2 ($45)', rate: 45.00, unit: 'day', group: 'Living Away' },
+        { id: 'inc3Allow', name: 'Incidentals 3 ($90)', rate: 90.00, unit: 'day', group: 'Living Away' },
+        { id: 'livingFriends', name: 'Living Away (Friends & Family)', rate: 160.00, unit: 'night', group: 'Living Away' },
+        { id: 'livingOwn', name: 'Living Away (Own Accommodation)', rate: 240.00, unit: 'night', group: 'Living Away' },
+        // Travel & Vehicle
+        { id: 'tk1', name: 'TK1 (Outside Boundary)', rate: 0.57, unit: 'km', group: 'Travel & Vehicle' },
+        { id: 'tk2', name: 'TK2 (Between Sites)', rate: 1.05, unit: 'km', group: 'Travel & Vehicle' },
+        { id: 'kmCompanyCar', name: "Km's (Company Car)", rate: 0.75, unit: 'km', group: 'Travel & Vehicle' },
+        // Supervision
+        { id: 'supG5G6', name: 'Supervisor G5 > G6', rate: 1.55, unit: 'hr', group: 'Supervision', hideRate: true, includeTravel: true },
+        { id: 'supG6G7', name: 'Supervisor G6 > G7', rate: 2.74, unit: 'hr', group: 'Supervision', hideRate: true, includeTravel: true },
+        { id: 'supG7G8', name: 'Supervisor G7 > G8', rate: 3.08, unit: 'hr', group: 'Supervision', hideRate: true, includeTravel: true },
+        // High Voltage
+        { id: 'hvTerm', name: 'HV Termination', rate: 35.00, unit: 'day', group: 'High Voltage' },
+        { id: 'hvSwitch', name: 'HV Switching', rate: 50.00, unit: 'day', group: 'High Voltage' },
+        { id: 'hvPrep', name: 'HV Prep & Documentation', rate: 100.00, unit: 'day', group: 'High Voltage', hideRate: true },
+        // Other
+        { id: 'onCall', name: 'On Call Allowance', rate: 45.71, unit: 'day', group: 'Other' },
+    ];
+
+    function buildAllowancePanel() {
+        let panel = document.getElementById('allowPanel');
+        let html = '';
+        html += '<div id="infoAllow" class="info-panel">';
+        html += '<strong>How to use:</strong> Select any additional allowances that apply to the day. These will appear in the timesheet summary alongside the auto-calculated time codes.';
+        html += '<ul>';
+        html += '<li><strong>Per-hour allowances</strong> (Industrial, Site, Firmus, Supervisor) \u2014 automatically split into NT and OT hours based on the day\'s calculation. Supervisor allowances include travel time (Cl 49.c).</li>';
+        html += '<li><strong>Manual-entry allowances</strong> (HSM, Inclement Weather) \u2014 enter the number of hours that apply. These are also split into NT and OT.</li>';
+        html += '<li><strong>Per-day/night allowances</strong> (Living Away, Incidentals, HV, On Call) \u2014 tick the box and 1 Unit is added to the summary.</li>';
+        html += '<li><strong>Per-km allowances</strong> (TK1, TK2, Company Car) \u2014 enter the kilometres travelled.</li>';
+        html += '</ul>';
+        html += '<strong>Note:</strong> TAT, Fares, and Meal Allowance (Overtime) are already auto-calculated by the timesheet above \u2014 they are not duplicated here.';
+        html += '</div>';
+        let currentGroup = '';
+        let firstGroup = true;
+        EXTRA_ALLOWANCES.forEach(a => {
+            if (a.group !== currentGroup) {
+                currentGroup = a.group;
+                if (firstGroup) {
+                    html += '<div class="allow-group-title" style="display:flex; align-items:center; justify-content:space-between;">' + currentGroup + '<button class="info-btn" onclick="toggleInfo(\'infoAllow\')" style="margin-left:auto;">i</button></div>';
+                    firstGroup = false;
+                } else {
+                    html += '<div class="allow-group-title">' + currentGroup + '</div>';
+                }
+            }
+            html += '<div class="allow-item">';
+            html += '<label><input type="checkbox" id="allow_' + a.id + '" onchange="calculate()"> ' + a.name + '</label>';
+            if (a.unit === 'km') {
+                html += '<input type="number" class="allow-input" id="km_' + a.id + '" placeholder="km" oninput="calculate()">';
+            } else if (a.unit === 'custom_hr') {
+                html += '<input type="number" class="allow-input" id="hrs_' + a.id + '" placeholder="hrs" oninput="calculate()">';
+            }
+            if (!a.hideRate) {
+                let unitLabel = a.unit === 'custom_hr' ? 'hr' : a.unit;
+                html += '<span class="allow-rate">$' + a.rate.toFixed(2) + '/' + unitLabel + '</span>';
+            }
+            html += '</div>';
+        });
+        panel.innerHTML = html;
+    }
 
     // ---------- utilities ----------
     function toggleInfo(id) {
@@ -579,10 +664,53 @@
             html += `<div class="notes">${notes.join('<br>')}</div>`;
         }
 
+        // ----------------------------------------------------------
+        // 8) EXTRA ALLOWANCES — render selected items
+        //    Per-hour allowances auto-split into (NT) and (OT) lines
+        //    to match AroFlo overhead entries.
+        // ----------------------------------------------------------
+        let allowNT = results.NT || 0;
+        let allowOT = (results.TH || 0) + (results.DT || 0);
+        let travelHrs = (results["TT (Morning)"] || 0) + (results["TT+ (Morning)"] || 0) + (results["TT (Return)"] || 0) + (results["TT+ (Return)"] || 0);
+        let allowanceHtml = '';
+        EXTRA_ALLOWANCES.forEach(a => {
+            let cb = document.getElementById('allow_' + a.id);
+            if (cb && cb.checked) {
+                if (a.unit === 'hr') {
+                    let nt = allowNT;
+                    let ot = allowOT;
+                    if (a.includeTravel) { ot += travelHrs; }
+                    if (nt > 0.001) allowanceHtml += '<div class="code-row"><span>' + a.name + ' (NT)</span><span>' + nt.toFixed(2) + ' hrs</span></div>';
+                    if (ot > 0.001) allowanceHtml += '<div class="code-row"><span>' + a.name + ' (OT)</span><span>' + ot.toFixed(2) + ' hrs</span></div>';
+                } else if (a.unit === 'custom_hr') {
+                    let hrsEl = document.getElementById('hrs_' + a.id);
+                    let totalHrs = parseFloat(hrsEl ? hrsEl.value : 0) || 0;
+                    if (totalHrs > 0) {
+                        let ntPortion = Math.min(totalHrs, allowNT);
+                        let otPortion = Math.max(0, totalHrs - ntPortion);
+                        if (ntPortion > 0.001) allowanceHtml += '<div class="code-row"><span>' + a.name + ' (NT)</span><span>' + ntPortion.toFixed(2) + ' hrs</span></div>';
+                        if (otPortion > 0.001) allowanceHtml += '<div class="code-row"><span>' + a.name + ' (OT)</span><span>' + otPortion.toFixed(2) + ' hrs</span></div>';
+                    }
+                } else if (a.unit === 'km') {
+                    let kmEl = document.getElementById('km_' + a.id);
+                    let km = parseFloat(kmEl ? kmEl.value : 0) || 0;
+                    if (km > 0) allowanceHtml += '<div class="code-row"><span>' + a.name + '</span><span>' + km.toFixed(0) + ' km</span></div>';
+                } else {
+                    allowanceHtml += '<div class="code-row"><span>' + a.name + '</span><span>1 Unit</span></div>';
+                }
+            }
+        });
+        if (allowanceHtml) {
+            html += '<div style="border-top: 2px solid #004a99; margin-top: 10px; padding-top: 8px;">';
+            html += '<h3 style="font-size: 13px; color: #004a99; margin: 0 0 6px;">Extra Allowances</h3>';
+            html += allowanceHtml;
+            html += '</div>';
+        }
+
         document.getElementById('calcOutput').innerHTML = html;
     }
 
-    window.onload = calculate;
+    window.onload = function() { buildAllowancePanel(); calculate(); };
 </script>
 </body>
 </html>
