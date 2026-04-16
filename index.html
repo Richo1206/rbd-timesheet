@@ -106,8 +106,8 @@
             <li><strong>Start Workshop / Start Site</strong> — select where your working day commenced (Cl 53.a). Select <strong>Start Workshop</strong> if you were directed by your supervisor or project manager to carry out work-related tasks at your centre of employment before travelling to site. Select <strong>Start Site</strong> if you travelled directly to the worksite from home, your centre of employment (without carrying out work-related tasks), or an arranged meeting point.</li>
             <li><strong>Finish Workshop / Finish Site</strong> — select where your working day ended. Select <strong>Finish Workshop</strong> if you were directed by your supervisor or project manager to return to your centre of employment to carry out work-related tasks (e.g. unloading a trailer, preparing for a job the following day). Select <strong>Finish Site</strong> if your working day ended at the worksite and you travelled home or to accommodation.</li>
             <li><strong>Weekday / Weekend / Pub Holiday</strong> — select the day type. Weekday pays NT then OT. Weekend/PH pays double time for all work hours. PH also includes 8 hours NT (Public Holiday) entitlement.</li>
-            <li><strong>Company Car</strong> — select if a company vehicle was provided or offered. If off, Fares Allowance (FTR) applies.</li>
-            <li><strong>INC-1</strong> — select when staying at accommodation on a distant job (>20 min from urban area, employer pays for accom without meals). All accom-to-site travel is paid. TAT and Fares do not apply.</li>
+            <li><strong>Company Car</strong> — select if a company vehicle was provided or offered. If unselected, Fares Allowance (FTR) applies.</li>
+            <li><strong>Incidentals-1</strong> — select when staying at accommodation on a distant job (>20 min from urban area, employer pays for accom without meals). All accom-to-site travel is paid. TAT and Fares do not apply.</li>
             <li><strong>Unnotified OT</strong> — select if you were required to work 2+ hours overtime without being notified the previous day. Triggers the $15.50 meal allowance.</li>
         </ul>
         <strong>Key rules:</strong>
@@ -152,7 +152,7 @@
 
     <div class="day-toggle-section" style="border-top:none; padding-top:0;">
         <div id="btnCo" class="toggle-btn active" onclick="toggle('Co')">Company Car</div>
-        <div id="btnInc1" class="toggle-btn" onclick="toggle('Inc1')">Incidentals-1 Claimed</div>
+        <div id="btnInc1" class="toggle-btn" onclick="toggle('Inc1')">Incidentals-1</div>
         <div id="btnUnnotifiedOT" class="toggle-btn" onclick="toggle('UnnotifiedOT')">Unnotified OT</div>
     </div>
 
@@ -658,7 +658,7 @@
         if (flags.Start === 'Site' && morningTravelTotal > 0 && morningTravelTotal <= 30) {
             notes.push("Morning travel within 30-min Travel Boundary — no TT (Cl 64.1).");
         }
-        if (flags.Inc1) notes.push("Incidentals 1 active — TAT and Fares not payable for accom↔site travel (Cl 64.5.a.iii).");
+        if (flags.Inc1) notes.push("Incidentals-1 active — TAT and Fares not payable for accom↔site travel (Cl 64.5.a.iii).");
         if (results["NT (RDO, AL or LWOP)"] > 0.001) notes.push("Less than 8 hours NT worked — remaining hours must be covered by RDO, Annual Leave, or LWOP. Note: LWOP is only allowed if approved by management.");
         if (notes.length) {
             html += `<div class="notes">${notes.join('<br>')}</div>`;
