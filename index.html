@@ -671,15 +671,18 @@
         // ----------------------------------------------------------
         let allowNT = results.NT || 0;
         let allowOT = (results.TH || 0) + (results.DT || 0);
-        let travelHrs = (results["TT (Morning)"] || 0) + (results["TT+ (Morning)"] || 0) + (results["TT (Return)"] || 0) + (results["TT+ (Return)"] || 0);
+        // Weighted OT: each component multiplied by its applicable rate factor
+        let weightedWorkOT = (results.TH || 0) * 1.5 + (results.DT || 0) * 2;
+        let ttSingle = (results["TT (Morning)"] || 0) + (results["TT (Return)"] || 0);
+        let ttPlus = (results["TT+ (Morning)"] || 0) + (results["TT+ (Return)"] || 0);
+        let weightedTravelOT = ttSingle * 1 + ttPlus * 1.5;
         let allowanceHtml = '';
         EXTRA_ALLOWANCES.forEach(a => {
             let cb = document.getElementById('allow_' + a.id);
             if (cb && cb.checked) {
                 if (a.unit === 'hr') {
                     let nt = allowNT;
-                    let ot = allowOT;
-                    if (a.includeTravel) { ot += travelHrs; }
+                    let ot = a.includeTravel ? weightedWorkOT + weightedTravelOT : allowOT;
                     if (nt > 0.001) allowanceHtml += '<div class="code-row"><span>' + a.name + ' (NT)</span><span>' + nt.toFixed(2) + ' hrs</span></div>';
                     if (ot > 0.001) allowanceHtml += '<div class="code-row"><span>' + a.name + ' (OT)</span><span>' + ot.toFixed(2) + ' hrs</span></div>';
                 } else if (a.unit === 'custom_hr') {
