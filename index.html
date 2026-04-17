@@ -779,35 +779,25 @@
         lines.push('Unnotified OT: ' + (flags.UnnotifiedOT ? 'Yes' : 'No'));
         lines.push('');
 
-        // Gather results from rendered rows
-        let rows = output.querySelectorAll('.code-row');
-        let inExtras = false;
-        rows.forEach(r => {
-            let spans = r.querySelectorAll('span');
-            if (spans.length === 2) {
-                lines.push(spans[0].textContent.padEnd(30) + spans[1].textContent);
-            }
-        });
-
-        // Grab extra allowances header if present
-        let headers = output.querySelectorAll('h3');
-        headers.forEach(h => {
-            if (h.textContent.includes('Extra')) {
-                let idx = lines.length;
-                // Find where extras start and insert header
-                let extraRows = h.parentElement.querySelectorAll('.code-row');
-                if (extraRows.length > 0) {
-                    // Header already captured via row iteration
+        // Walk through all child elements in order to capture
+        // headings, code rows, and notes in the correct sequence
+        let children = output.querySelectorAll('h3, .code-row, .notes');
+        children.forEach(el => {
+            if (el.tagName === 'H3') {
+                lines.push('');
+                lines.push('--- ' + el.textContent.trim() + ' ---');
+            } else if (el.classList.contains('code-row')) {
+                // Get direct child spans only (avoid nested spans like summaryNote)
+                let directSpans = el.querySelectorAll(':scope > span');
+                if (directSpans.length === 2) {
+                    lines.push(directSpans[0].textContent.trim().padEnd(35) + directSpans[1].textContent.trim());
                 }
+            } else if (el.classList.contains('notes')) {
+                lines.push('');
+                lines.push('Notes:');
+                lines.push(el.textContent.trim());
             }
         });
-
-        // Notes
-        let notes = output.querySelector('.notes');
-        if (notes) {
-            lines.push('\nNotes:');
-            lines.push(notes.textContent);
-        }
 
         lines.push('\n---');
         lines.push('This is a guide only. Refer to EA 2025 for definitive entitlements.');
