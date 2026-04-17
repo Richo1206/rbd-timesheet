@@ -780,21 +780,22 @@
 
         // Gather inputs
         let dayType = flags.Day === 'PH' ? 'Public Holiday' : flags.Day;
-        lines.push('Day Type: ' + dayType);
-        lines.push('Start: ' + (flags.Start === 'Work' ? 'Workshop' : 'Site'));
-        lines.push('Finish: ' + (flags.Fin === 'Work' ? 'Workshop' : 'Site'));
-        lines.push('Company Car: ' + (flags.Co ? 'Yes' : 'No'));
-        lines.push('Incidentals-1: ' + (flags.Inc1 ? 'Yes' : 'No'));
-        lines.push('Unnotified OT: ' + (flags.UnnotifiedOT ? 'Yes' : 'No'));
+        lines.push('Settings');
+        lines.push('• Day Type: ' + dayType);
+        lines.push('• Start: ' + (flags.Start === 'Work' ? 'Workshop' : 'Site'));
+        lines.push('• Finish: ' + (flags.Fin === 'Work' ? 'Workshop' : 'Site'));
+        lines.push('• Company Car: ' + (flags.Co ? 'Yes' : 'No'));
+        lines.push('• Incidentals-1: ' + (flags.Inc1 ? 'Yes' : 'No'));
+        lines.push('• Unnotified OT: ' + (flags.UnnotifiedOT ? 'Yes' : 'No'));
         lines.push('');
 
         // --- Daily Timesheet ---
         let r = window._lastResults || {};
-        lines.push('--- Daily Timesheet ---');
+        lines.push('Daily Timesheet');
         for (let code in r) {
             if (r[code] > 0.001) {
                 let unit = (code === 'TAT' || code === 'Fares (FTR)' || code === 'Meal Allow ($15.50)') ? 'Unit' : 'hrs';
-                lines.push(code.padEnd(35) + r[code].toFixed(2) + ' ' + unit);
+                lines.push('• ' + code + ': ' + r[code].toFixed(2) + ' ' + unit);
             }
         }
 
@@ -802,8 +803,8 @@
         let dlNotes = window._lastNotes || [];
         if (dlNotes.length) {
             lines.push('');
-            lines.push('Notes:');
-            dlNotes.forEach(n => lines.push('- ' + n));
+            lines.push('Notes');
+            dlNotes.forEach(n => lines.push('• ' + n));
         }
 
         // --- Extra Allowances ---
@@ -819,29 +820,33 @@
                     let nt = aNT;
                     let ot = a.includeTravel ? wWorkOT + wTravelOT : aOT;
                     let dlNote = a.summaryNote ? ' (' + a.summaryNote + ')' : '';
-                    if (nt > 0.001) extraLines.push((a.name + ' (NT)' + dlNote).padEnd(35) + nt.toFixed(2) + ' hrs');
-                    if (ot > 0.001) extraLines.push((a.name + ' (OT)' + dlNote).padEnd(35) + ot.toFixed(2) + ' hrs');
+                    if (nt > 0.001) extraLines.push('• ' + a.name + ' (NT)' + dlNote + ': ' + nt.toFixed(2) + ' hrs');
+                    if (ot > 0.001) extraLines.push('• ' + a.name + ' (OT)' + dlNote + ': ' + ot.toFixed(2) + ' hrs');
                 } else if (a.unit === 'custom_hr') {
                     let hrsEl = document.getElementById('hrs_' + a.id);
                     let totalHrs = parseFloat(hrsEl ? hrsEl.value : 0) || 0;
                     if (totalHrs > 0) {
                         let ntP = Math.min(totalHrs, aNT);
                         let otP = Math.max(0, totalHrs - ntP);
-                        if (ntP > 0.001) extraLines.push((a.name + ' (NT)').padEnd(35) + ntP.toFixed(2) + ' hrs');
-                        if (otP > 0.001) extraLines.push((a.name + ' (OT)').padEnd(35) + otP.toFixed(2) + ' hrs');
+                        if (ntP > 0.001) extraLines.push('• ' + a.name + ' (NT): ' + ntP.toFixed(2) + ' hrs');
+                        if (otP > 0.001) extraLines.push('• ' + a.name + ' (OT): ' + otP.toFixed(2) + ' hrs');
                     }
                 } else if (a.unit === 'km') {
                     let kmEl = document.getElementById('km_' + a.id);
                     let km = parseFloat(kmEl ? kmEl.value : 0) || 0;
-                    if (km > 0) extraLines.push(a.name.padEnd(35) + km.toFixed(0) + ' km');
+                    if (km > 0) {
+                        let dlNote = a.summaryNote ? ' (' + a.summaryNote + ')' : '';
+                        extraLines.push('• ' + a.name + dlNote + ': ' + km.toFixed(0) + ' km');
+                    }
                 } else {
-                    extraLines.push(a.name.padEnd(35) + '1 Unit');
+                    let dlNote = a.summaryNote ? ' (' + a.summaryNote + ')' : '';
+                    extraLines.push('• ' + a.name + dlNote + ': 1 Unit');
                 }
             }
         });
         if (extraLines.length) {
             lines.push('');
-            lines.push('--- Extra Allowances ---');
+            lines.push('Extra Allowances');
             extraLines.forEach(l => lines.push(l));
         }
 
