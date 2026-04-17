@@ -184,7 +184,30 @@
     <button id="allowanceBtn" class="no-print" style="width:100%; margin-top:10px; padding:14px; background:#004a99; color:white; border:none; border-radius:8px; font-weight:bold; cursor:pointer; font-size:14px;" onclick="let p=document.getElementById('allowPanel'); p.classList.toggle('open'); this.textContent=p.classList.contains('open')?'Extra Allowances \u25B2':'Extra Allowances \u25BC'">Extra Allowances &#x25BC;</button>
     <div id="allowPanel" class="allow-panel no-print"></div>
 
+    <button class="no-print" style="width:100%; margin-top:10px; padding:14px; background:#004a99; color:white; border:none; border-radius:8px; font-weight:bold; cursor:pointer; font-size:14px;" onclick="let p=document.getElementById('projectPanel'); p.classList.toggle('open'); this.textContent=p.classList.contains('open')?'Project Information \u25B2':'Project Information \u25BC'">Project Information &#x25BC;</button>
+    <div id="projectPanel" class="allow-panel no-print">
+        <label>Project Name:</label>
+        <input type="text" id="projectName" placeholder="Enter project name" style="margin-bottom: 10px;" oninput="calculate()">
+        <label>Applicable Day:</label>
+        <select id="projectDay" style="width:100%; padding:12px; border:2px solid #e1e8ed; border-radius:8px; font-size:14px; background:#fdfdfd; margin-bottom: 10px; appearance: auto;" onchange="if(this.value) document.getElementById('projectDate').value=''; calculate();">
+            <option value="">— Select —</option>
+            <option>Start of Week</option>
+            <option>Mid Week</option>
+            <option>End of Week</option>
+            <option>Monday</option>
+            <option>Tuesday</option>
+            <option>Wednesday</option>
+            <option>Thursday</option>
+            <option>Friday</option>
+            <option>Saturday</option>
+            <option>Sunday</option>
+        </select>
+        <label>Or Select Date:</label>
+        <input type="date" id="projectDate" style="margin-bottom: 0;" onchange="if(this.value) document.getElementById('projectDay').value=''; calculate();">
+    </div>
+
     <button class="no-print" style="width:100%; margin-top:15px; padding:16px; background:#28a745; color:white; border:none; border-radius:10px; font-weight:bold; cursor:pointer; font-size:16px;" onclick="window.print()">Save to PDF / Print</button>
+    <button class="no-print" style="width:100%; margin-top:8px; padding:16px; background:#28a745; color:white; border:none; border-radius:10px; font-weight:bold; cursor:pointer; font-size:16px;" onclick="downloadSummary()">Download Text File Summary</button>
     <div class="footer-note" style="font-size: 9px; color: #999; text-align: center; margin-top: 20px; line-height: 1.5;">
         <strong style="color:#666;">Disclaimer:</strong> This calculator is a guide only and does not override the RBD Enterprise Agreement 2025 or RBD Handbook Rev 8.0. Additional allowances can be selected under Extra Allowances. Some entitlements such as call-in, shift work, and overtime meal escalations may not be reflected. Always refer to the EA for definitive entitlements.
     </div>
@@ -642,7 +665,21 @@
         // ----------------------------------------------------------
         // 7) Render
         // ----------------------------------------------------------
-        let html = "<h3>Daily Timesheet (Excludes most allowances)</h3>";
+        // Project info header
+        let projName = (document.getElementById('projectName') || {}).value || '';
+        let projDay = (document.getElementById('projectDay') || {}).value || '';
+        let projDateRaw = (document.getElementById('projectDate') || {}).value || '';
+        let projDate = projDateRaw ? new Date(projDateRaw + 'T00:00:00').toLocaleDateString('en-AU', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' }) : '';
+        let projApplicable = projDay || projDate || '';
+
+        let html = '';
+        if (projName || projApplicable) {
+            html += '<div style="margin-bottom: 10px; padding-bottom: 8px; border-bottom: 2px solid #004a99;">';
+            if (projName) html += '<div style="font-weight:bold; font-size:14px; color:#004a99;">' + projName + '</div>';
+            if (projApplicable) html += '<div style="font-size:12px; color:#555;">Timesheet summary applicable for: <strong>' + projApplicable + '</strong></div>';
+            html += '</div>';
+        }
+        html += "<h3>Daily Timesheet (Excludes most allowances)</h3>";
         for (let code in results) {
             if (results[code] > 0.001) {
                 let unit = (code === 'TAT' || code === 'Fares (FTR)' || code === 'Meal Allow ($15.50)') ? 'Unit' : 'hrs';
@@ -711,6 +748,77 @@
         }
 
         document.getElementById('calcOutput').innerHTML = html;
+    }
+
+    function downloadSummary() {
+        let output = document.getElementById('calcOutput');
+        let lines = [];
+        lines.push('RBD Timesheet Summary');
+        lines.push('Generated: ' + new Date().toLocaleDateString('en-AU'));
+
+        // Project info
+        let dlProjName = (document.getElementById('projectName') || {}).value || '';
+        let dlProjDay = (document.getElementById('projectDay') || {}).value || '';
+        let dlProjDateRaw = (document.getElementById('projectDate') || {}).value || '';
+        let dlProjDate = dlProjDateRaw ? new Date(dlProjDateRaw + 'T00:00:00').toLocaleDateString('en-AU', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' }) : '';
+        let dlApplicable = dlProjDay || dlProjDate || '';
+        if (dlProjName) lines.push('Project: ' + dlProjName);
+        if (dlApplicable) lines.push('Applicable for: ' + dlApplicable);
+        lines.push('');
+
+        // Gather inputs
+        let dayType = flags.Day === 'PH' ? 'Public Holiday' : flags.Day;
+        lines.push('Day Type: ' + dayType);
+        lines.push('Start: ' + (flags.Start === 'Work' ? 'Workshop' : 'Site'));
+        lines.push('Finish: ' + (flags.Fin === 'Work' ? 'Workshop' : 'Site'));
+        lines.push('Company Car: ' + (flags.Co ? 'Yes' : 'No'));
+        lines.push('Incidentals-1: ' + (flags.Inc1 ? 'Yes' : 'No'));
+        lines.push('Unnotified OT: ' + (flags.UnnotifiedOT ? 'Yes' : 'No'));
+        lines.push('');
+
+        // Gather results from rendered rows
+        let rows = output.querySelectorAll('.code-row');
+        let inExtras = false;
+        rows.forEach(r => {
+            let spans = r.querySelectorAll('span');
+            if (spans.length === 2) {
+                lines.push(spans[0].textContent.padEnd(30) + spans[1].textContent);
+            }
+        });
+
+        // Grab extra allowances header if present
+        let headers = output.querySelectorAll('h3');
+        headers.forEach(h => {
+            if (h.textContent.includes('Extra')) {
+                let idx = lines.length;
+                // Find where extras start and insert header
+                let extraRows = h.parentElement.querySelectorAll('.code-row');
+                if (extraRows.length > 0) {
+                    // Header already captured via row iteration
+                }
+            }
+        });
+
+        // Notes
+        let notes = output.querySelector('.notes');
+        if (notes) {
+            lines.push('\nNotes:');
+            lines.push(notes.textContent);
+        }
+
+        lines.push('\n---');
+        lines.push('This is a guide only. Refer to EA 2025 for definitive entitlements.');
+
+        let text = lines.join('\n');
+        let blob = new Blob([text], { type: 'text/plain' });
+        let url = URL.createObjectURL(blob);
+        let a = document.createElement('a');
+        a.href = url;
+        a.download = 'RBD_Timesheet_' + new Date().toISOString().slice(0,10) + '.txt';
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
     }
 
     window.onload = function() { buildAllowancePanel(); calculate(); };
