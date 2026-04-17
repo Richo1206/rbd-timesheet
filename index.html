@@ -240,7 +240,7 @@
     // ---------- extra allowances data ----------
     const EXTRA_ALLOWANCES = [
         // Site & Industrial
-        { id: 'industrial', name: 'Industrial Allowance', rate: 2.50, unit: 'hr', group: 'Site & Industrial' },
+        { id: 'industrial', name: 'Industrial Allowance', rate: 2.50, unit: 'hr', group: 'Site & Industrial', summaryNote: 'Trades only' },
         { id: 'site', name: 'Site Allowance', rate: 2.50, unit: 'hr', group: 'Site & Industrial' },
         { id: 'firmus', name: 'Firmus Allowance', rate: 5.00, unit: 'hr', group: 'Site & Industrial' },
         { id: 'hsm', name: 'HSM Allowance', rate: 10.00, unit: 'custom_hr', group: 'Site & Industrial' },
@@ -720,8 +720,9 @@
                 if (a.unit === 'hr') {
                     let nt = allowNT;
                     let ot = a.includeTravel ? weightedWorkOT + weightedTravelOT : allowOT;
-                    if (nt > 0.001) allowanceHtml += '<div class="code-row"><span>' + a.name + ' (NT)</span><span>' + nt.toFixed(2) + ' hrs</span></div>';
-                    if (ot > 0.001) allowanceHtml += '<div class="code-row"><span>' + a.name + ' (OT)</span><span>' + ot.toFixed(2) + ' hrs</span></div>';
+                    let hrNote = a.summaryNote ? ' <span style="font-size:10px;color:#888;font-style:italic;">(' + a.summaryNote + ')</span>' : '';
+                    if (nt > 0.001) allowanceHtml += '<div class="code-row"><span>' + a.name + ' (NT)' + hrNote + '</span><span>' + nt.toFixed(2) + ' hrs</span></div>';
+                    if (ot > 0.001) allowanceHtml += '<div class="code-row"><span>' + a.name + ' (OT)' + hrNote + '</span><span>' + ot.toFixed(2) + ' hrs</span></div>';
                 } else if (a.unit === 'custom_hr') {
                     let hrsEl = document.getElementById('hrs_' + a.id);
                     let totalHrs = parseFloat(hrsEl ? hrsEl.value : 0) || 0;
@@ -817,8 +818,9 @@
                 if (a.unit === 'hr') {
                     let nt = aNT;
                     let ot = a.includeTravel ? wWorkOT + wTravelOT : aOT;
-                    if (nt > 0.001) extraLines.push((a.name + ' (NT)').padEnd(35) + nt.toFixed(2) + ' hrs');
-                    if (ot > 0.001) extraLines.push((a.name + ' (OT)').padEnd(35) + ot.toFixed(2) + ' hrs');
+                    let dlNote = a.summaryNote ? ' (' + a.summaryNote + ')' : '';
+                    if (nt > 0.001) extraLines.push((a.name + ' (NT)' + dlNote).padEnd(35) + nt.toFixed(2) + ' hrs');
+                    if (ot > 0.001) extraLines.push((a.name + ' (OT)' + dlNote).padEnd(35) + ot.toFixed(2) + ' hrs');
                 } else if (a.unit === 'custom_hr') {
                     let hrsEl = document.getElementById('hrs_' + a.id);
                     let totalHrs = parseFloat(hrsEl ? hrsEl.value : 0) || 0;
