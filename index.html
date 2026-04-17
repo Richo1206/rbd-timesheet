@@ -750,6 +750,14 @@
             html += '</div>';
         }
 
+        // Store summary data for download function
+        window._lastResults = results;
+        window._lastAllowNT = allowNT;
+        window._lastAllowOT = allowOT;
+        window._lastWeightedWorkOT = weightedWorkOT;
+        window._lastWeightedTravelOT = weightedTravelOT;
+        window._lastNotes = notes;
+
         document.getElementById('calcOutput').innerHTML = html;
     }
 
@@ -779,25 +787,61 @@
         lines.push('Unnotified OT: ' + (flags.UnnotifiedOT ? 'Yes' : 'No'));
         lines.push('');
 
-        // Walk through all child elements in order to capture
-        // headings, code rows, and notes in the correct sequence
-        let children = output.querySelectorAll('h3, .code-row, .notes');
-        children.forEach(el => {
-            if (el.tagName === 'H3') {
-                lines.push('');
-                lines.push('--- ' + el.textContent.trim() + ' ---');
-            } else if (el.classList.contains('code-row')) {
-                // Get direct child spans only (avoid nested spans like summaryNote)
-                let directSpans = el.querySelectorAll(':scope > span');
-                if (directSpans.length === 2) {
-                    lines.push(directSpans[0].textContent.trim().padEnd(35) + directSpans[1].textContent.trim());
+        // --- Daily Timesheet ---
+        let r = window._lastResults || {};
+        lines.push('--- Daily Timesheet ---');
+        for (let code in r) {
+            if (r[code] > 0.001) {
+                let unit = (code === 'TAT' || code === 'Fares (FTR)' || code === 'Meal Allow ($15.50)') ? 'Unit' : 'hrs';
+                lines.push(code.padEnd(35) + r[code].toFixed(2) + ' ' + unit);
+            }
+        }
+
+        // Notes
+        let dlNotes = window._lastNotes || [];
+        if (dlNotes.length) {
+            lines.push('');
+            lines.push('Notes:');
+            dlNotes.forEach(n => lines.push('- ' + n));
+        }
+
+        // --- Extra Allowances ---
+        let aNT = window._lastAllowNT || 0;
+        let aOT = window._lastAllowOT || 0;
+        let wWorkOT = window._lastWeightedWorkOT || 0;
+        let wTravelOT = window._lastWeightedTravelOT || 0;
+        let extraLines = [];
+        EXTRA_ALLOWANCES.forEach(a => {
+            let cb = document.getElementById('allow_' + a.id);
+            if (cb && cb.checked) {
+                if (a.unit === 'hr') {
+                    let nt = aNT;
+                    let ot = a.includeTravel ? wWorkOT + wTravelOT : aOT;
+                    if (nt > 0.001) extraLines.push((a.name + ' (NT)').padEnd(35) + nt.toFixed(2) + ' hrs');
+                    if (ot > 0.001) extraLines.push((a.name + ' (OT)').padEnd(35) + ot.toFixed(2) + ' hrs');
+                } else if (a.unit === 'custom_hr') {
+                    let hrsEl = document.getElementById('hrs_' + a.id);
+                    let totalHrs = parseFloat(hrsEl ? hrsEl.value : 0) || 0;
+                    if (totalHrs > 0) {
+                        let ntP = Math.min(totalHrs, aNT);
+                        let otP = Math.max(0, totalHrs - ntP);
+                        if (ntP > 0.001) extraLines.push((a.name + ' (NT)').padEnd(35) + ntP.toFixed(2) + ' hrs');
+                        if (otP > 0.001) extraLines.push((a.name + ' (OT)').padEnd(35) + otP.toFixed(2) + ' hrs');
+                    }
+                } else if (a.unit === 'km') {
+                    let kmEl = document.getElementById('km_' + a.id);
+                    let km = parseFloat(kmEl ? kmEl.value : 0) || 0;
+                    if (km > 0) extraLines.push(a.name.padEnd(35) + km.toFixed(0) + ' km');
+                } else {
+                    extraLines.push(a.name.padEnd(35) + '1 Unit');
                 }
-            } else if (el.classList.contains('notes')) {
-                lines.push('');
-                lines.push('Notes:');
-                lines.push(el.textContent.trim());
             }
         });
+        if (extraLines.length) {
+            lines.push('');
+            lines.push('--- Extra Allowances ---');
+            extraLines.forEach(l => lines.push(l));
+        }
 
         lines.push('\n---');
         lines.push('This is a guide only. Refer to EA 2025 for definitive entitlements.');
