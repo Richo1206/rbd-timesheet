@@ -255,7 +255,7 @@
         // Travel & Vehicle
         { id: 'tk1', name: 'TK1 (Outside Boundary)', rate: 0.57, unit: 'km', group: 'Travel & Vehicle' },
         { id: 'tk2', name: 'TK2 (Between Sites)', rate: 1.05, unit: 'km', group: 'Travel & Vehicle' },
-        { id: 'kmCompanyCar', name: "Km's (Company Car)", rate: 0.75, unit: 'km', group: 'Travel & Vehicle' },
+        { id: 'kmCompanyCar', name: "Km's (Company Car)", rate: 0.75, unit: 'km', group: 'Travel & Vehicle', summaryNote: 'Only if responsible for vehicle' },
         // Supervision
         { id: 'supG5G6', name: 'Supervisor G5 > G6', rate: 1.55, unit: 'hr', group: 'Supervision', hideRate: true, includeTravel: true },
         { id: 'supG6G7', name: 'Supervisor G6 > G7', rate: 2.74, unit: 'hr', group: 'Supervision', hideRate: true, includeTravel: true },
@@ -734,7 +734,10 @@
                 } else if (a.unit === 'km') {
                     let kmEl = document.getElementById('km_' + a.id);
                     let km = parseFloat(kmEl ? kmEl.value : 0) || 0;
-                    if (km > 0) allowanceHtml += '<div class="code-row"><span>' + a.name + '</span><span>' + km.toFixed(0) + ' km</span></div>';
+                    if (km > 0) {
+                        let note = a.summaryNote ? ' <span style="font-size:10px;color:#888;font-style:italic;">(' + a.summaryNote + ')</span>' : '';
+                        allowanceHtml += '<div class="code-row"><span>' + a.name + note + '</span><span>' + km.toFixed(0) + ' km</span></div>';
+                    }
                 } else {
                     allowanceHtml += '<div class="code-row"><span>' + a.name + '</span><span>1 Unit</span></div>';
                 }
