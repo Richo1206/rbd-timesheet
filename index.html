@@ -475,8 +475,9 @@
         //    Unpaid 30 min lunch. The Employee must WORK 12+ hours
         //    (i.e. span ≥ 12h 30m) for the meal break to become paid.
         // ----------------------------------------------------------
-        let workedHours = spanOfWork - 30; // net work assuming unpaid break
-        let mealDeduct = (workedHours >= 720) ? 0 : 30;
+        // Check 12-hour threshold AFTER rounding (e.g. 11h53m rounds to 12h)
+        let netWithBreak = roundTo15(Math.max(0, spanOfWork - 30));
+        let mealDeduct = (netWithBreak >= 720) ? 0 : 30;
         let netWorkMins = roundTo15(Math.max(0, spanOfWork - mealDeduct));
 
         // ----------------------------------------------------------
