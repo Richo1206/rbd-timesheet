@@ -157,8 +157,13 @@
 
     <div class="day-toggle-section" style="border-top:none; padding-top:0;">
         <div id="btnCo" class="toggle-btn active" onclick="toggle('Co')">Company Car</div>
-        <div id="btnInc1" class="toggle-btn" onclick="toggle('Inc1')">Incidentals-1</div>
+        <div id="btnInc1" class="toggle-btn" onclick="toggleInc1()">Incidentals-1</div>
         <div id="btnUnnotifiedOT" class="toggle-btn" onclick="toggle('UnnotifiedOT')">Unnotified OT</div>
+    </div>
+
+    <div id="inc1DayRow" class="day-toggle-section hidden" style="border-top:none; padding-top:0;">
+        <div id="btnFirstDay" class="toggle-btn" onclick="toggleTripDay('FirstDay')">First Day</div>
+        <div id="btnLastDay" class="toggle-btn" onclick="toggleTripDay('LastDay')">Last Day</div>
     </div>
 
     <div id="results">
@@ -233,6 +238,8 @@
         Day: 'Weekday',
         Co: true,          // company vehicle provided/offered
         Inc1: false,       // incidentals 1 (suppresses TAT/Fares)
+        FirstDay: false,   // first day of Inc-1 trip (morning = standard, return = Inc-1)
+        LastDay: false,    // last day of Inc-1 trip (morning = Inc-1, return = standard)
         UnnotifiedOT: false, // triggers $15.50 meal allowance (Cl 60.1)
         Office: null       // 'Dev' or 'Hob' — must be selected before verifying route
     };
@@ -406,6 +413,35 @@
         calculate();
     }
 
+    function toggleInc1() {
+        flags.Inc1 = !flags.Inc1;
+        document.getElementById('btnInc1').classList.toggle('active');
+        // Show/hide First Day / Last Day row
+        document.getElementById('inc1DayRow').classList.toggle('hidden', !flags.Inc1);
+        // Reset trip day flags when Inc-1 is turned off
+        if (!flags.Inc1) {
+            flags.FirstDay = false;
+            flags.LastDay = false;
+            document.getElementById('btnFirstDay').classList.remove('active');
+            document.getElementById('btnLastDay').classList.remove('active');
+        }
+        calculate();
+    }
+
+    function toggleTripDay(id) {
+        // First Day and Last Day are mutually exclusive
+        if (id === 'FirstDay') {
+            flags.FirstDay = !flags.FirstDay;
+            if (flags.FirstDay) flags.LastDay = false;
+        } else {
+            flags.LastDay = !flags.LastDay;
+            if (flags.LastDay) flags.FirstDay = false;
+        }
+        document.getElementById('btnFirstDay').classList.toggle('active', flags.FirstDay);
+        document.getElementById('btnLastDay').classList.toggle('active', flags.LastDay);
+        calculate();
+    }
+
     function timeToMin(t) {
         if (!t) return 0;
         let parts = t.split(':');
@@ -446,6 +482,13 @@
             "Fares (FTR)": 0,
             "Meal Allow ($15.50)": 0
         };
+
+        // Inc-1 direction flags:
+        // First Day: morning = standard, return = Inc-1
+        // Last Day:  morning = Inc-1, return = standard
+        // Normal:    both = Inc-1
+        let inc1Morning = flags.Inc1 && !flags.FirstDay;
+        let inc1Return  = flags.Inc1 && !flags.LastDay;
 
         // Paid work span depends on Start/Finish mode
         let paidWorkStart = (flags.Start === 'Work') ? tLeftBase   : tArriveSite;
@@ -499,8 +542,8 @@
         let morningTT    = 0; // 06:00+ outside-boundary morning travel (TT)
 
         if (flags.Start === 'Site') {
-            if (flags.Inc1) {
-                // Cl 64.5.a — Travel Whilst Working Away.
+            if (inc1Morning) {
+                // Cl 64.5.a — Travel Whilst Working Away (Inc-1 morning).
                 // All morning travel is TT (single time). No boundary applies.
                 // Early travel deeming still caps the travel window at 07:00.
                 let windowEnd = isEarlyTravel ? Math.min(420, tArriveSite) : tArriveSite;
@@ -573,12 +616,12 @@
 
         // Under Inc-1, travel is from temporary centre of employment —
         // all travel stays as TT, no top-up into NT (Cl 64.5).
-        let topUpMorning = flags.Inc1 ? 0 : Math.min(ntRemaining, morningTT);
+        let topUpMorning = inc1Morning ? 0 : Math.min(ntRemaining, morningTT);
         ntRemaining -= topUpMorning;
         morningTT -= topUpMorning;
 
         // Return transit used to top up NT carries no boundary deduction
-        let topUpReturn = flags.Inc1 ? 0 : Math.min(ntRemaining, returnTransitGross);
+        let topUpReturn = inc1Return ? 0 : Math.min(ntRemaining, returnTransitGross);
         ntRemaining -= topUpReturn;
         let returnTransitPayable = returnTransitGross - topUpReturn;
 
@@ -600,7 +643,7 @@
             // Return transit net of 30-min boundary deduction (non-Inc-1 only)
             let returnTransitNet = Math.max(0, returnTransitPayable - 30);
 
-            if (flags.Inc1) {
+            if (inc1Return) {
                 // Cl 64.5.a.ii — return is TT+ if total work + travel >= 8h
                 // when return begins; otherwise TT. No boundary deduction.
                 let elapsedBeforeReturn = tLeaveSite - tLeftBase;
@@ -635,18 +678,22 @@
                 results["NT (Public Holiday)"] = 8;
             }
 
-            if (flags.Inc1) {
-                // Under Inc-1, morning is TT (Cl 64.5.a.i), return is TT+
-                // (Cl 64.5.a.ii weekends/PH branch). No boundary deduction.
+            // Morning travel — weekend/PH
+            if (inc1Morning) {
+                // Inc-1 morning: TT (Cl 64.5.a.i). No boundary deduction.
                 results["TT (Morning)"]  = roundTo15(morningTT) / 60;
+            } else {
+                // Standard weekend/PH: outside-boundary travel at TT+ (Cl 64.3.c.iii)
+                let weekendMorningMins = morningTT + morningTTPlus;
+                results["TT+ (Morning)"] = roundTo15(weekendMorningMins) / 60;
+            }
+            // Return travel — weekend/PH
+            if (inc1Return) {
+                // Inc-1 return: TT+ (Cl 64.5.a.ii weekends/PH). No boundary deduction.
                 results["TT+ (Return)"]  = roundTo15(returnTransitGross) / 60;
             } else {
-                // Non-Inc1 weekend/PH: outside-boundary travel at TT+
-                // (Cl 64.3.c.iii). 30-min Travel Boundary still applies.
-                // morningTT + morningTTPlus already have boundary deducted.
-                let weekendMorningMins = morningTT + morningTTPlus;
+                // Standard weekend/PH: outside-boundary travel at TT+ with 30-min boundary
                 let returnTransitNet = Math.max(0, returnTransitGross - 30);
-                results["TT+ (Morning)"] = roundTo15(weekendMorningMins) / 60;
                 results["TT+ (Return)"]  = roundTo15(returnTransitNet) / 60;
             }
         }
@@ -713,7 +760,13 @@
         if (flags.Start === 'Site' && morningTravelTotal > 0 && morningTravelTotal <= 30) {
             notes.push("Morning travel within 30-min Travel Boundary — no TT (Cl 64.1).");
         }
-        if (flags.Inc1) notes.push("Incidentals-1 active — TAT and Fares not payable for accom↔site travel (Cl 64.5.a.iii).");
+        if (flags.Inc1) {
+            let tripNote = "Incidentals-1 active";
+            if (flags.FirstDay) tripNote += " (First Day — morning standard, return Inc-1)";
+            else if (flags.LastDay) tripNote += " (Last Day — morning Inc-1, return standard)";
+            tripNote += " — TAT and Fares not payable for accom\u2194site travel (Cl 64.5.a.iii).";
+            notes.push(tripNote);
+        }
         if (results["NT (RDO, AL or LWOP)"] > 0.001) notes.push("Less than 8 hours NT worked — remaining hours must be covered by RDO, Annual Leave, or LWOP. Note: LWOP is only allowed if approved by management.");
         if (notes.length) {
             html += `<div class="notes">${notes.join('<br>')}</div>`;
@@ -817,7 +870,13 @@
         lines.push('• Start: ' + (flags.Start === 'Work' ? 'Workshop' : 'Site'));
         lines.push('• Finish: ' + (flags.Fin === 'Work' ? 'Workshop' : 'Site'));
         lines.push('• Company Car: ' + (flags.Co ? 'Yes' : 'No'));
-        lines.push('• Incidentals-1: ' + (flags.Inc1 ? 'Yes' : 'No'));
+        let inc1Label = 'No';
+        if (flags.Inc1) {
+            inc1Label = 'Yes';
+            if (flags.FirstDay) inc1Label += ' (First Day)';
+            else if (flags.LastDay) inc1Label += ' (Last Day)';
+        }
+        lines.push('• Incidentals-1: ' + inc1Label);
         lines.push('• Unnotified OT: ' + (flags.UnnotifiedOT ? 'Yes' : 'No'));
         lines.push('');
 
