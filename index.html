@@ -551,9 +551,13 @@
         let grossWorkMins = spanOfWork; // before meal deduction
         let mealRatio = grossWorkMins > 0 ? netWorkMins / grossWorkMins : 0;
 
+        // When early travel deeming applies, the effective work start is
+        // 07:00 (420 min), not the actual arrival time on site.
+        let effectiveWorkStart = isEarlyTravel ? 420 : paidWorkStart;
+
         // Minutes of work outside 6am-6pm (pre-6am + post-6pm)
-        let pre6am  = Math.max(0, Math.min(paidWorkStart + grossWorkMins, 360) - paidWorkStart);
-        let post6pm = Math.max(0, (paidWorkStart + grossWorkMins) - Math.max(paidWorkStart, 1080));
+        let pre6am  = Math.max(0, Math.min(effectiveWorkStart + grossWorkMins, 360) - effectiveWorkStart);
+        let post6pm = Math.max(0, (effectiveWorkStart + grossWorkMins) - Math.max(effectiveWorkStart, 1080));
         let outsideOrdinaryGross = pre6am + post6pm;
         // Apply meal ratio so we're working with net minutes
         let outsideOT = roundTo15(Math.round(outsideOrdinaryGross * mealRatio));
