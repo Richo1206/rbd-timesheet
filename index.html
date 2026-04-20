@@ -56,12 +56,10 @@
     </style>
 </head>
 <body>
-
 <div class="card">
     <h2>RBD Timesheet Calculator</h2>
     <div class="sub">EA 2025 &amp; Handbook Rev 8.0</div>
     <div class="sub no-print" style="margin-bottom: 8px; font-size: 10px; color: #999; font-style: italic;">For more information on each section, click the <span style="display:inline-flex; align-items:center; justify-content:center; width:16px; height:16px; border-radius:50%; border:1.5px solid #004a99; color:#004a99; font-size:10px; font-weight:bold; font-family:Georgia,serif; vertical-align:middle;">i</span> button to the right.</div>
-
     <div class="section-header no-print"><span>Google Maps Travel Tool</span><button class="info-btn" onclick="toggleInfo('infoMaps')">i</button></div>
     <div id="infoMaps" class="info-panel no-print">
         <strong>How to use:</strong> This tool helps you verify your travel time using Google Maps.
@@ -96,7 +94,6 @@
             </div>
         </div>
     </div>
-
     <div class="section-header"><span>Time Entries</span><button class="info-btn no-print" onclick="toggleInfo('infoTime')">i</button></div>
     <div id="infoTime" class="info-panel no-print">
         <strong>How to fill this in:</strong>
@@ -110,10 +107,14 @@
         <ul>
             <li><strong>Start Workshop / Start Site</strong> — select where your working day commenced (Cl 53.a). Select <strong>Start Workshop</strong> if you were directed by your supervisor or project manager to carry out work-related tasks at your centre of employment before travelling to site. Select <strong>Start Site</strong> if you travelled directly to the worksite from home, your centre of employment (without carrying out work-related tasks), or an arranged meeting point.</li>
             <li><strong>Finish Workshop / Finish Site</strong> — select where your working day ended. Select <strong>Finish Workshop</strong> if you were directed by your supervisor or project manager to return to your centre of employment to carry out work-related tasks (e.g. unloading a trailer, preparing for a job the following day). Select <strong>Finish Site</strong> if your working day ended at the worksite and you travelled home or to accommodation.</li>
-            <li><strong>Weekday / Weekend / Pub Holiday</strong> — select the day type. Weekday pays NT then OT. Weekend/PH pays double time for all work hours. PH also includes 8 hours NT (Public Holiday) entitlement.</li>
+            <li><strong>Weekday / Weekend / Pub Holiday</strong> — select the day type. Weekday pays NT then OT. Weekend/PH pays double time for all work hours with a 4-hour minimum (Cl 62.3.a), or 2-hour minimum if you were notified 24h+ in advance (Cl 62.3.b). PH also includes 8 hours NT (Public Holiday) entitlement — applicable only on a day you were rostered to work (s116 FW Act).</li>
             <li><strong>Company Car</strong> — select if a company vehicle was provided or offered. If unselected, Fares Allowance (FTR) applies.</li>
-            <li><strong>Incidentals-1</strong> — select when staying at accommodation on a distant job (>20 min from urban area, employer pays for accom without meals). All accom-to-site travel is paid. TAT and Fares do not apply.</li>
-            <li><strong>Unnotified OT</strong> — select if you were required to work 2+ hours overtime without being notified the previous day. Triggers the $15.50 meal allowance.</li>
+            <li><strong>Incidentals-1</strong> — select when staying at accommodation on a distant job (>20 min from urban area, employer pays for accom without meals). All accom-to-site travel is paid. TAT and Fares do not apply for accom↔site legs. First/Last Day tick preserves TAT/Fares for the standard workshop↔site leg (Cl 64.5.b).</li>
+            <li><strong>Other ▼</strong> — expands to reveal the less-common flags below (Unnotified OT, RDO, Callout).</li>
+            <li><strong>Unnotified OT</strong> — select if you were required to work 2+ hours overtime without being notified the previous day. Triggers the $15.50 meal allowance (any day — Cl 60.1.a).</li>
+            <li><strong>RDO</strong> — select when working a scheduled Rostered Day Off. Treats the day as a Saturday-equivalent penalty day (Cl 62.3.a): DT rate for all work hours, 4-hour minimum (or 2-hour with 24h+ notice).</li>
+            <li><strong>Callout</strong> — select when recalled to site after hours (Cl 63.a). All work + travel is bundled at the appropriate OT rate with a 4-hour minimum. TT/TT+/TAT/Fares are suppressed — travel is already at OT. Not modelled: Cl 63.e/f on-call-roster variants (3h / 2h mins) and the Cl 63.a.iii TK1 $0.57/km own-vehicle allowance; enter these manually via Extra Allowances.</li>
+            <li><strong>Scheduled (24h+ notice)</strong> — when working a weekend/PH/RDO that was planned 24h+ in advance, minimum drops from 4h to 2h (Cl 62.3.b).</li>
         </ul>
         <strong>Key rules:</strong>
         <ul>
@@ -141,31 +142,34 @@
             <input type="time" id="arriveWorkshop" value="16:30" oninput="calculate()">
         </div>
     </div>
-
     <div class="toggle-section">
         <div id="btnStartWork" class="toggle-btn" onclick="setStart('Work')">Start Workshop</div>
         <div id="btnStartSite" class="toggle-btn active" onclick="setStart('Site')">Start Site</div>
         <div id="btnFinWork" class="toggle-btn" onclick="setFinish('Work')">Finish Workshop</div>
         <div id="btnFinSite" class="toggle-btn active" onclick="setFinish('Site')">Finish Site</div>
     </div>
-
-    <div class="day-toggle-section">
+    <div class="day-toggle-section" style="grid-template-columns: 1fr 1fr 1fr;">
         <div id="btnWeekday" class="toggle-btn active" onclick="toggleDay('Weekday')">Weekday</div>
         <div id="btnWeekend" class="toggle-btn" onclick="toggleDay('Weekend')">Weekend</div>
-        <div id="btnPH" class="toggle-btn" onclick="toggleDay('PH')">Public Holiday</div>
+        <div id="btnPH" class="toggle-btn" onclick="toggleDay('PH')">Pub Holiday</div>
     </div>
-
     <div class="day-toggle-section" style="border-top:none; padding-top:0;">
         <div id="btnCo" class="toggle-btn active" onclick="toggle('Co')">Company Car</div>
         <div id="btnInc1" class="toggle-btn" onclick="toggleInc1()">Incidentals-1</div>
-        <div id="btnUnnotifiedOT" class="toggle-btn" onclick="toggle('UnnotifiedOT')">Unnotified OT</div>
+        <div id="btnOther" class="toggle-btn" onclick="toggleOther()">Other &#x25BC;</div>
     </div>
-
+    <div id="otherPanel" class="day-toggle-section hidden" style="border-top:none; padding-top:0;">
+        <div id="btnUnnotifiedOT" class="toggle-btn" onclick="toggle('UnnotifiedOT')">Unnotified OT</div>
+        <div id="btnRDO" class="toggle-btn" onclick="toggle('RDO')">RDO</div>
+        <div id="btnCallout" class="toggle-btn" onclick="toggle('Callout')">Callout</div>
+    </div>
+    <div id="notified24hRow" class="day-toggle-section hidden" style="border-top:none; padding-top:0; grid-template-columns: 1fr;">
+        <div id="btnNotified24h" class="toggle-btn" onclick="toggle('Notified24h')">Scheduled (24h+ notice) &mdash; 2h min</div>
+    </div>
     <div id="inc1DayRow" class="day-toggle-section hidden" style="border-top:none; padding-top:0;">
         <div id="btnFirstDay" class="toggle-btn" onclick="toggleTripDay('FirstDay')">First Day</div>
         <div id="btnLastDay" class="toggle-btn" onclick="toggleTripDay('LastDay')">Last Day</div>
     </div>
-
     <div id="results">
         <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 4px;">
             <span></span>
@@ -187,13 +191,18 @@
                 <li><strong>Fares (FTR)</strong> — Fares Allowance ($14.61/day). Paid when you use your own vehicle and no company car was offered.</li>
                 <li><strong>Meal Allow ($15.50)</strong> — Meal Allowance for unnotified overtime of 2+ hours (Cl 60.1.a). Note: this rate increases to $16.41 from 01/07/2026 and $20.00 from 01/07/2027.</li>
             </ul>
+            <strong>Interpretation notes:</strong>
+            <ul>
+                <li><strong>Rounding</strong> — each component is rounded to 15 min (Cl 53.b). Small slivers across several components can differ from rounding the totals only (+/- 15 min).</li>
+                <li><strong>Public Holiday (8h NT)</strong> — auto-added when PH is selected. Under s116 FW Act, PH NT only applies if you were rostered to work that day; untick PH if it falls on a non-rostered day.</li>
+                <li><strong>Casual rates</strong> — the calculator uses full-time treatment. Casual PH pays at DT+half (Cl 62.2.a.iv); not auto-calculated here.</li>
+                <li><strong>Early-travel (weekend/PH)</strong> — examples 23/24/25 show reduced 30-min TT+ and no TAT for weekend/PH early starts. Not auto-detected here (weekday only); if your weekend early-start fits Ex 22-25, manually reduce the forward TT+ to 30 min and remove TAT.</li>
+            </ul>
         </div>
         <div id="calcOutput"></div>
     </div>
-
     <button id="allowanceBtn" class="no-print" style="width:100%; margin-top:12px; padding:14px; background:linear-gradient(135deg,#003366,#004a99); color:white; border:none; border-radius:12px; font-weight:700; cursor:pointer; font-size:14px; box-shadow:0 2px 10px rgba(0,74,153,0.25); transition:transform 0.1s; letter-spacing:0.3px;" onclick="this.style.transform='scale(0.98)'; setTimeout(()=>this.style.transform='',100); let p=document.getElementById('allowPanel'); p.classList.toggle('open'); this.textContent=p.classList.contains('open')?'Extra Allowances \u25B2':'Extra Allowances \u25BC'">Extra Allowances &#x25BC;</button>
     <div id="allowPanel" class="allow-panel no-print"></div>
-
     <button class="no-print" style="width:100%; margin-top:8px; padding:14px; background:linear-gradient(135deg,#003366,#004a99); color:white; border:none; border-radius:12px; font-weight:700; cursor:pointer; font-size:14px; box-shadow:0 2px 10px rgba(0,74,153,0.25); transition:transform 0.1s; letter-spacing:0.3px;" onclick="this.style.transform='scale(0.98)'; setTimeout(()=>this.style.transform='',100); let p=document.getElementById('projectPanel'); p.classList.toggle('open'); this.textContent=p.classList.contains('open')?'Project Information \u25B2':'Project Information \u25BC'">Project Information &#x25BC;</button>
     <div id="projectPanel" class="allow-panel no-print">
         <label>Project Name:</label>
@@ -215,14 +224,12 @@
         <label>Or Select Date:</label>
         <input type="date" id="projectDate" style="margin-bottom: 0;" onchange="if(this.value) document.getElementById('projectDay').value=''; calculate();">
     </div>
-
     <button class="no-print" style="width:100%; margin-top:15px; padding:16px; background:linear-gradient(135deg,#1e7a3a,#28a745); color:white; border:none; border-radius:12px; font-weight:700; cursor:pointer; font-size:15px; box-shadow:0 2px 10px rgba(40,167,69,0.3); transition:transform 0.1s;" onclick="this.style.transform='scale(0.98)'; setTimeout(()=>this.style.transform='',100); window.print()">Save to PDF / Print</button>
     <button class="no-print" style="width:100%; margin-top:8px; padding:16px; background:linear-gradient(135deg,#1e7a3a,#28a745); color:white; border:none; border-radius:12px; font-weight:700; cursor:pointer; font-size:15px; box-shadow:0 2px 10px rgba(40,167,69,0.3); transition:transform 0.1s;" onclick="this.style.transform='scale(0.98)'; setTimeout(()=>this.style.transform='',100); downloadSummary()">Download Text File Summary</button>
     <div class="footer-note" style="font-size: 9px; color: #999; text-align: center; margin-top: 20px; line-height: 1.5;">
         <strong style="color:#666;">Disclaimer:</strong> This calculator is a guide only and does not override the RBD Enterprise Agreement 2025 or RBD Handbook Rev 8.0. Additional allowances can be selected under Extra Allowances. Some entitlements such as call-in, shift work, and overtime meal escalations may not be reflected. Always refer to the EA for definitive entitlements.
     </div>
 </div>
-
 <script>
     // ------------------------------------------------------------------
     // RBD Timesheet Calculator
@@ -231,24 +238,24 @@
     // 64.3(a) TK1 km rate, 64.4 (TK2 between-site km rate),
     // 60.1 (Meal Allowance for unnotified 2+ hr OT).
     // ------------------------------------------------------------------
-
     let flags = {
         Start: 'Site',
         Fin: 'Site',
-        Day: 'Weekday',
-        Co: true,          // company vehicle provided/offered
-        Inc1: false,       // incidentals 1 (suppresses TAT/Fares)
-        FirstDay: false,   // first day of Inc-1 trip (morning = standard, return = Inc-1)
-        LastDay: false,    // last day of Inc-1 trip (morning = Inc-1, return = standard)
+        Day: 'Weekday',      // 'Weekday' | 'Weekend' | 'PH'
+        Co: true,            // company vehicle provided/offered
+        Inc1: false,         // incidentals 1 (suppresses TAT/Fares)
+        FirstDay: false,     // first day of Inc-1 trip (morning = standard, return = Inc-1)
+        LastDay: false,      // last day of Inc-1 trip (morning = Inc-1, return = standard)
         UnnotifiedOT: false, // triggers $15.50 meal allowance (Cl 60.1)
-        Office: null       // 'Dev' or 'Hob' — must be selected before verifying route
+        Notified24h: false,  // Sat/Sun/RDO/PH: 24h+ notice reduces min to 2h (Cl 62.3.b)
+        RDO: false,          // overlay: working a scheduled RDO (Cl 62.3.a) — DT + 4h/2h min
+        Callout: false,      // overlay: Cl 63.a recall to site — bundled work+travel at OT, 4h min
+        Office: null         // 'Dev' or 'Hob' — must be selected before verifying route
     };
-
     const OFFICES = {
         Dev: '3 Bay Drive, Quoiba, TAS 7310',
         Hob: '6 Lampton Avenue, Derwent Park, TAS 7009'
     };
-
     // ---------- extra allowances data ----------
     const EXTRA_ALLOWANCES = [
         // Site & Industrial
@@ -279,7 +286,6 @@
         // Other
         { id: 'onCall', name: 'On Call Allowance', rate: 45.71, unit: 'day', group: 'Other' },
     ];
-
     function buildAllowancePanel() {
         let panel = document.getElementById('allowPanel');
         let html = '';
@@ -320,12 +326,10 @@
         });
         panel.innerHTML = html;
     }
-
     // ---------- utilities ----------
     function toggleInfo(id) {
         document.getElementById(id).classList.toggle('open');
     }
-
     function setOffice(code) {
         flags.Office = code;
         document.getElementById('btnOfficeDev').classList.toggle('active', code === 'Dev');
@@ -333,7 +337,6 @@
         document.getElementById('btnOfficeCustom').classList.toggle('active', code === 'Custom');
         document.getElementById('customOriginWrap').classList.toggle('hidden', code !== 'Custom');
     }
-
     function checkRoute() {
         if (!flags.Office) {
             alert('Please select a start location (Devonport, Hobart, or Custom).');
@@ -368,7 +371,6 @@
             }
         }
     }
-
     function syncArriveTime() {
         const hInput = document.getElementById('manualHours').value;
         const mInput = document.getElementById('manualMinutes').value;
@@ -380,7 +382,6 @@
         }
         calculate();
     }
-
     function setStart(type) {
         flags.Start = type;
         document.getElementById('btnStartWork').classList.toggle('active', type === 'Work');
@@ -389,7 +390,6 @@
         document.getElementById('startLabel').innerText = (type === 'Work') ? "Workshop Start:" : "Left Workshop/Accom:";
         calculate();
     }
-
     function setFinish(type) {
         flags.Fin = type;
         document.getElementById('btnFinWork').classList.toggle('active', type === 'Work');
@@ -398,21 +398,51 @@
         document.getElementById('finishLabel').innerText = (type === 'Work') ? "Workshop Finish:" : "Arrived at Workshop/Accom:";
         calculate();
     }
-
+    // Helper — penalty-rate day triggers DT + 4h/2h min (Cl 62.3.a)
+    // Covers Weekend, Public Holiday, or a Weekday with the RDO overlay on.
+    function isPenaltyDay() {
+        return flags.Day !== 'Weekday' || flags.RDO;
+    }
+    // Keep the 24h-notice row visibility in sync with the current day type + RDO flag.
+    function syncNoticeRow() {
+        let showNotice = isPenaltyDay();
+        document.getElementById('notified24hRow').classList.toggle('hidden', !showNotice);
+        if (!showNotice && flags.Notified24h) {
+            flags.Notified24h = false;
+            document.getElementById('btnNotified24h').classList.remove('active');
+        }
+    }
     function toggleDay(type) {
         flags.Day = type;
         document.getElementById('btnWeekday').classList.toggle('active', type === 'Weekday');
         document.getElementById('btnWeekend').classList.toggle('active', type === 'Weekend');
         document.getElementById('btnPH').classList.toggle('active', type === 'PH');
+        syncNoticeRow();
         calculate();
     }
-
     function toggle(id) {
         flags[id] = !flags[id];
         document.getElementById('btn' + id).classList.toggle('active');
+        // RDO flip changes whether the day is a penalty-rate day, so
+        // refresh the 24h-notice row visibility.
+        if (id === 'RDO') syncNoticeRow();
+        // Keep the "Other" header indicator in sync with its contents.
+        if (['UnnotifiedOT', 'RDO', 'Callout'].indexOf(id) !== -1) syncOtherHeader();
         calculate();
     }
-
+    function toggleOther() {
+        let panel = document.getElementById('otherPanel');
+        panel.classList.toggle('hidden');
+        syncOtherHeader();
+    }
+    function syncOtherHeader() {
+        let panel = document.getElementById('otherPanel');
+        let btn = document.getElementById('btnOther');
+        let isOpen = !panel.classList.contains('hidden');
+        let anyActive = flags.UnnotifiedOT || flags.RDO || flags.Callout;
+        btn.innerHTML = (isOpen ? 'Other \u25B2' : 'Other \u25BC') + (anyActive && !isOpen ? ' \u2022' : '');
+        btn.classList.toggle('active', anyActive);
+    }
     function toggleInc1() {
         flags.Inc1 = !flags.Inc1;
         document.getElementById('btnInc1').classList.toggle('active');
@@ -427,7 +457,6 @@
         }
         calculate();
     }
-
     function toggleTripDay(id) {
         // First Day and Last Day are mutually exclusive
         if (id === 'FirstDay') {
@@ -441,33 +470,36 @@
         document.getElementById('btnLastDay').classList.toggle('active', flags.LastDay);
         calculate();
     }
-
     function timeToMin(t) {
         if (!t) return 0;
         let parts = t.split(':');
         return parseInt(parts[0]) * 60 + parseInt(parts[1]);
     }
-
     function minToTime(m) {
         let h = Math.floor(m / 60) % 24;
         let mins = m % 60;
         return String(h).padStart(2, '0') + ":" + String(mins).padStart(2, '0');
     }
-
+    // diffMins — compute a positive duration between two "minutes-since-midnight"
+    // values. Handles shifts that cross midnight (e.g. left 22:00, arrived 01:00).
+    // If `to` is strictly earlier than `from`, assume it's on the next day.
+    function diffMins(from, to) {
+        if (to === from) return 0;
+        if (to < from) return (to + 1440) - from;
+        return to - from;
+    }
     function roundTo15(totalMins) {
         if (totalMins <= 0) return 0;
         let intervals = Math.floor(totalMins / 15);
         let remainder = totalMins % 15;
         return (remainder >= 8) ? (intervals + 1) * 15 : intervals * 15;
     }
-
     // ---------- main calculation ----------
     function calculate() {
         let tLeftBase   = timeToMin(document.getElementById('leftWorkshop').value);
         let tArriveSite = timeToMin(document.getElementById('arriveSite').value);
         let tLeaveSite  = timeToMin(document.getElementById('leaveSite').value);
         let tArriveBase = timeToMin(document.getElementById('arriveWorkshop').value);
-
         let results = {
             "TT+ (Morning)": 0,
             "TT (Morning)": 0,
@@ -482,98 +514,107 @@
             "Fares (FTR)": 0,
             "Meal Allow ($15.50)": 0
         };
-
         // Inc-1 direction flags:
         // First Day: morning = standard, return = Inc-1
         // Last Day:  morning = Inc-1, return = standard
         // Normal:    both = Inc-1
         let inc1Morning = flags.Inc1 && !flags.FirstDay;
         let inc1Return  = flags.Inc1 && !flags.LastDay;
-
         // Paid work span depends on Start/Finish mode
         let paidWorkStart = (flags.Start === 'Work') ? tLeftBase   : tArriveSite;
         let paidWorkEnd   = (flags.Fin   === 'Work') ? tArriveBase : tLeaveSite;
-
         // ----------------------------------------------------------
-        // 1) EARLY TRAVEL DEEMING (Cl 64.3.d)
-        //    Weekday, start at site, left base before 0630, and travel
-        //    > 60 min (which by definition puts the site outside the
-        //    30-min Travel Boundary).
-        //    Also applies under Inc-1 — deemed 07:00 start still engages.
+        // 1) EARLY TRAVEL DEEMING (Cl 64.3.d, Travel Appendix Ex 22)
+        //    BOTH conditions required:
+        //      (a) travel boundary crossed before 0630 — proxied as
+        //          `tLeftBase + 30 < 390` (boundary ≈ 30 min from base)
+        //          i.e. the employee left before 0600.
+        //      (b) worksite is > 1 hour from the travel boundary, i.e.
+        //          total morning travel > 90 min (30 min boundary + 60+).
+        //    When both engage → entitlement is 30 min TT only and the
+        //    ordinary day is deemed to start at 0700 (weekday).
+        //    Weekday only — weekend/PH early-start edge cases (Ex 23/24)
+        //    are handled via the standard weekend/PH branch.
         // ----------------------------------------------------------
-        let morningTravelTotal = Math.max(0, tArriveSite - tLeftBase);
+        let morningTravelTotal = (flags.Start === 'Site') ? diffMins(tLeftBase, tArriveSite) : 0;
         let isEarlyTravel = (
             flags.Start === 'Site' &&
             flags.Day === 'Weekday' &&
-            tLeftBase < 390 &&
-            morningTravelTotal > 60
+            !flags.RDO &&
+            (tLeftBase + 30) < 390 &&
+            morningTravelTotal > 90
         );
-
-        // Deemed workday starts at 0700 when early travel applies
+        // Deemed workday starts at 0700 when early travel applies.
+        // Only meaningful when arrival is AFTER 0700 (rare for early-travel
+        // scenarios but preserved for edge cases).
         let deemedWorkMins = isEarlyTravel ? Math.max(0, tArriveSite - 420) : 0;
-        let spanOfWork = (paidWorkEnd - paidWorkStart) + deemedWorkMins;
-
+        // Span uses diffMins to handle shifts that cross midnight.
+        let spanOfWork = diffMins(paidWorkStart, paidWorkEnd) + deemedWorkMins;
         // ----------------------------------------------------------
-        // 2) MEAL BREAK (Cl 60.a)
-        //    Unpaid 30 min lunch. The Employee must WORK 12+ hours
-        //    (i.e. span ≥ 12h 30m) for the meal break to become paid.
+        // 2) MEAL BREAK (Cl 60.a / 60.b / 60.d)
+        //    Meal break rules:
+        //    - Shifts < 5 hours: no meal break (Cl 60.a/60.b — meal break
+        //      applies once 5+ hours worked). No deduction.
+        //    - Shifts ≥ 12 hours (workday/span, per Cl 60.a "works a
+        //      12-hour day or greater" and Cl 60.d "workday exceeds 12
+        //      hours duration"): meal break PAID. No deduction.
+        //    - Otherwise: 30-min unpaid meal deduction.
         // ----------------------------------------------------------
-        // Check 12-hour threshold AFTER rounding (e.g. 11h53m rounds to 12h)
-        let netWithBreak = roundTo15(Math.max(0, spanOfWork - 30));
-        let mealDeduct = (netWithBreak >= 720) ? 0 : 30;
+        let mealDeduct = 30;
+        if (spanOfWork < 300) {
+            mealDeduct = 0;                 // <5h: no meal break (Cl 60.a/b)
+        } else if (spanOfWork >= 720) {
+            mealDeduct = 0;                 // 12h+: paid meal (Cl 60.a/d)
+        }
         let netWorkMins = roundTo15(Math.max(0, spanOfWork - mealDeduct));
-
         // ----------------------------------------------------------
-        // 3) TRAVEL POOLS (Cl 64.3, Cl 55.a, Cl 62.2.a.i)
+        // 3) TRAVEL POOLS (Cl 64.3, Cl 64.5, Travel Appendix)
         //    The first 30 minutes of travel in each direction is the
         //    Travel Boundary (Cl 64.1) and is the Employee's own time.
         //    Anything beyond is paid as TT / TT+.
         //
-        //    Morning outside-boundary travel is split at 06:00:
-        //      - Before 06:00 → outside ordinary hours (Cl 55.a) → TT+
-        //        (time and a half per Cl 62.2.a.i).
-        //      - 06:00 onwards → ordinary hours → TT.
+        //    Weekday, non-Inc-1 forward journey (Cl 64.3.d):
+        //      "outside of weekends and public holidays, travel time
+        //       at the time and a half rate (TT+) is only applicable
+        //       for the return journey."
+        //    → All weekday outside-boundary forward travel is TT (single).
         //
-        //    When early-travel (Cl 64.3.d) engages, the travel window
-        //    ends at the deemed 07:00 workday start (or arrival,
-        //    whichever earlier). A minimum 30-minute TT claim applies.
+        //    Weekend/PH forward journey (Cl 64.3.c.iii, Ex 14/15):
+        //      All outside-boundary travel is TT+. The weekend/PH render
+        //      branch lumps morningTT + morningTTPlus → TT+.
+        //
+        //    Early travel (Cl 64.3.d.i, Ex 22):
+        //      "The Employee may claim 30-minutes of Travel Time (TT)."
+        //      Entitlement is exactly 30 min TT — not the actual travel.
+        //      Plus deemed 07:00 ordinary-day start.
+        //
+        //    Inc-1 morning (Cl 64.5.a): TT on weekdays; TT+ on weekends/PH
+        //      (Cl 64.5.a.ii weekends/PH clause — morning and return both
+        //      elevated on penalty-rate days).
         // ----------------------------------------------------------
-        let morningTTPlus = 0; // pre-06:00 outside-boundary morning travel (TT+)
-        let morningTT    = 0; // 06:00+ outside-boundary morning travel (TT)
-
+        let morningTTPlus = 0;
+        let morningTT    = 0;
         if (flags.Start === 'Site') {
             if (inc1Morning) {
-                // Cl 64.5.a — Travel Whilst Working Away (Inc-1 morning).
-                // All morning travel is TT (single time). No boundary applies.
-                // Early travel deeming still caps the travel window at 07:00.
+                // Cl 64.5.a.i — Inc-1 morning: all TT, no boundary.
                 let windowEnd = isEarlyTravel ? Math.min(420, tArriveSite) : tArriveSite;
                 morningTT = Math.max(0, windowEnd - tLeftBase);
                 morningTTPlus = 0;
+            } else if (isEarlyTravel) {
+                // Cl 64.3.d.i: 30 min TT only, deemed 07:00 start.
+                morningTT = 30;
+                morningTTPlus = 0;
             } else {
+                // Standard: all outside-boundary forward travel = TT (weekday)
+                // or is re-lumped to TT+ for weekend/PH in the render branch.
                 let boundaryCrossTime = tLeftBase + 30;
-                let windowEnd = isEarlyTravel
-                    ? Math.min(420, tArriveSite) // cap at deemed 07:00 start
-                    : tArriveSite;
-
-                // Portion before 06:00 (360 min) → TT+
-                morningTTPlus = Math.max(0, Math.min(360, windowEnd) - boundaryCrossTime);
-                // Portion from 06:00 onwards → TT
-                morningTT = Math.max(0, windowEnd - Math.max(360, boundaryCrossTime));
-
-                // Cl 64.3.d.i minimum: at least 30 min TT when early-travel engages
-                if (isEarlyTravel) {
-                    let totalMorningPool = morningTTPlus + morningTT;
-                    if (totalMorningPool < 30) {
-                        morningTT += (30 - totalMorningPool);
-                    }
-                }
+                morningTT = Math.max(0, tArriveSite - boundaryCrossTime);
+                morningTTPlus = 0;
             }
         }
-
         let returnTransitGross = (flags.Fin === 'Site')
-            ? Math.max(0, tArriveBase - tLeaveSite)
+            ? diffMins(tLeaveSite, tArriveBase)
             : 0;
-
         // ----------------------------------------------------------
         // 4) TIME-OF-DAY SPLIT (Cl 55.a + Cl 62.2.a.i)
         //    Ordinary hours are 6am–6pm (360–1080 min). Work outside
@@ -591,150 +632,191 @@
         // Work window (after meal deduction applied proportionally)
         let grossWorkMins = spanOfWork; // before meal deduction
         let mealRatio = grossWorkMins > 0 ? netWorkMins / grossWorkMins : 0;
-
         // When early travel deeming applies, the effective work start is
         // 07:00 (420 min), not the actual arrival time on site.
         let effectiveWorkStart = isEarlyTravel ? 420 : paidWorkStart;
-
         // Minutes of work outside 6am-6pm (pre-6am + post-6pm)
         let pre6am  = Math.max(0, Math.min(effectiveWorkStart + grossWorkMins, 360) - effectiveWorkStart);
         let post6pm = Math.max(0, (effectiveWorkStart + grossWorkMins) - Math.max(effectiveWorkStart, 1080));
         let outsideOrdinaryGross = pre6am + post6pm;
         // Apply meal ratio so we're working with net minutes
         let outsideOT = roundTo15(Math.round(outsideOrdinaryGross * mealRatio));
-
         // Within-window work (net)
         let withinWindowNet = Math.max(0, netWorkMins - outsideOT);
         let withinNT = Math.min(480, withinWindowNet);
         let withinOT = Math.max(0, withinWindowNet - 480);
-
         // Total overtime from work hours
         let totalWorkOT = outsideOT + withinOT;
-
         // NT top-up from travel pools (only TT, not TT+)
-        // Only applies on weekdays — weekends/PH have no NT concept,
+        // Only applies on pure weekdays — weekends/RDO/PH have no NT concept,
         // all work is DT and all outside-boundary travel is TT+ (Cl 64.3.c.iii).
         let topUpMorning = 0;
         let topUpReturn = 0;
         let returnTransitPayable = returnTransitGross;
-
-        if (flags.Day === 'Weekday') {
+        if (flags.Day === 'Weekday' && !flags.RDO) {
             let ntRemaining = Math.max(0, 480 - withinNT);
-
             // Under Inc-1, travel is from temporary centre of employment —
             // all travel stays as TT, no top-up into NT (Cl 64.5).
             topUpMorning = inc1Morning ? 0 : Math.min(ntRemaining, morningTT);
             ntRemaining -= topUpMorning;
             morningTT -= topUpMorning;
-
             // Return transit used to top up NT carries no boundary deduction
             topUpReturn = inc1Return ? 0 : Math.min(ntRemaining, returnTransitGross);
             ntRemaining -= topUpReturn;
             returnTransitPayable = returnTransitGross - topUpReturn;
         }
-
         // ----------------------------------------------------------
         // 5) OVERTIME & TRAVEL OVERFLOW (Cl 62.2 / 64.3)
         // ----------------------------------------------------------
-        if (flags.Day === 'Weekday') {
+        if (flags.Day === 'Weekday' && !flags.RDO) {
             results.NT = roundTo15(withinNT + topUpMorning + topUpReturn) / 60;
-
             // Weekday OT: first 2h at time & half, rest at double time (Cl 62.2.a.i)
             let workOT = totalWorkOT;
             results.TH = Math.min(120, workOT) / 60;
             results.DT = Math.max(0, workOT - 120) / 60;
-
             // Morning travel overflow (remaining pools after NT top-up)
             results["TT (Morning)"]  = roundTo15(morningTT) / 60;
             results["TT+ (Morning)"] = roundTo15(morningTTPlus) / 60;
-
             // Return transit net of 30-min boundary deduction (non-Inc-1 only)
             let returnTransitNet = Math.max(0, returnTransitPayable - 30);
-
             if (inc1Return) {
-                // Cl 64.5.a.ii — return is TT+ if total work + travel >= 8h
+                // Cl 64.5.a.ii — return is TT+ if total work + travel > 8h
                 // when return begins; otherwise TT. No boundary deduction.
-                let elapsedBeforeReturn = tLeaveSite - tLeftBase;
-                if (elapsedBeforeReturn >= 480) {
+                let elapsedBeforeReturn = diffMins(tLeftBase, tLeaveSite);
+                if (elapsedBeforeReturn > 480) {
                     results["TT+ (Return)"] = roundTo15(returnTransitPayable) / 60;
                 } else {
                     results["TT (Return)"] = roundTo15(returnTransitPayable) / 60;
                 }
-            } else if (results.NT + results.TH + results.DT >= 8.0) {
-                // Non-Inc-1: return travel is TT+ if 8+ hrs paid (Cl 64.3.c.ii)
+            } else if (results.NT + results.TH + results.DT > 8.0) {
+                // Non-Inc-1: return travel is TT+ if work+travel outside
+                // boundary EXCEEDS 8 hours (Cl 64.3.c.ii "exceeds 8-hours").
                 results["TT+ (Return)"] = roundTo15(returnTransitNet) / 60;
             } else {
                 results["TT (Return)"] = roundTo15(returnTransitNet) / 60;
             }
         } else {
             // ------------------------------------------------------
-            // Weekend / Public Holiday
-            //   Work hours → double time, minimum 4 hours (Cl 62.2.a.ii/iii & 62.3.a)
+            // Weekend / RDO / Public Holiday (Cl 62.3.a, 62.3.b)
+            //   Work hours → double time, minimum 4h unless notified
+            //     24h+ in advance (then 2h min per Cl 62.3.b).
             //   Public Holiday → additionally 8 hrs NT paid automatically
             //     (Cl 62.2.a.iii: double time IN ADDITION TO PH entitlement).
-            //   Outside-boundary travel → TT+ (Cl 64.3.c.iii)
-            //   Inc-1 travel (Cl 64.5.a):
-            //     - morning travel = TT (single rate)
-            //     - return travel  = TT+ (weekend/PH clause)
+            //   Outside-boundary travel → TT+ (Cl 64.3.c.iii, Ex 14/15).
+            //   Inc-1 travel (Cl 64.5.a.ii weekends/PH clause):
+            //     - morning travel = TT+ (penalty-rate day, both legs elevated)
+            //     - return travel  = TT+
             // ------------------------------------------------------
-            let workDT = Math.max(240, roundTo15(netWorkMins)) / 60;
+            let minMins = flags.Notified24h ? 120 : 240;
+            let workDT = Math.max(minMins, roundTo15(netWorkMins)) / 60;
             results.DT = workDT;
-            results.NT = 0; // NT does not apply on weekends/PH
-
+            results.NT = 0; // NT does not apply on weekends/RDO/PH
             // Public Holiday entitlement: 8 hours NT automatically
             if (flags.Day === 'PH') {
                 results["NT (Public Holiday)"] = 8;
             }
-
-            // Morning travel — weekend/PH
-            if (inc1Morning) {
-                // Inc-1 morning: TT (Cl 64.5.a.i). No boundary deduction.
-                results["TT (Morning)"]  = roundTo15(morningTT) / 60;
-            } else {
-                // Standard weekend/PH: outside-boundary travel at TT+ (Cl 64.3.c.iii)
-                let weekendMorningMins = morningTT + morningTTPlus;
-                results["TT+ (Morning)"] = roundTo15(weekendMorningMins) / 60;
-            }
-            // Return travel — weekend/PH
+            // Morning travel — weekend/RDO/PH: ALL morning travel at TT+
+            //   Cl 64.3.c.iii — "time and one half (TT+) during weekends and public holidays"
+            //   Cl 64.5.a.ii — TT+ for Inc-1 travel "on weekends or public holidays"
+            // Covers both standard (outside-boundary) and Inc-1 (accommodation→site) legs.
+            // RDO is treated the same as weekend here for consistency with penalty-rate
+            // days, though strict reading of 64.3.c.iii covers weekends and PH only.
+            let weekendMorningMins = morningTT + morningTTPlus;
+            results["TT+ (Morning)"] = roundTo15(weekendMorningMins) / 60;
+            // Return travel — weekend/RDO/PH
             if (inc1Return) {
                 // Inc-1 return: TT+ (Cl 64.5.a.ii weekends/PH). No boundary deduction.
                 results["TT+ (Return)"]  = roundTo15(returnTransitGross) / 60;
             } else {
-                // Standard weekend/PH: outside-boundary travel at TT+ with 30-min boundary
+                // Standard weekend/RDO/PH: outside-boundary travel at TT+ with 30-min boundary
                 let returnTransitNet = Math.max(0, returnTransitGross - 30);
                 results["TT+ (Return)"]  = roundTo15(returnTransitNet) / 60;
             }
         }
-
         // ----------------------------------------------------------
         // 6) ALLOWANCES
         //    TAT (Cl 64.2): one unit per day when working day commences
-        //      at a worksite.
-        //    Fares/FTR (Cl 64.1): daily allowance for within-boundary
-        //      travel in own time, no company vehicle offered.
-        //    Both TAT and Fares are NOT payable for accom-to-site
-        //      travel when Inc-1 is claimed (Cl 64.5.a.iii).
+        //      at a worksite (standard rules). Not payable under Inc-1
+        //      (Cl 64.5.a.iii) or when early-travel engages
+        //      (Ex 22/23/24/25: "TAT is not applicable").
+        //    First/Last Day exemption (Cl 64.5.b): Inc-1 suppressions
+        //      do NOT apply to workshop↔site legs on the first/last day
+        //      of an Inc-1 trip — standard rules restore TAT/Fares on
+        //      those legs.
+        //    Fares/FTR (Cl 64.1): daily allowance when employee uses own
+        //      vehicle and no company vehicle was offered.
         //    Meal Allow (Cl 60.1.a): $15.50 when unnotified 2+ hr OT worked.
         // ----------------------------------------------------------
-        if (!flags.Inc1) {
-            if (flags.Start === 'Site') results.TAT = 1;
-
-            if (!flags.Co && (flags.Start === 'Site' || flags.Fin === 'Site')) {
-                results["Fares (FTR)"] = 1;
-            }
+        // Determine whether each leg of the day runs under standard
+        // rules vs Inc-1 accommodation rules:
+        let morningIsStandard = !flags.Inc1 || flags.FirstDay;
+        let returnIsStandard  = !flags.Inc1 || flags.LastDay;
+        // TAT — only payable on the morning leg when it's a standard
+        // workshop↔site leg AND not an early-travel day.
+        if (morningIsStandard && flags.Start === 'Site' && !isEarlyTravel) {
+            results.TAT = 1;
         }
-
-        // NT shortfall — show RDO/AL/LWOP gap on weekdays
-        if (flags.Day === 'Weekday' && results.NT > 0.001 && results.NT < 7.999) {
+        // Fares — one unit per day when employee isn't provided a company
+        // vehicle AND at least one leg of the day is a standard
+        // workshop↔site leg (Start Site morning OR Finish Site return).
+        if (!flags.Co && (
+            (morningIsStandard && flags.Start === 'Site') ||
+            (returnIsStandard  && flags.Fin   === 'Site')
+        )) {
+            results["Fares (FTR)"] = 1;
+        }
+        // ----------------------------------------------------------
+        // 6a) CALLOUT OVERRIDE (Cl 63.a — Recall to site)
+        //     When Callout is active, all normal pay codes are replaced:
+        //       - Work + travel bundled into a single payable block
+        //         (no boundary deduction, no meal deduction).
+        //       - 4-hour minimum at "appropriate overtime rate".
+        //       - Weekday callout: first 2h TH, rest DT (Cl 62.2.a.i).
+        //       - Weekend/PH/RDO callout: all DT (Cl 62.2.a.ii/iii).
+        //       - PH entitlement (8h NT) preserved — independent of the
+        //         callout itself.
+        //       - TT/TT+/TAT/Fares all suppressed — travel time is paid
+        //         at the OT rate per Cl 63.a.ii.
+        //     NOT modelled yet (flagged in info panel):
+        //       - Cl 63.e/f on-call-roster variants (3h / 2h mins)
+        //       - Cl 63.a.iii TK1 km allowance ($0.57/km own vehicle)
+        // ----------------------------------------------------------
+        if (flags.Callout) {
+            let totalTime = diffMins(tLeftBase, tArriveBase);
+            let paidTime  = Math.max(240, roundTo15(totalTime));
+            // Reset all normal pay codes — callout bundles everything.
+            results.NT = 0;
+            results.TH = 0;
+            results.DT = 0;
+            results["TT (Morning)"]  = 0;
+            results["TT+ (Morning)"] = 0;
+            results["TT (Return)"]   = 0;
+            results["TT+ (Return)"]  = 0;
+            results.TAT              = 0;
+            results["Fares (FTR)"]   = 0;
+            results["NT (RDO, AL or LWOP)"] = 0;
+            // Pay at appropriate OT rate (depends on underlying day type).
+            if (isPenaltyDay()) {
+                results.DT = paidTime / 60;
+            } else {
+                results.TH = Math.min(120, paidTime) / 60;
+                results.DT = Math.max(0, paidTime - 120) / 60;
+            }
+            // PH entitlement stays regardless (NES s116 — only if rostered).
+            if (flags.Day === 'PH') results["NT (Public Holiday)"] = 8;
+        }
+        // NT shortfall — show RDO/AL/LWOP gap on pure weekdays only
+        // (penalty-rate days and callouts don't have an 8h NT day to hit)
+        if (flags.Day === 'Weekday' && !flags.RDO && !flags.Callout && results.NT > 0.001 && results.NT < 7.999) {
             results["NT (RDO, AL or LWOP)"] = Math.round((8 - results.NT) * 100) / 100;
         }
-
-        // Meal Allowance — unnotified 2+ hour OT (Cl 60.1.a)
+        // Meal Allowance — unnotified 2+ hour OT (Cl 60.1.a).
+        // Cl 60.1 is not restricted to weekdays — unnotified OT can
+        // happen any day.
         let totalOT = (results.TH || 0) + (results.DT || 0);
-        if (flags.Day === 'Weekday' && flags.UnnotifiedOT && totalOT >= 2) {
+        if (flags.UnnotifiedOT && totalOT >= 2) {
             results["Meal Allow ($15.50)"] = 1;
         }
-
         // ----------------------------------------------------------
         // 7) Render
         // ----------------------------------------------------------
@@ -744,7 +826,6 @@
         let projDateRaw = (document.getElementById('projectDate') || {}).value || '';
         let projDate = projDateRaw ? new Date(projDateRaw + 'T00:00:00').toLocaleDateString('en-AU', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' }) : '';
         let projApplicable = projDay || projDate || '';
-
         let html = '';
         if (projName || projApplicable) {
             html += '<div style="margin-bottom: 10px; padding-bottom: 8px; border-bottom: 2px solid #004a99;">';
@@ -759,27 +840,35 @@
                 html += `<div class="code-row"><span>${code}</span><span>${results[code].toFixed(2)} ${unit}</span></div>`;
             }
         }
-
         // Status notes
         let notes = [];
-        if (isEarlyTravel) notes.push("Early travel rule applied (Cl 64.3.d): 30m TT + deemed 0700 start.");
-        if (flags.Day === 'Weekday' && outsideOT > 0) notes.push("Work outside ordinary hours (6am\u20136pm) detected \u2014 " + (outsideOT/60).toFixed(2) + "h paid as overtime (Cl 55.a).");
-        if (mealDeduct === 0) notes.push("12+ hours worked — meal break paid (Cl 60.a).");
+        if (isEarlyTravel) notes.push("Early travel rule applied (Cl 64.3.d): 30m TT + deemed 0700 start; TAT suppressed.");
+        if (flags.Day === 'Weekday' && !flags.RDO && outsideOT > 0) notes.push("Work outside ordinary hours (6am\u20136pm) detected \u2014 " + (outsideOT/60).toFixed(2) + "h paid as overtime (Cl 55.a).");
+        if (mealDeduct === 0 && spanOfWork >= 720) notes.push("12+ hours worked \u2014 meal break paid (Cl 60.a).");
+        if (mealDeduct === 0 && spanOfWork > 0 && spanOfWork < 300) notes.push("Less than 5h worked \u2014 no meal break deducted (Cl 60.a/b).");
         if (flags.Start === 'Site' && morningTravelTotal > 0 && morningTravelTotal <= 30) {
-            notes.push("Morning travel within 30-min Travel Boundary — no TT (Cl 64.1).");
+            notes.push("Morning travel within 30-min Travel Boundary \u2014 no TT (Cl 64.1).");
         }
         if (flags.Inc1) {
             let tripNote = "Incidentals-1 active";
-            if (flags.FirstDay) tripNote += " (First Day — morning standard, return Inc-1)";
-            else if (flags.LastDay) tripNote += " (Last Day — morning Inc-1, return standard)";
-            tripNote += " — TAT and Fares not payable for accom\u2194site travel (Cl 64.5.a.iii).";
+            if (flags.FirstDay) tripNote += " (First Day \u2014 morning standard, return Inc-1)";
+            else if (flags.LastDay) tripNote += " (Last Day \u2014 morning Inc-1, return standard)";
+            tripNote += " \u2014 TAT and Fares not payable for accom\u2194site travel (Cl 64.5.a.iii); First/Last Day legs follow standard rules (Cl 64.5.b).";
             notes.push(tripNote);
+        }
+        if (isPenaltyDay() && results.DT > 0 && flags.Notified24h) {
+            notes.push("24h+ notice \u2014 2h minimum applied (Cl 62.3.b).");
+        }
+        if (flags.RDO) {
+            notes.push("RDO overlay \u2014 work treated as Saturday-equivalent penalty day (Cl 62.3.a): DT rate, 4h min (or 2h with 24h+ notice).");
+        }
+        if (flags.Callout) {
+            notes.push("Callout (Cl 63.a) \u2014 bundled work+travel at OT rate, 4h min, TT/TT+/TAT/Fares suppressed. On-call roster variants (Cl 63.e/f) and TK1 km allowance (Cl 63.a.iii) not auto-calculated.");
         }
         if (results["NT (RDO, AL or LWOP)"] > 0.001) notes.push("Less than 8 hours NT worked — remaining hours must be covered by RDO, Annual Leave, or LWOP. Note: LWOP is only allowed if approved by management.");
         if (notes.length) {
             html += `<div class="notes">${notes.join('<br>')}</div>`;
         }
-
         // ----------------------------------------------------------
         // 8) EXTRA ALLOWANCES — render selected items
         //    Per-hour allowances auto-split into (NT) and (OT) lines
@@ -787,13 +876,12 @@
         // ----------------------------------------------------------
         let allowNT = results.NT || 0;
         let allowOT = (results.TH || 0) + (results.DT || 0);
-
         // Site-only hours: time on site (arrive → leave), minus meal break if unpaid.
         // NT/OT split follows the timesheet — if NT was partly used before
         // arriving on site (workshop/travel), only the remaining NT applies on site.
-        let grossSiteMins = Math.max(0, tLeaveSite - tArriveSite);
+        let grossSiteMins = diffMins(tArriveSite, tLeaveSite);
         let netSiteMins = roundTo15(Math.max(0, grossSiteMins - mealDeduct));
-        let preSiteMins = (flags.Start === 'Work') ? Math.max(0, tArriveSite - tLeftBase) : 0;
+        let preSiteMins = (flags.Start === 'Work') ? diffMins(tLeftBase, tArriveSite) : 0;
         // When early travel deeming applies, deemed work from 07:00 to arrival
         // counts as pre-site NT consumption even though Start is 'Site'.
         if (isEarlyTravel) preSiteMins += deemedWorkMins;
@@ -801,22 +889,41 @@
         let siteOTmins = netSiteMins - siteNTmins;
         let siteNT = siteNTmins / 60;
         let siteOT = siteOTmins / 60;
-
-        // Weighted OT: each component multiplied by its applicable rate factor
-        let weightedWorkOT = (results.TH || 0) * 1.5 + (results.DT || 0) * 2;
-        let ttSingle = (results["TT (Morning)"] || 0) + (results["TT (Return)"] || 0);
-        let ttPlus = (results["TT+ (Morning)"] || 0) + (results["TT+ (Return)"] || 0);
-        let weightedTravelOT = ttSingle * 1 + ttPlus * 1.5;
+        // Supervisor travel components — split rather than summed
+        // so payroll reviewers can audit each rate factor individually.
+        let supTH   = results.TH || 0;
+        let supDT   = results.DT || 0;
+        let supTT   = (results["TT (Morning)"] || 0) + (results["TT (Return)"] || 0);
+        let supTTP  = (results["TT+ (Morning)"] || 0) + (results["TT+ (Return)"] || 0);
+        // HV cap (Cl 50.c): when BOTH HV Termination ($35) and HV Switching
+        // ($50) are ticked, suppress HV Termination so only HVS ($50) applies.
+        let _hvTermCb   = document.getElementById('allow_hvTerm');
+        let _hvSwitchCb = document.getElementById('allow_hvSwitch');
+        let hvCapActive = !!(_hvTermCb && _hvTermCb.checked && _hvSwitchCb && _hvSwitchCb.checked);
         let allowanceHtml = '';
         EXTRA_ALLOWANCES.forEach(a => {
             let cb = document.getElementById('allow_' + a.id);
             if (cb && cb.checked) {
+                // HV cap: silently skip HVT when both HVT + HVS are ticked (Cl 50.c)
+                if (a.id === 'hvTerm' && hvCapActive) return;
                 if (a.unit === 'hr') {
-                    let nt = a.siteOnly ? siteNT : allowNT;
-                    let ot = a.includeTravel ? weightedWorkOT + weightedTravelOT : (a.siteOnly ? siteOT : allowOT);
-                    let hrNote = a.summaryNote ? ' <span style="font-size:10px;color:#888;font-style:italic;">(' + a.summaryNote + ')</span>' : '';
-                    if (nt > 0.001) allowanceHtml += '<div class="code-row"><span>' + a.name + ' (NT)' + hrNote + '</span><span>' + nt.toFixed(2) + ' hrs</span></div>';
-                    if (ot > 0.001) allowanceHtml += '<div class="code-row"><span>' + a.name + ' (OT)' + hrNote + '</span><span>' + ot.toFixed(2) + ' hrs</span></div>';
+                    if (a.includeTravel) {
+                        // Supervisor: show separate lines for NT / TH / DT / TT / TT+
+                        // so each weighted rate is visible to payroll.
+                        let hrNoteSup = a.summaryNote ? ' <span style="font-size:10px;color:#888;font-style:italic;">(' + a.summaryNote + ')</span>' : '';
+                        let nt = allowNT;
+                        if (nt > 0.001)   allowanceHtml += '<div class="code-row"><span>' + a.name + ' (NT)' + hrNoteSup + '</span><span>' + nt.toFixed(2) + ' hrs</span></div>';
+                        if (supTH > 0.001)  allowanceHtml += '<div class="code-row"><span>' + a.name + ' (TH)' + hrNoteSup + '</span><span>' + supTH.toFixed(2) + ' hrs</span></div>';
+                        if (supDT > 0.001)  allowanceHtml += '<div class="code-row"><span>' + a.name + ' (DT)' + hrNoteSup + '</span><span>' + supDT.toFixed(2) + ' hrs</span></div>';
+                        if (supTT > 0.001)  allowanceHtml += '<div class="code-row"><span>' + a.name + ' (TT)' + hrNoteSup + '</span><span>' + supTT.toFixed(2) + ' hrs</span></div>';
+                        if (supTTP > 0.001) allowanceHtml += '<div class="code-row"><span>' + a.name + ' (TT+)' + hrNoteSup + '</span><span>' + supTTP.toFixed(2) + ' hrs</span></div>';
+                    } else {
+                        let nt = a.siteOnly ? siteNT : allowNT;
+                        let ot = a.siteOnly ? siteOT : allowOT;
+                        let hrNote = a.summaryNote ? ' <span style="font-size:10px;color:#888;font-style:italic;">(' + a.summaryNote + ')</span>' : '';
+                        if (nt > 0.001) allowanceHtml += '<div class="code-row"><span>' + a.name + ' (NT)' + hrNote + '</span><span>' + nt.toFixed(2) + ' hrs</span></div>';
+                        if (ot > 0.001) allowanceHtml += '<div class="code-row"><span>' + a.name + ' (OT)' + hrNote + '</span><span>' + ot.toFixed(2) + ' hrs</span></div>';
+                    }
                 } else if (a.unit === 'custom_hr') {
                     let hrsEl = document.getElementById('hrs_' + a.id);
                     let totalHrs = parseFloat(hrsEl ? hrsEl.value : 0) || 0;
@@ -844,26 +951,25 @@
             html += allowanceHtml;
             html += '</div>';
         }
-
         // Store summary data for download function
         window._lastResults = results;
         window._lastAllowNT = allowNT;
         window._lastAllowOT = allowOT;
         window._lastSiteNT = siteNT;
         window._lastSiteOT = siteOT;
-        window._lastWeightedWorkOT = weightedWorkOT;
-        window._lastWeightedTravelOT = weightedTravelOT;
+        window._lastSupTH = supTH;
+        window._lastSupDT = supDT;
+        window._lastSupTT = supTT;
+        window._lastSupTTP = supTTP;
+        window._lastHvCapActive = hvCapActive;
         window._lastNotes = notes;
-
         document.getElementById('calcOutput').innerHTML = html;
     }
-
     function downloadSummary() {
         let output = document.getElementById('calcOutput');
         let lines = [];
         lines.push('RBD Timesheet Summary');
         lines.push('Generated: ' + new Date().toLocaleDateString('en-AU'));
-
         // Project info
         let dlProjName = (document.getElementById('projectName') || {}).value || '';
         let dlProjDay = (document.getElementById('projectDay') || {}).value || '';
@@ -873,9 +979,10 @@
         if (dlProjName) lines.push('Project: ' + dlProjName);
         if (dlApplicable) lines.push('Applicable for: ' + dlApplicable);
         lines.push('');
-
         // Gather inputs
-        let dayType = flags.Day === 'PH' ? 'Public Holiday' : flags.Day;
+        let dayTypeMap = { Weekday: 'Weekday', Weekend: 'Weekend', PH: 'Public Holiday' };
+        let dayType = dayTypeMap[flags.Day] || flags.Day;
+        if (flags.RDO) dayType += ' (RDO worked)';
         lines.push('Settings');
         lines.push('• Day Type: ' + dayType);
         lines.push('• Start: ' + (flags.Start === 'Work' ? 'Workshop' : 'Site'));
@@ -889,8 +996,11 @@
         }
         lines.push('• Incidentals-1: ' + inc1Label);
         lines.push('• Unnotified OT: ' + (flags.UnnotifiedOT ? 'Yes' : 'No'));
+        if (flags.Callout) lines.push('• Callout (Cl 63.a recall): Yes');
+        if (isPenaltyDay()) {
+            lines.push('• 24h+ Notice (2h min): ' + (flags.Notified24h ? 'Yes' : 'No'));
+        }
         lines.push('');
-
         // --- Daily Timesheet ---
         let r = window._lastResults || {};
         lines.push('Daily Timesheet');
@@ -900,7 +1010,6 @@
                 lines.push('• ' + code + ': ' + r[code].toFixed(2) + ' ' + unit);
             }
         }
-
         // Notes
         let dlNotes = window._lastNotes || [];
         if (dlNotes.length) {
@@ -908,24 +1017,37 @@
             lines.push('Notes');
             dlNotes.forEach(n => lines.push('• ' + n));
         }
-
         // --- Extra Allowances ---
         let aNT = window._lastAllowNT || 0;
         let aOT = window._lastAllowOT || 0;
         let sNT = window._lastSiteNT || 0;
         let sOT = window._lastSiteOT || 0;
-        let wWorkOT = window._lastWeightedWorkOT || 0;
-        let wTravelOT = window._lastWeightedTravelOT || 0;
+        let sTH = window._lastSupTH || 0;
+        let sDT = window._lastSupDT || 0;
+        let sTT = window._lastSupTT || 0;
+        let sTTP = window._lastSupTTP || 0;
+        let hvCapActiveDL = !!window._lastHvCapActive;
         let extraLines = [];
         EXTRA_ALLOWANCES.forEach(a => {
             let cb = document.getElementById('allow_' + a.id);
             if (cb && cb.checked) {
+                // HV cap (Cl 50.c): skip HV Termination when both HVT + HVS ticked
+                if (a.id === 'hvTerm' && hvCapActiveDL) return;
                 if (a.unit === 'hr') {
-                    let nt = a.siteOnly ? sNT : aNT;
-                    let ot = a.includeTravel ? wWorkOT + wTravelOT : (a.siteOnly ? sOT : aOT);
                     let dlNote = a.summaryNote ? ' (' + a.summaryNote + ')' : '';
-                    if (nt > 0.001) extraLines.push('• ' + a.name + ' (NT)' + dlNote + ': ' + nt.toFixed(2) + ' hrs');
-                    if (ot > 0.001) extraLines.push('• ' + a.name + ' (OT)' + dlNote + ': ' + ot.toFixed(2) + ' hrs');
+                    if (a.includeTravel) {
+                        // Supervisor: split into NT / TH / DT / TT / TT+
+                        if (aNT > 0.001) extraLines.push('• ' + a.name + ' (NT)' + dlNote + ': ' + aNT.toFixed(2) + ' hrs');
+                        if (sTH > 0.001) extraLines.push('• ' + a.name + ' (TH)' + dlNote + ': ' + sTH.toFixed(2) + ' hrs');
+                        if (sDT > 0.001) extraLines.push('• ' + a.name + ' (DT)' + dlNote + ': ' + sDT.toFixed(2) + ' hrs');
+                        if (sTT > 0.001) extraLines.push('• ' + a.name + ' (TT)' + dlNote + ': ' + sTT.toFixed(2) + ' hrs');
+                        if (sTTP > 0.001) extraLines.push('• ' + a.name + ' (TT+)' + dlNote + ': ' + sTTP.toFixed(2) + ' hrs');
+                    } else {
+                        let nt = a.siteOnly ? sNT : aNT;
+                        let ot = a.siteOnly ? sOT : aOT;
+                        if (nt > 0.001) extraLines.push('• ' + a.name + ' (NT)' + dlNote + ': ' + nt.toFixed(2) + ' hrs');
+                        if (ot > 0.001) extraLines.push('• ' + a.name + ' (OT)' + dlNote + ': ' + ot.toFixed(2) + ' hrs');
+                    }
                 } else if (a.unit === 'custom_hr') {
                     let hrsEl = document.getElementById('hrs_' + a.id);
                     let totalHrs = parseFloat(hrsEl ? hrsEl.value : 0) || 0;
@@ -953,10 +1075,8 @@
             lines.push('Extra Allowances');
             extraLines.forEach(l => lines.push(l));
         }
-
         lines.push('\n---');
         lines.push('This is a guide only. Refer to EA 2025 for definitive entitlements.');
-
         let text = lines.join('\n');
         let blob = new Blob([text], { type: 'text/plain' });
         let url = URL.createObjectURL(blob);
@@ -968,7 +1088,6 @@
         document.body.removeChild(a);
         URL.revokeObjectURL(url);
     }
-
     window.onload = function() { buildAllowancePanel(); calculate(); };
 </script>
 </body>
