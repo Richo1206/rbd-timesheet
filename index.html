@@ -240,9 +240,9 @@
     // ---------- extra allowances data ----------
     const EXTRA_ALLOWANCES = [
         // Site & Industrial
-        { id: 'industrial', name: 'Industrial Allowance', rate: 2.50, unit: 'hr', group: 'Site & Industrial', summaryNote: 'Trades only' },
-        { id: 'site', name: 'Site Allowance', rate: 2.50, unit: 'hr', group: 'Site & Industrial' },
-        { id: 'firmus', name: 'Firmus Allowance', rate: 5.00, unit: 'hr', group: 'Site & Industrial' },
+        { id: 'industrial', name: 'Industrial Allowance', rate: 2.50, unit: 'hr', group: 'Site & Industrial', summaryNote: 'Trades only', siteOnly: true },
+        { id: 'site', name: 'Site Allowance', rate: 2.50, unit: 'hr', group: 'Site & Industrial', siteOnly: true },
+        { id: 'firmus', name: 'Firmus Allowance', rate: 5.00, unit: 'hr', group: 'Site & Industrial', siteOnly: true },
         { id: 'hsm', name: 'HSM Allowance', rate: 10.00, unit: 'custom_hr', group: 'Site & Industrial' },
         { id: 'inclement', name: 'Inclement Weather', rate: 2.50, unit: 'custom_hr', group: 'Site & Industrial' },
         // Living Away
@@ -373,7 +373,7 @@
         flags.Start = type;
         document.getElementById('btnStartWork').classList.toggle('active', type === 'Work');
         document.getElementById('btnStartSite').classList.toggle('active', type === 'Site');
-        document.getElementById('arriveSiteWrap').classList.toggle('hidden', type === 'Work');
+        // Always show "Arrived on Site" — needed for allowance calculations even when starting at workshop
         document.getElementById('startLabel').innerText = (type === 'Work') ? "Workshop Start:" : "Left Workshop/Accom:";
         calculate();
     }
@@ -469,10 +469,11 @@
 
         // ----------------------------------------------------------
         // 2) MEAL BREAK (Cl 60.a)
-        //    Unpaid 30 min lunch — BUT if the Employee works a 12-hour
-        //    day or greater, the meal break is PAID (no deduction).
+        //    Unpaid 30 min lunch. The Employee must WORK 12+ hours
+        //    (i.e. span ≥ 12h 30m) for the meal break to become paid.
         // ----------------------------------------------------------
-        let mealDeduct = (spanOfWork >= 720) ? 0 : 30;
+        let workedHours = spanOfWork - 30; // net work assuming unpaid break
+        let mealDeduct = (workedHours >= 720) ? 0 : 30;
         let netWorkMins = roundTo15(Math.max(0, spanOfWork - mealDeduct));
 
         // ----------------------------------------------------------
@@ -691,7 +692,7 @@
         let notes = [];
         if (isEarlyTravel) notes.push("Early travel rule applied (Cl 64.3.d): 30m TT + deemed 0700 start.");
         if (flags.Day === 'Weekday' && outsideOT > 0) notes.push("Work outside ordinary hours (6am\u20136pm) detected \u2014 " + (outsideOT/60).toFixed(2) + "h paid as overtime (Cl 55.a).");
-        if (spanOfWork >= 720) notes.push("12+ hour day — meal break paid (Cl 60.a).");
+        if (mealDeduct === 0) notes.push("12+ hours worked — meal break paid (Cl 60.a).");
         if (flags.Start === 'Site' && morningTravelTotal > 0 && morningTravelTotal <= 30) {
             notes.push("Morning travel within 30-min Travel Boundary — no TT (Cl 64.1).");
         }
@@ -708,6 +709,18 @@
         // ----------------------------------------------------------
         let allowNT = results.NT || 0;
         let allowOT = (results.TH || 0) + (results.DT || 0);
+
+        // Site-only hours: time on site (arrive → leave), minus meal break if unpaid.
+        // NT/OT split follows the timesheet — if NT was partly used before
+        // arriving on site (workshop/travel), only the remaining NT applies on site.
+        let grossSiteMins = Math.max(0, tLeaveSite - tArriveSite);
+        let netSiteMins = roundTo15(Math.max(0, grossSiteMins - mealDeduct));
+        let preSiteMins = (flags.Start === 'Work') ? Math.max(0, tArriveSite - tLeftBase) : 0;
+        let siteNTmins = roundTo15(Math.min(netSiteMins, Math.max(0, (results.NT || 0) * 60 - preSiteMins)));
+        let siteOTmins = netSiteMins - siteNTmins;
+        let siteNT = siteNTmins / 60;
+        let siteOT = siteOTmins / 60;
+
         // Weighted OT: each component multiplied by its applicable rate factor
         let weightedWorkOT = (results.TH || 0) * 1.5 + (results.DT || 0) * 2;
         let ttSingle = (results["TT (Morning)"] || 0) + (results["TT (Return)"] || 0);
@@ -718,8 +731,8 @@
             let cb = document.getElementById('allow_' + a.id);
             if (cb && cb.checked) {
                 if (a.unit === 'hr') {
-                    let nt = allowNT;
-                    let ot = a.includeTravel ? weightedWorkOT + weightedTravelOT : allowOT;
+                    let nt = a.siteOnly ? siteNT : allowNT;
+                    let ot = a.includeTravel ? weightedWorkOT + weightedTravelOT : (a.siteOnly ? siteOT : allowOT);
                     let hrNote = a.summaryNote ? ' <span style="font-size:10px;color:#888;font-style:italic;">(' + a.summaryNote + ')</span>' : '';
                     if (nt > 0.001) allowanceHtml += '<div class="code-row"><span>' + a.name + ' (NT)' + hrNote + '</span><span>' + nt.toFixed(2) + ' hrs</span></div>';
                     if (ot > 0.001) allowanceHtml += '<div class="code-row"><span>' + a.name + ' (OT)' + hrNote + '</span><span>' + ot.toFixed(2) + ' hrs</span></div>';
@@ -755,6 +768,8 @@
         window._lastResults = results;
         window._lastAllowNT = allowNT;
         window._lastAllowOT = allowOT;
+        window._lastSiteNT = siteNT;
+        window._lastSiteOT = siteOT;
         window._lastWeightedWorkOT = weightedWorkOT;
         window._lastWeightedTravelOT = weightedTravelOT;
         window._lastNotes = notes;
@@ -810,6 +825,8 @@
         // --- Extra Allowances ---
         let aNT = window._lastAllowNT || 0;
         let aOT = window._lastAllowOT || 0;
+        let sNT = window._lastSiteNT || 0;
+        let sOT = window._lastSiteOT || 0;
         let wWorkOT = window._lastWeightedWorkOT || 0;
         let wTravelOT = window._lastWeightedTravelOT || 0;
         let extraLines = [];
@@ -817,8 +834,8 @@
             let cb = document.getElementById('allow_' + a.id);
             if (cb && cb.checked) {
                 if (a.unit === 'hr') {
-                    let nt = aNT;
-                    let ot = a.includeTravel ? wWorkOT + wTravelOT : aOT;
+                    let nt = a.siteOnly ? sNT : aNT;
+                    let ot = a.includeTravel ? wWorkOT + wTravelOT : (a.siteOnly ? sOT : aOT);
                     let dlNote = a.summaryNote ? ' (' + a.summaryNote + ')' : '';
                     if (nt > 0.001) extraLines.push('• ' + a.name + ' (NT)' + dlNote + ': ' + nt.toFixed(2) + ' hrs');
                     if (ot > 0.001) extraLines.push('• ' + a.name + ' (OT)' + dlNote + ': ' + ot.toFixed(2) + ' hrs');
