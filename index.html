@@ -499,13 +499,12 @@
 
         if (flags.Start === 'Site') {
             if (flags.Inc1) {
-                // Cl 64.5 — Travel Whilst Working Away.
-                // First 30 min (boundary) = TT, outside boundary = TT+.
-                // Early travel deeming caps the travel window at 07:00.
+                // Cl 64.5.a — Travel Whilst Working Away.
+                // All morning travel is TT (single time). No boundary applies.
+                // Early travel deeming still caps the travel window at 07:00.
                 let windowEnd = isEarlyTravel ? Math.min(420, tArriveSite) : tArriveSite;
-                let travelInWindow = Math.max(0, windowEnd - tLeftBase);
-                morningTT = Math.min(30, travelInWindow);       // boundary = TT
-                morningTTPlus = Math.max(0, travelInWindow - 30); // outside = TT+
+                morningTT = Math.max(0, windowEnd - tLeftBase);
+                morningTTPlus = 0;
             } else {
                 let boundaryCrossTime = tLeftBase + 30;
                 let windowEnd = isEarlyTravel
@@ -601,9 +600,14 @@
             let returnTransitNet = Math.max(0, returnTransitPayable - 30);
 
             if (flags.Inc1) {
-                // Inc-1: boundary (30 min) = TT, outside = TT+ (Cl 64.5)
-                results["TT (Return)"] = roundTo15(Math.min(30, returnTransitPayable)) / 60;
-                results["TT+ (Return)"] = roundTo15(Math.max(0, returnTransitPayable - 30)) / 60;
+                // Cl 64.5.a.ii — return is TT+ if total work + travel >= 8h
+                // when return begins; otherwise TT. No boundary deduction.
+                let elapsedBeforeReturn = tLeaveSite - tLeftBase;
+                if (elapsedBeforeReturn >= 480) {
+                    results["TT+ (Return)"] = roundTo15(returnTransitPayable) / 60;
+                } else {
+                    results["TT (Return)"] = roundTo15(returnTransitPayable) / 60;
+                }
             } else if (results.NT + results.TH + results.DT >= 8.0) {
                 // Non-Inc-1: return travel is TT+ if 8+ hrs paid (Cl 64.3.c.ii)
                 results["TT+ (Return)"] = roundTo15(returnTransitNet) / 60;
