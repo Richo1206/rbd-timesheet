@@ -104,13 +104,14 @@
     <div class="sub no-print" style="margin-bottom: 8px; font-size: 10px; color: #999; font-style: italic;">For more information on each section, click the <span style="display:inline-flex; align-items:center; justify-content:center; width:16px; height:16px; border-radius:50%; border:1.5px solid #004a99; color:#004a99; font-size:10px; font-weight:bold; font-family:Georgia,serif; vertical-align:middle;">i</span> button to the right.</div>
     <div class="section-header no-print"><span>Google Maps Travel Tool</span><button class="info-btn" onclick="toggleInfo('infoMaps')">i</button></div>
     <div id="infoMaps" class="info-panel no-print">
-        <strong>How to use:</strong> This tool helps you verify your travel time using Google Maps.
+        <strong>How to use:</strong>
         <ul>
             <li>Select your <strong>start location</strong> — Devonport Office, Hobart Office, or Custom. If Custom, start typing the address or place name and pick from the Google Autocomplete dropdown (accommodation, other RBD office, meeting point, etc.).</li>
-            <li>Start typing the <strong>destination</strong> (site name or address) and pick from the Google Autocomplete dropdown — this gives the most reliable lookup. If the place you need isn't listed, type a street address or town + state instead.</li>
-            <li>Tap <strong>Calculate time to destination</strong> to auto-fill Travel Hrs/Mins using Google Distance Matrix, including current traffic.</li>
-            <li>Or tap <strong>Verify Route</strong> to open Google Maps in a new tab and check the route visually — useful for sanity-checking the auto-filled time.</li>
-            <li>The calculator uses Travel Hrs/Mins to auto-set your "Arrived on Site" time based on when you left.</li>
+            <li>Start typing the <strong>destination</strong> (site name or address) and pick from the Google Autocomplete dropdown. If the place you need isn't listed, type a street address or town + state instead.</li>
+            <li><strong>Automatic calculation:</strong> once you tab away from a field (Destination, Custom origin, Site 2–5, Returning to/from) the calculator fires a background Google Maps lookup to fill Travel Hrs/Mins and any applicable km allowances. No need to press the Calculate button manually — it's there as a backup if you want to force a refresh.</li>
+            <li>Tap <strong>Verify Route</strong> to open Google Maps in a new tab and visually sanity-check the route.</li>
+            <li>The calculator uses Travel Hrs/Mins (from the morning leg) to auto-set your "Arrived on Site" time based on when you left.</li>
+            <li><strong>TK1 / TK2:</strong> tick these in Extra Allowances and the km fields populate automatically using Google's distances. A "Return" section appears so you can specify an asymmetric return (accommodation, different office, etc.) — details further down in the Extra Allowances help.</li>
         </ul>
     </div>
     <div class="route-box no-print">
@@ -181,15 +182,12 @@
                 <input type="text" id="customReturn" placeholder="Enter return address (home, accommodation, other workshop)" onblur="returnDestChanged()">
             </div>
             <!--
-              "Returning from" is only shown when TK2 is also active (multi-site
-               day where the last site differs from the morning destination).
-               For TK1-only the return origin is the morning destination — we
-               feed that through automatically in calculateRouteTime().
+              Return origin is derived automatically from the chain:
+                • TK1 only (no extras)    → morning Destination
+                • TK2 with extras        → the last added site (Site 2–5)
+              No user input needed for the return origin — it always
+              follows the last site in the chain.
             -->
-            <div id="returnFromWrap" class="hidden">
-                <label>Returning from:</label>
-                <input type="text" id="returnFrom" placeholder="Last site of the day" style="margin-bottom: 4px;" onblur="returnFromChanged()">
-            </div>
         </div>
     </div>
     <div class="section-header no-print"><span>Time Entries</span><button class="info-btn no-print" onclick="toggleInfo('infoTime')">i</button></div>
@@ -206,7 +204,7 @@
             <li><strong>Start Workshop / Start Site</strong> — select where your working day commenced (Cl 53.a). Select <strong>Start Workshop</strong> if you were directed by your supervisor or project manager to carry out work-related tasks at your centre of employment before travelling to site. Select <strong>Start Site</strong> if you travelled directly to the worksite from home, your centre of employment (without carrying out work-related tasks), or an arranged meeting point.</li>
             <li><strong>Finish Workshop / Finish Site</strong> — select where your working day ended. Select <strong>Finish Workshop</strong> if you were directed by your supervisor or project manager to return to your centre of employment to carry out work-related tasks (e.g. unloading a trailer, preparing for a job the following day). Select <strong>Finish Site</strong> if your working day ended at the worksite and you travelled home or to accommodation.</li>
             <li><strong>Weekday / Weekend / Pub Holiday</strong> — select the day type. Weekday pays NT then OT. Weekend/PH pays double time for all work hours with a 4-hour minimum (Cl 62.3.a), or 2-hour minimum if you were notified 24h+ in advance (Cl 62.3.b). PH also includes 8 hours NT (Public Holiday) entitlement — applicable only on a day you were rostered to work (s116 FW Act).</li>
-            <li><strong>Company Car</strong> — select if a company vehicle was provided or offered. If unselected, Fares Allowance (FTR) applies.</li>
+            <li><strong>Company Car</strong> — select if a company vehicle was provided or offered. If unselected, Fares Allowance (FTR) applies. Selecting Company Car also makes TK1 and TK2 own-vehicle km allowances ineligible (Cl 64.3.b — the $0.57/km is not paid when the employee travels in company transport). The calculator enforces this by disabling the TK1 and TK2 checkboxes while Company Car is on.</li>
             <li><strong>Incidentals-1</strong> — select when staying at accommodation on a distant job (>20 min from urban area, employer pays for accom without meals). All accom-to-site travel is paid. TAT and Fares do not apply for accom↔site legs. First/Last Day tick preserves TAT/Fares for the standard workshop↔site leg (Cl 64.5.b).</li>
             <li><strong>Other ▼</strong> — expands to reveal the less-common flags below (Unnotified OT, RDO, Callout).</li>
             <li><strong>Unnotified OT</strong> — select if you were required to work 2+ hours overtime without being notified the previous day. Triggers the $15.50 meal allowance (any day — Cl 60.1.a).</li>
@@ -214,12 +212,15 @@
             <li><strong>Callout</strong> — select when recalled to site after hours (Cl 63.a). All work + travel is bundled at the appropriate OT rate with a 4-hour minimum. TT/TT+/TAT/Fares are suppressed — travel is already at OT. Not modelled: Cl 63.e/f on-call-roster variants (3h / 2h mins) and the Cl 63.a.iii TK1 $0.57/km own-vehicle allowance; enter these manually via Extra Allowances.</li>
             <li><strong>Scheduled (24h+ notice)</strong> — when working a weekend/PH/RDO that was planned 24h+ in advance, minimum drops from 4h to 2h (Cl 62.3.b).</li>
         </ul>
-        <strong>Key rules:</strong>
+        <strong>Key EA rules:</strong>
         <ul>
-            <li>Ordinary hours are <strong>6am–6pm</strong> (Cl 55.a). Work outside this window is overtime.</li>
-            <li>The first <strong>30 minutes</strong> of travel each way is unpaid (Travel Boundary, Cl 64.1) unless INC-1 is active.</li>
-            <li>Overtime on weekdays: <strong>first 2 hours at time-and-a-half (TH)</strong>, then <strong>double time (DT)</strong> (Cl 62.2.a.i).</li>
-            <li>If you work <strong>12+ hours</strong>, your lunch break is paid (Cl 60.a).</li>
+            <li>Ordinary hours are <strong>6am–6pm</strong> (Cl 55.a). Work outside this window is overtime regardless of total hours worked.</li>
+            <li><strong>Travel Boundary:</strong> the first 30 minutes of travel each way falls inside the 30-min Travel Boundary (Cl 64.1.a). It isn't paid as TT — instead it's compensated by the daily Fares Allowance (FTR, $14.61/day, Cl 64.1.b) when eligible. Under Inc-1 the boundary doesn't apply because accommodation becomes the centre of employment (Cl 64.5.a).</li>
+            <li><strong>Weekday overtime:</strong> first 2 hours at time-and-a-half (TH), then double time (DT) (Cl 62.2.a.i).</li>
+            <li><strong>Weekend / PH / RDO overtime:</strong> all hours at double time (Cl 62.2.a.ii/iii) with a 4-hour minimum (Cl 62.3.a), or 2-hour minimum with 24h+ notice (Cl 62.3.b).</li>
+            <li><strong>Meal break (Cl 60.a):</strong> 30-minute unpaid lunch for shifts of 5–12 hours. Shifts under 5 hours have no meal deduction. Shifts of 12+ hours get a paid meal break.</li>
+            <li><strong>Early travel (Cl 64.3.d):</strong> cross the boundary before 0630hrs AND have a site more than 1 hour beyond the boundary → claim 30 min TT and the ordinary workday is deemed to start at 0700 (conditional on safe driving).</li>
+            <li><strong>Rounding (Cl 53.b):</strong> time is rounded to 15-minute intervals. 7 minutes rounds down; 8 minutes rounds up to 15.</li>
         </ul>
     </div>
     <div class="input-grid">
@@ -274,27 +275,33 @@
             <button class="info-btn no-print" onclick="toggleInfo('infoResults')">i</button>
         </div>
         <div id="infoResults" class="info-panel no-print">
-            <strong>Understanding your timesheet codes:</strong>
+            <strong>Work codes:</strong>
             <ul>
-                <li><strong>NT</strong> — Normal Time. Your ordinary 8-hour day paid at the base rate.</li>
-                <li><strong>NT (RDO, AL or LWOP)</strong> — Hours short of a full 8-hour NT day. Must be covered by a Rostered Day Off, Annual Leave, or Leave Without Pay (LWOP requires management approval).</li>
-                <li><strong>NT (Public Holiday)</strong> — 8 hours paid automatically as your Public Holiday entitlement, in addition to DT for hours worked.</li>
-                <li><strong>TH</strong> — Time and a Half. The first 2 hours of weekday overtime (Cl 62.2.a.i).</li>
-                <li><strong>DT</strong> — Double Time. Weekday overtime beyond the first 2 hours, or all work hours on weekends/public holidays.</li>
-                <li><strong>TT (Morning)</strong> — Travel Time (single rate). Paid travel from workshop/accom to site, outside the 30-min Travel Boundary, during ordinary hours (6am–6pm).</li>
-                <li><strong>TT+ (Morning)</strong> — Travel Time (time and a half). All morning travel outside the boundary on weekends, public holidays, or RDO days (Cl 64.3.c.iii). On weekdays morning travel is TT (single rate) only, regardless of time of day — per Cl 64.3.d the TT+ weekday rate is for the return journey only.</li>
-                <li><strong>TT (Return)</strong> — Return travel at single rate, when total work + travel hasn't exceeded 8 hours.</li>
-                <li><strong>TT+ (Return)</strong> — Return travel at time and a half, when total work + travel exceeds 8 hours, or on weekends/PH.</li>
-                <li><strong>TAT</strong> — Travel Time Allowance. A flat daily unit (25% of hourly rate) when your day starts at a worksite, not the workshop.</li>
-                <li><strong>Fares (FTR)</strong> — Fares Allowance ($14.61/day). Paid when you use your own vehicle and no company car was offered.</li>
-                <li><strong>Meal Allow ($15.50)</strong> — Meal Allowance for unnotified overtime of 2+ hours (Cl 60.1.a). Note: this rate increases to $16.41 from 01/07/2026 and $20.00 from 01/07/2027.</li>
+                <li><strong>NT</strong> — Normal Time. Your ordinary 8-hour day paid at the base rate (only applies on pure weekdays; weekend/PH/RDO days pay DT from minute one).</li>
+                <li><strong>NT (RDO, AL or LWOP)</strong> — Shortfall row. If you worked less than 8 hours on a pure weekday, the gap to 8 hours must be covered by a Rostered Day Off, Annual Leave, or Leave Without Pay (LWOP needs management approval). Doesn't fire on weekend/PH/RDO/Callout days — those have different minimums.</li>
+                <li><strong>NT (Public Holiday)</strong> — 8 hours paid automatically as your PH entitlement, in addition to DT for hours actually worked.</li>
+                <li><strong>TH</strong> — Time and a Half. The first 2 hours of weekday overtime (Cl 62.2.a.i). Also any weekday work that falls outside 6am–6pm gets counted toward TH/DT per Cl 55.a.</li>
+                <li><strong>DT</strong> — Double Time. Weekday overtime beyond the first 2 hours of TH (Cl 62.2.a.i), or all work hours on weekends, public holidays, or RDO days (Cl 62.2.a.ii/iii + 62.3.a).</li>
+            </ul>
+            <strong>Travel codes:</strong>
+            <ul>
+                <li><strong>TT (Morning)</strong> — Travel Time at single rate. Morning travel outside the 30-min boundary on a weekday (Cl 64.3.c.i). Paid regardless of time of day — travel rate is not affected by the 6am–6pm ordinary-hours window, which only applies to work.</li>
+                <li><strong>TT+ (Morning)</strong> — Travel Time at time-and-a-half. Applies to <em>all</em> morning travel outside the boundary on weekends, public holidays, or RDO days (Cl 64.3.c.iii). On weekdays morning travel is never TT+ — per Cl 64.3.d the weekday TT+ rate is return-only.</li>
+                <li><strong>TT (Return)</strong> — Return travel at single rate, when the day's work + outside-boundary travel hasn't exceeded 8 hours (Cl 64.3.c.i).</li>
+                <li><strong>TT+ (Return)</strong> — Return travel at time-and-a-half. Applies when the day's total work + outside-boundary travel exceeds 8 hours (Cl 64.3.c.ii), or always on weekends, public holidays, or RDO days (Cl 64.3.c.iii).</li>
+            </ul>
+            <strong>Allowance codes:</strong>
+            <ul>
+                <li><strong>TAT</strong> — Travel Time Allowance (Cl 64.2). A flat daily unit equal to 25% of your all-purpose hourly rate, payable when your working day commences at a worksite. Not payable under Inc-1 accom↔site travel or when the early-travel rule fires. One unit per day maximum.</li>
+                <li><strong>Fares (FTR)</strong> — Fares Allowance (Cl 64.1). $14.61/day when you travel in your own time/vehicle and no company transport was offered. Covers the 30-min Travel Boundary portion.</li>
+                <li><strong>Meal Allow ($15.50)</strong> — Meal Allowance for unnotified overtime of 2+ hours (Cl 60.1.a). Any day type. Rate increases to $16.41 from 01/07/2026 and $20.00 from 01/07/2027.</li>
             </ul>
             <strong>Interpretation notes:</strong>
             <ul>
-                <li><strong>Rounding</strong> — each component is rounded to 15 min (Cl 53.b). Small slivers across several components can differ from rounding the totals only (+/- 15 min).</li>
+                <li><strong>Rounding</strong> — each component is rounded to 15 min (Cl 53.b: 7 min rounds down, 8 min rounds up). Rounding each component separately can differ from rounding totals only, by up to ±15 min.</li>
                 <li><strong>Public Holiday (8h NT)</strong> — auto-added when PH is selected. Under s116 FW Act, PH NT only applies if you were rostered to work that day; untick PH if it falls on a non-rostered day.</li>
-                <li><strong>Casual rates</strong> — the calculator uses full-time treatment. Casual PH pays at DT+half (Cl 62.2.a.iv); not auto-calculated here.</li>
-                <li><strong>Early-travel (weekend/PH)</strong> — examples 23/24/25 show reduced 30-min TT+ and no TAT for weekend/PH early starts. Not auto-detected here (weekday only); if your weekend early-start fits Ex 22-25, manually reduce the forward TT+ to 30 min and remove TAT.</li>
+                <li><strong>Casual rates</strong> — the calculator uses full-time treatment. Casual PH pays at <strong>double time and a half</strong> (2.5× base, Cl 62.2.a.iv); not auto-calculated here. Apply the uplift manually if you're casual.</li>
+                <li><strong>Early-travel weekend/PH (Appendix Ex 23–25)</strong> — the 30-min TT+ and TAT-suppression rule for weekend/PH early starts isn't auto-detected (weekday only). If your weekend early-start fits Ex 22–25, manually reduce the forward TT+ to 30 min and untick TAT.</li>
             </ul>
         </div>
         <div id="calcOutput"></div>
@@ -389,12 +396,27 @@
         let panel = document.getElementById('allowPanel');
         let html = '';
         html += '<div id="infoAllow" class="info-panel">';
-        html += '<strong>How to use:</strong> Select any additional allowances that apply to the day. These will appear in the timesheet summary alongside the auto-calculated time codes.';
+        html += '<strong>How to use:</strong> Select any additional allowances that apply to the day. These appear in the summary alongside the auto-calculated time codes.';
         html += '<ul>';
         html += '<li><strong>Per-hour allowances</strong> (Industrial, Site, Firmus, Supervisor) \u2014 automatically split into NT and OT hours based on the day\'s calculation. Supervisor allowances include travel time (Cl 49.c).</li>';
-        html += '<li><strong>Manual-entry allowances</strong> (HSM, Inclement Weather) \u2014 enter the number of hours that apply. These are also split into NT and OT.</li>';
-        html += '<li><strong>Per-day/night allowances</strong> (Living Away, Incidentals, HV, On Call) \u2014 tick the box and 1 Unit is added to the summary.</li>';
-        html += '<li><strong>Per-km allowances</strong> (TK1, TK2, Company Car) \u2014 enter the kilometres travelled.</li>';
+        html += '<li><strong>Manual-entry allowances</strong> (HSM, Inclement Weather) \u2014 enter the number of hours that apply. Also split into NT and OT.</li>';
+        html += '<li><strong>Per-day/night allowances</strong> (Living Away, Incidentals 1/2/3, HV, On Call) \u2014 tick the box and 1 Unit is added to the summary.</li>';
+        html += '<li><strong>Per-km allowances</strong> (TK1, TK2, Kms Company Car) \u2014 enter the kilometres travelled, or let the Google Maps tool auto-fill them (see below).</li>';
+        html += '</ul>';
+        html += '<strong>km allowance EA references:</strong>';
+        html += '<ul>';
+        html += '<li><strong>TK1 ($0.57/km, Cl 64.3.a)</strong> \u2014 own-vehicle km travelled outside the 30-min Travel Boundary. Ratio-method: km \u00D7 (mins outside boundary) / (total mins). Not paid when company transport is used (Cl 64.3.b).</li>';
+        html += '<li><strong>TK2 ($1.05/km, Cl 64.4)</strong> \u2014 own-vehicle km travelled between worksites during the workday. Not applicable when company transport is used.</li>';
+        html += '<li><strong>Kms (Company Car) ($0.75/km)</strong> \u2014 km driven when you\'re responsible for a company vehicle. Internal operational allowance \u2014 tick only when relevant.</li>';
+        html += '<li><strong>Mutex:</strong> TK1 + TK2 (own vehicle) and Kms Company Car (company vehicle) are mutually exclusive. Ticking the top-of-form Company Car button disables TK1 and TK2; unticking it disables Kms Company Car.</li>';
+        html += '</ul>';
+        html += '<strong>Google Maps auto-fill:</strong>';
+        html += '<ul>';
+        html += '<li>With any of TK1/TK2/Kms CC ticked (as applicable), the km field auto-populates when you use the Google Maps Travel Tool above.</li>';
+        html += '<li><strong>TK1</strong> pulls the outside-boundary km for both the morning and return legs. A "Return" section in the Travel Tool appears so you can specify where you\'re going back to (e.g. accommodation, other office).</li>';
+        html += '<li><strong>TK2</strong> pulls the sum of between-site km. Click "Add another site" to chain multiple sites (up to 5 total). The return leg automatically starts from your last added site.</li>';
+        html += '<li><strong>Kms (Company Car)</strong> pulls the morning leg only \u2014 the Google tool doesn\'t know your full day\'s path. Add return km manually if the return is symmetrical with the morning trip.</li>';
+        html += '<li>Auto-filled values can always be overwritten manually. Once you type a km value it won\'t be clobbered by a later auto-calculate.</li>';
         html += '</ul>';
         html += '<strong>Note:</strong> TAT, Fares, and Meal Allowance (Overtime) are already auto-calculated by the timesheet above \u2014 they are not duplicated here.';
         html += '</div>';
@@ -495,9 +517,6 @@
         lastLegs.morning = null;
         lastLegs.returnLeg = null;
         lastLegs.betweenLegs = [];
-        // When TK2 is active, returnFrom might still be auto-populated —
-        // keep it in sync with the new destination if needed.
-        autoPopulateReturnFrom();
         scheduleAutoCalculate();
     }
     // Custom morning origin field change — invalidate morning + return legs.
@@ -506,45 +525,6 @@
         lastLegs.returnLeg = null;
         lastLegs.betweenLegs = [];
         scheduleAutoCalculate();
-    }
-    // Called from the returnFrom input (TK2 case) — "Returning from" is the
-    // return-leg origin. Editing it invalidates the return leg (and TK1 km)
-    // but NOT the between-site chain (which still ends at the last extra
-    // site, independently of the returnFrom field).
-    function returnFromChanged() {
-        if (typeof lastLegs !== 'undefined') lastLegs.returnLeg = null;
-        const tk1Input = document.getElementById('km_tk1');
-        if (tk1Input) tk1Input.value = '';
-        if (typeof syncAllowanceBoundUI === 'function') syncAllowanceBoundUI();
-        scheduleAutoCalculate();
-    }
-    // Track the last value we wrote into "Returning from" automatically.
-    // If the user subsequently edits the field, its value no longer matches
-    // this — that's our signal to stop auto-overwriting.
-    let _lastAutoReturnFromValue = '';
-    function autoPopulateReturnFrom() {
-        const rf = document.getElementById('returnFrom');
-        if (!rf) return;
-        // Compute what the "last site" is right now.
-        let lastText = '';
-        const extras = activeExtraSiteCount();
-        if (extras > 0) {
-            const lastSiteIdx = extras + 1;   // 2..5
-            const lastInput = document.getElementById('site' + lastSiteIdx);
-            if (lastInput) lastText = lastInput.value.trim();
-        }
-        if (!lastText) {
-            const dest = document.getElementById('destination');
-            lastText = dest ? dest.value.trim() : '';
-        }
-        // If the current value differs from the last auto-populated value,
-        // the user has typed something — leave it alone.
-        if (rf.value && rf.value !== _lastAutoReturnFromValue) return;
-        if (lastText && rf.value !== lastText) {
-            rf.value = lastText;
-            selectedPlaces.returnFrom = null;  // reset place_id (text changed)
-        }
-        _lastAutoReturnFromValue = lastText;
     }
     // ----------------------------------------------------------------
     // AUTOMATIC CALCULATE — debounced so rapid field changes don't spam
@@ -604,7 +584,6 @@
         if (tk2Input) tk2Input.value = '';
         const tk1Input = document.getElementById('km_tk1');
         if (tk1Input) tk1Input.value = '';
-        autoPopulateReturnFrom();
         syncAllowanceBoundUI();
         scheduleAutoCalculate();
     }
@@ -614,7 +593,6 @@
         // Invalidate cached between-site + return data — input text changed.
         lastLegs.betweenLegs = [];
         lastLegs.returnLeg = null;
-        autoPopulateReturnFrom();
         syncAllowanceBoundUI();
         scheduleAutoCalculate();
     }
@@ -1496,7 +1474,7 @@
     // place_id for a different text value.
     let selectedPlaces = {
         destination:   null, customOrigin: null,
-        returnFrom:    null, customReturn: null,
+        customReturn:  null,
         site2: null, site3: null, site4: null, site5: null
     };
     // Cached legs from the most recent successful "Calculate time to destination"
@@ -1531,7 +1509,6 @@
         const tk2Cb      = document.getElementById('allow_tk2');
         const ccCb       = document.getElementById('allow_kmCompanyCar');
         const returnSec  = document.getElementById('returnSection');
-        const returnFromWrap = document.getElementById('returnFromWrap');
         const ccNote     = document.getElementById('ccKmNote');
         const addSiteBtn = document.getElementById('btnAddSite');
         const tk1Ticked = !!(tk1Cb && tk1Cb.checked);
@@ -1569,13 +1546,6 @@
             if (wasHidden && (tk1Ticked || tk2Ticked)) {
                 if (!flags.ReturnOffice && flags.Office) setReturnOffice(flags.Office);
             }
-        }
-        // "Returning from" input only needed when TK2 is active (last site
-        // can differ from the morning destination). For TK1-only we reuse the
-        // morning Dest as the return origin automatically.
-        if (returnFromWrap) {
-            returnFromWrap.classList.toggle('hidden', !tk2Ticked);
-            if (tk2Ticked) autoPopulateReturnFrom();
         }
         // Add Site button — visible only when TK2 is ticked AND there's room
         // for another slot.
@@ -1700,13 +1670,8 @@
         if (extras.length === 0) return;  // nothing to do
         const returnDest = currentReturnDestSpec();
         if (!returnDest) return;
-        // Return origin = the "Returning from" input (user-editable; auto-
-        // populates to the last site). Matches calculateRouteTime behaviour
-        // so edits to the returnFrom field are respected here too.
-        const rfText = ((document.getElementById('returnFrom') || {}).value || '').trim();
-        if (!rfText) return;
-        const returnOriginSpec = (selectedPlaces.returnFrom && selectedPlaces.returnFrom.place_id)
-            ? { placeId: selectedPlaces.returnFrom.place_id } : rfText;
+        // Return origin = the last site in the chain (last extra site).
+        const returnOriginSpec = extras[extras.length - 1];
         const activeSites = [destSpec].concat(extras);
         _bgTk2InFlight = true;
         const matrixOptions = {
@@ -1837,15 +1802,12 @@
         const returnVisible = (tk1Ticked || tk2Ticked) && returnSec && !returnSec.classList.contains('hidden');
         let returnOriginSpec = null, returnDestSpec = null;
         if (returnVisible) {
-            // Return origin: last active site (morning Dest when no extras).
-            if (tk2Ticked && extraSiteSpecs.length > 0) {
-                // User-visible "Returning from" — may have been edited.
-                const rfText = document.getElementById('returnFrom').value.trim();
-                if (!rfText) { warn('Return section: please enter the last site of the day.'); return; }
-                returnOriginSpec = specFromInputAndPlace(rfText, selectedPlaces.returnFrom);
-            } else {
-                returnOriginSpec = destinationSpec;
-            }
+            // Return origin is always the last active site in the chain:
+            //   • With extras (TK2) → the last extra site
+            //   • Without extras    → the morning destination
+            returnOriginSpec = (extraSiteSpecs.length > 0)
+                ? extraSiteSpecs[extraSiteSpecs.length - 1]
+                : destinationSpec;
             if (!flags.ReturnOffice) { warn('Return section: please select where you are returning to.'); return; }
             if (flags.ReturnOffice === 'Custom') {
                 const crText = document.getElementById('customReturn').value.trim();
@@ -1961,7 +1923,6 @@
         // wrapper becomes visible.
         initAutocomplete('destination',  function(p) { selectedPlaces.destination  = p; });
         initAutocomplete('customOrigin', function(p) { selectedPlaces.customOrigin = p; });
-        initAutocomplete('returnFrom',   function(p) { selectedPlaces.returnFrom   = p; });
         initAutocomplete('customReturn', function(p) { selectedPlaces.customReturn = p; });
         // TK2 extra site inputs — each pre-rendered hidden; Autocomplete
         // attaches to the DOM node and works fine when the slot becomes
