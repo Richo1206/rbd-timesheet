@@ -138,19 +138,19 @@
         <div id="extraSitesContainer">
             <div id="siteWrap2" class="site-wrap hidden" style="margin-top: 8px;">
                 <label style="display:flex; justify-content:space-between; align-items:center;"><span>Site 2 (between):</span><span onclick="removeSite(2)" style="cursor:pointer; color:#c33; font-weight:bold; padding:2px 8px;">&times;</span></label>
-                <input type="text" id="site2" placeholder="Site 2 address">
+                <input type="text" id="site2" placeholder="Site 2 address" onblur="siteInputChanged()">
             </div>
             <div id="siteWrap3" class="site-wrap hidden" style="margin-top: 8px;">
                 <label style="display:flex; justify-content:space-between; align-items:center;"><span>Site 3 (between):</span><span onclick="removeSite(3)" style="cursor:pointer; color:#c33; font-weight:bold; padding:2px 8px;">&times;</span></label>
-                <input type="text" id="site3" placeholder="Site 3 address">
+                <input type="text" id="site3" placeholder="Site 3 address" onblur="siteInputChanged()">
             </div>
             <div id="siteWrap4" class="site-wrap hidden" style="margin-top: 8px;">
                 <label style="display:flex; justify-content:space-between; align-items:center;"><span>Site 4 (between):</span><span onclick="removeSite(4)" style="cursor:pointer; color:#c33; font-weight:bold; padding:2px 8px;">&times;</span></label>
-                <input type="text" id="site4" placeholder="Site 4 address">
+                <input type="text" id="site4" placeholder="Site 4 address" onblur="siteInputChanged()">
             </div>
             <div id="siteWrap5" class="site-wrap hidden" style="margin-top: 8px;">
                 <label style="display:flex; justify-content:space-between; align-items:center;"><span>Site 5 (between):</span><span onclick="removeSite(5)" style="cursor:pointer; color:#c33; font-weight:bold; padding:2px 8px;">&times;</span></label>
-                <input type="text" id="site5" placeholder="Site 5 address">
+                <input type="text" id="site5" placeholder="Site 5 address" onblur="siteInputChanged()">
             </div>
         </div>
         <div class="input-grid">
@@ -479,12 +479,25 @@
         }
     }
     // Hide a site slot and clear its value + any cached Autocomplete place.
+    // The TK2 km field gets reset so the opportunistic fill on the next sync
+    // will re-compute from the remaining sites.
     function removeSite(n) {
         const w = document.getElementById('siteWrap' + n);
         const input = document.getElementById('site' + n);
         if (w) w.classList.add('hidden');
         if (input) input.value = '';
         if (selectedPlaces['site' + n]) selectedPlaces['site' + n] = null;
+        // Invalidate cached between-site data so we re-fetch on next trigger.
+        lastLegs.betweenLegs = [];
+        const tk2Input = document.getElementById('km_tk2');
+        if (tk2Input) tk2Input.value = '';
+        syncAllowanceBoundUI();
+    }
+    // Fires when a site input loses focus (user finished typing). Kicks the
+    // background fetch so TK2 km populates without requiring Calculate again.
+    function siteInputChanged() {
+        // Invalidate cached between-site data — input text may have changed.
+        lastLegs.betweenLegs = [];
         syncAllowanceBoundUI();
     }
     function checkRoute() {
@@ -607,6 +620,11 @@
             document.getElementById('btnFirstDay').classList.remove('active');
             document.getElementById('btnLastDay').classList.remove('active');
         }
+        // Auto-tick the "Incidentals 1 ($20)" allowance so the $20/day
+        // is included in the summary without the user having to tick it
+        // separately. Untick when Inc-1 is turned off.
+        const inc1AllowCb = document.getElementById('allow_inc1Allow');
+        if (inc1AllowCb) inc1AllowCb.checked = flags.Inc1;
         calculate();
     }
     function toggleTripDay(id) {
@@ -1475,6 +1493,133 @@
                 betweenLegs: lastLegs.betweenLegs || []
             });
         }
+        // If the user ticked TK1 / TK2 AFTER an earlier successful Calculate
+        // press, the return leg (and between-site legs) weren't fetched at
+        // that time. Fire them silently in the background so the km fields
+        // populate without requiring a second Calculate press.
+        if (lastLegs && lastLegs.morning) {
+            if (tk1Ticked && !lastLegs.returnLeg) {
+                backgroundFetchReturnLeg();
+            }
+            if (tk2Ticked && activeExtraSiteCount() > 0 && (lastLegs.betweenLegs || []).length === 0) {
+                backgroundFetchTk2Legs();
+            }
+        }
+    }
+    // Helper — build an origin / destination spec from the current field
+    // state (mirrors the logic in calculateRouteTime so we can reuse it for
+    // opportunistic background fetches).
+    function currentMorningOriginSpec() {
+        if (!flags.Office) return null;
+        if (flags.Office === 'Custom') {
+            const t = (document.getElementById('customOrigin') || {}).value || '';
+            const text = t.trim();
+            if (!text) return null;
+            return (selectedPlaces.customOrigin && selectedPlaces.customOrigin.place_id)
+                ? { placeId: selectedPlaces.customOrigin.place_id } : text;
+        }
+        return OFFICES[flags.Office];
+    }
+    function currentDestinationSpec() {
+        const t = (document.getElementById('destination') || {}).value || '';
+        const text = t.trim();
+        if (!text) return null;
+        return (selectedPlaces.destination && selectedPlaces.destination.place_id)
+            ? { placeId: selectedPlaces.destination.place_id } : text;
+    }
+    function currentReturnDestSpec() {
+        if (!flags.ReturnOffice) return null;
+        if (flags.ReturnOffice === 'Custom') {
+            const t = (document.getElementById('customReturn') || {}).value || '';
+            const text = t.trim();
+            if (!text) return null;
+            return (selectedPlaces.customReturn && selectedPlaces.customReturn.place_id)
+                ? { placeId: selectedPlaces.customReturn.place_id } : text;
+        }
+        return OFFICES[flags.ReturnOffice];
+    }
+    // In-flight guards so we don't spam the API while a previous background
+    // call is still resolving.
+    let _bgReturnInFlight = false;
+    let _bgTk2InFlight = false;
+    // Fire a single return-leg call in the background when TK1 is ticked
+    // post-Calculate. Silently no-ops if we can't build a valid spec.
+    function backgroundFetchReturnLeg() {
+        if (_bgReturnInFlight) return;
+        if (!window.google || !window.google.maps) return;
+        const destSpec   = currentDestinationSpec();
+        const returnDest = currentReturnDestSpec();
+        if (!destSpec || !returnDest) return;
+        _bgReturnInFlight = true;
+        const matrixOptions = {
+            travelMode: google.maps.TravelMode.DRIVING,
+            drivingOptions: { departureTime: new Date(), trafficModel: 'bestguess' }
+        };
+        // TK1-only case: return origin = morning destination (same as what
+        // calculateRouteTime does when the "Returning from" field is hidden).
+        // If TK2 is active with extras we skip — those go through the TK2
+        // helper instead, which owns the whole multi-leg chain.
+        const tk2Cb = document.getElementById('allow_tk2');
+        const tk2Ticked = !!(tk2Cb && tk2Cb.checked);
+        if (tk2Ticked && activeExtraSiteCount() > 0) { _bgReturnInFlight = false; return; }
+        distanceMatrixLeg(destSpec, returnDest, matrixOptions, 'return leg (auto)')
+            .then(function(leg) {
+                lastLegs.returnLeg = leg;
+                applyKmAutofill(lastLegs.morning, leg, {
+                    onlyIfEmpty: true,
+                    betweenLegs: lastLegs.betweenLegs || []
+                });
+                if (typeof calculate === 'function') calculate();
+            })
+            .catch(function() { /* silent — user can always press Calculate manually */ })
+            .then(function() { _bgReturnInFlight = false; });
+    }
+    // Fire between-site legs + return leg in the background when TK2 is
+    // ticked and sites are filled post-Calculate. Requires every visible
+    // site slot to have text; otherwise no-ops.
+    function backgroundFetchTk2Legs() {
+        if (_bgTk2InFlight) return;
+        if (!window.google || !window.google.maps) return;
+        const destSpec = currentDestinationSpec();
+        if (!destSpec) return;
+        // Gather filled extra sites.
+        const extras = [];
+        for (let i = 2; i <= 5; i++) {
+            const w = document.getElementById('siteWrap' + i);
+            if (!w || w.classList.contains('hidden')) continue;
+            const input = document.getElementById('site' + i);
+            const text = (input && input.value || '').trim();
+            if (!text) return;  // any unfilled visible site → abort silently
+            const spec = (selectedPlaces['site' + i] && selectedPlaces['site' + i].place_id)
+                ? { placeId: selectedPlaces['site' + i].place_id } : text;
+            extras.push(spec);
+        }
+        if (extras.length === 0) return;  // nothing to do
+        const returnDest = currentReturnDestSpec();
+        if (!returnDest) return;
+        const activeSites = [destSpec].concat(extras);
+        _bgTk2InFlight = true;
+        const matrixOptions = {
+            travelMode: google.maps.TravelMode.DRIVING,
+            drivingOptions: { departureTime: new Date(), trafficModel: 'bestguess' }
+        };
+        (async function() {
+            try {
+                const between = [];
+                for (let i = 0; i < activeSites.length - 1; i++) {
+                    const leg = await distanceMatrixLeg(activeSites[i], activeSites[i + 1], matrixOptions, 'between-site (auto)');
+                    between.push(leg);
+                }
+                const returnLeg = await distanceMatrixLeg(activeSites[activeSites.length - 1], returnDest, matrixOptions, 'return leg (auto)');
+                lastLegs.betweenLegs = between;
+                lastLegs.returnLeg   = returnLeg;
+                applyKmAutofill(lastLegs.morning, returnLeg, {
+                    onlyIfEmpty: true, betweenLegs: between
+                });
+                if (typeof calculate === 'function') calculate();
+            } catch (e) { /* silent */ }
+            finally { _bgTk2InFlight = false; }
+        })();
     }
     // Disable the Calculate button if Maps failed to load (offline, key
     // revoked, referrer mismatch at load time, etc). Manual entry still
