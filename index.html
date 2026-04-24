@@ -124,6 +124,32 @@
         <input type="text" id="destination" placeholder="Site address" style="margin-bottom: 12px;">
         <button class="maps-btn" onclick="checkRoute()">Verify Route (opens Google Maps)</button>
         <button id="btnCalculateRoute" class="maps-btn" onclick="calculateRouteTime()">Calculate time to destination</button>
+        <!--
+          TK2 multi-site UI. The "Add another site" button appears when the
+          TK2 allowance is ticked. Up to 4 extra sites (Site 2..5); Site 1 is
+          the main Destination field above. Each extra slot is pre-rendered
+          hidden so Autocomplete can be initialised once at page load — when
+          the slot becomes visible Autocomplete just works.
+        -->
+        <button id="btnAddSite" class="maps-btn hidden" onclick="addNextSite()" style="background:#004a99; margin-top: 6px; font-size: 13px; padding: 10px;">+ Add another site</button>
+        <div id="extraSitesContainer">
+            <div id="siteWrap2" class="site-wrap hidden" style="margin-top: 8px;">
+                <label style="display:flex; justify-content:space-between; align-items:center;"><span>Site 2 (between):</span><span onclick="removeSite(2)" style="cursor:pointer; color:#c33; font-weight:bold; padding:2px 8px;">&times;</span></label>
+                <input type="text" id="site2" placeholder="Site 2 address">
+            </div>
+            <div id="siteWrap3" class="site-wrap hidden" style="margin-top: 8px;">
+                <label style="display:flex; justify-content:space-between; align-items:center;"><span>Site 3 (between):</span><span onclick="removeSite(3)" style="cursor:pointer; color:#c33; font-weight:bold; padding:2px 8px;">&times;</span></label>
+                <input type="text" id="site3" placeholder="Site 3 address">
+            </div>
+            <div id="siteWrap4" class="site-wrap hidden" style="margin-top: 8px;">
+                <label style="display:flex; justify-content:space-between; align-items:center;"><span>Site 4 (between):</span><span onclick="removeSite(4)" style="cursor:pointer; color:#c33; font-weight:bold; padding:2px 8px;">&times;</span></label>
+                <input type="text" id="site4" placeholder="Site 4 address">
+            </div>
+            <div id="siteWrap5" class="site-wrap hidden" style="margin-top: 8px;">
+                <label style="display:flex; justify-content:space-between; align-items:center;"><span>Site 5 (between):</span><span onclick="removeSite(5)" style="cursor:pointer; color:#c33; font-weight:bold; padding:2px 8px;">&times;</span></label>
+                <input type="text" id="site5" placeholder="Site 5 address">
+            </div>
+        </div>
         <div class="input-grid">
             <div>
                 <label>Travel Hrs:</label>
@@ -151,8 +177,16 @@
             <div id="customReturnWrap" class="hidden" style="margin-bottom: 8px;">
                 <input type="text" id="customReturn" placeholder="Enter return address (home, accommodation, other workshop)">
             </div>
-            <label>Returning from:</label>
-            <input type="text" id="returnFrom" placeholder="Site address (auto-filled from morning destination)" style="margin-bottom: 4px;">
+            <!--
+              "Returning from" is only shown when TK2 is also active (multi-site
+               day where the last site differs from the morning destination).
+               For TK1-only the return origin is the morning destination — we
+               feed that through automatically in calculateRouteTime().
+            -->
+            <div id="returnFromWrap" class="hidden">
+                <label>Returning from:</label>
+                <input type="text" id="returnFrom" placeholder="Last site of the day" style="margin-bottom: 4px;">
+            </div>
         </div>
     </div>
     <div class="section-header no-print"><span>Time Entries</span><button class="info-btn no-print" onclick="toggleInfo('infoTime')">i</button></div>
@@ -392,6 +426,11 @@
             if (a.id === 'kmCompanyCar') {
                 html += '<div id="ccKmNote" class="hidden" style="font-size: 10px; color: #888; font-style: italic; margin: -4px 0 6px; padding: 0 4px;">Auto-calculation for morning trip only \u2014 add return km manually if applicable.</div>';
             }
+            // Inline hint under TK1 — EA Cl 64.3.b excludes TK1 when Company
+            // transport is provided/used. Shown whenever TK1 is ticked.
+            if (a.id === 'tk1') {
+                html += '<div id="tk1Note" class="hidden" style="font-size: 10px; color: #888; font-style: italic; margin: -4px 0 6px; padding: 0 4px;">Cl 64.3.b \u2014 TK1 is not paid when company transport is provided/used.</div>';
+            }
         });
         panel.innerHTML = html;
     }
@@ -415,6 +454,40 @@
         document.getElementById('btnReturnHob').classList.toggle('active', code === 'Hob');
         document.getElementById('btnReturnCustom').classList.toggle('active', code === 'Custom');
         document.getElementById('customReturnWrap').classList.toggle('hidden', code !== 'Custom');
+    }
+    // --- TK2 multi-site helpers -------------------------------------------
+    // Count of extra site slots (2..5) currently visible. Site 1 is always
+    // the morning Destination field above — not counted here.
+    function activeExtraSiteCount() {
+        let n = 0;
+        for (let i = 2; i <= 5; i++) {
+            const w = document.getElementById('siteWrap' + i);
+            if (w && !w.classList.contains('hidden')) n++;
+        }
+        return n;
+    }
+    // Reveal the next hidden site slot (2..5) in order. No-op if all 5 slots
+    // are already visible.
+    function addNextSite() {
+        for (let i = 2; i <= 5; i++) {
+            const w = document.getElementById('siteWrap' + i);
+            if (w && w.classList.contains('hidden')) {
+                w.classList.remove('hidden');
+                const input = document.getElementById('site' + i);
+                if (input) input.focus();
+                syncAllowanceBoundUI();
+                return;
+            }
+        }
+    }
+    // Hide a site slot and clear its value + any cached Autocomplete place.
+    function removeSite(n) {
+        const w = document.getElementById('siteWrap' + n);
+        const input = document.getElementById('site' + n);
+        if (w) w.classList.add('hidden');
+        if (input) input.value = '';
+        if (selectedPlaces['site' + n]) selectedPlaces['site' + n] = null;
+        syncAllowanceBoundUI();
     }
     function checkRoute() {
         if (!flags.Office) {
@@ -1274,11 +1347,15 @@
     // Last place selected from each Autocomplete dropdown. Each entry is
     // cleared on a real keystroke in its field, so we never send a stale
     // place_id for a different text value.
-    let selectedPlaces = { destination: null, customOrigin: null, returnFrom: null, customReturn: null };
+    let selectedPlaces = {
+        destination:   null, customOrigin: null,
+        returnFrom:    null, customReturn: null,
+        site2: null, site3: null, site4: null, site5: null
+    };
     // Cached legs from the most recent successful "Calculate time to destination"
-    // press. Lets us auto-fill km fields when the user ticks Km's (CC) or TK1
-    // AFTER the Google tool has already been run.
-    let lastLegs = { morning: null, returnLeg: null };
+    // press. Lets us auto-fill km fields when the user ticks an allowance AFTER
+    // the Google tool has already been run.
+    let lastLegs = { morning: null, returnLeg: null, betweenLegs: [] };
     function initAutocomplete(inputId, setterFn) {
         if (!window.google || !google.maps || !google.maps.places) return;
         const input = document.getElementById(inputId);
@@ -1304,28 +1381,71 @@
     // Called on pageload and whenever an allowance checkbox toggles.
     function syncAllowanceBoundUI() {
         const tk1Cb      = document.getElementById('allow_tk1');
+        const tk2Cb      = document.getElementById('allow_tk2');
         const ccCb       = document.getElementById('allow_kmCompanyCar');
         const returnSec  = document.getElementById('returnSection');
+        const returnFromWrap = document.getElementById('returnFromWrap');
         const ccNote     = document.getElementById('ccKmNote');
+        const addSiteBtn = document.getElementById('btnAddSite');
+        const tk1Ticked = !!(tk1Cb && tk1Cb.checked);
+        const tk2Ticked = !!(tk2Cb && tk2Cb.checked);
+        const ccTicked  = !!(ccCb && ccCb.checked);
+        // Mutex between Kms (CC) and the own-vehicle km allowances (TK1 + TK2).
+        // EA Cl 64.3.b excludes TK1 when company transport is used, and TK2 is
+        // by definition own-vehicle between-sites. So ticking CC disables both
+        // TK1 and TK2; ticking either TK1 or TK2 disables CC.
+        if (tk1Cb) tk1Cb.disabled = ccTicked;
+        if (tk2Cb) tk2Cb.disabled = ccTicked;
+        if (ccCb)  ccCb.disabled  = tk1Ticked || tk2Ticked;
         if (returnSec) {
             const wasHidden = returnSec.classList.contains('hidden');
-            returnSec.classList.toggle('hidden', !(tk1Cb && tk1Cb.checked));
-            // Auto-populate "Returning from" with morning Dest when user
-            // first reveals the section AND the return field is empty.
-            if (wasHidden && tk1Cb && tk1Cb.checked) {
-                const rf = document.getElementById('returnFrom');
-                const dest = document.getElementById('destination');
-                if (rf && !rf.value && dest && dest.value) rf.value = dest.value;
-                // Default return office to match the morning office.
+            returnSec.classList.toggle('hidden', !(tk1Ticked || tk2Ticked));
+            if (wasHidden && (tk1Ticked || tk2Ticked)) {
                 if (!flags.ReturnOffice && flags.Office) setReturnOffice(flags.Office);
             }
         }
-        if (ccNote) ccNote.classList.toggle('hidden', !(ccCb && ccCb.checked));
-        // If the Google tool has already been run, opportunistically pre-fill
-        // km fields for any allowance that was just ticked. onlyIfEmpty means
-        // we never overwrite a km value the user has typed manually.
+        // "Returning from" input only needed when TK2 is active (last site can
+        // differ from the morning destination). For TK1-only we reuse the
+        // morning Dest as the return origin automatically.
+        if (returnFromWrap) {
+            returnFromWrap.classList.toggle('hidden', !tk2Ticked);
+            if (tk2Ticked) {
+                // Auto-populate with the last active site (site N if extras
+                // are visible, otherwise morning Dest).
+                const rf = document.getElementById('returnFrom');
+                if (rf) {
+                    const extras = activeExtraSiteCount();
+                    let lastText = '';
+                    if (extras > 0) {
+                        const lastSiteIdx = extras + 1;   // 2..5
+                        const lastInput = document.getElementById('site' + lastSiteIdx);
+                        if (lastInput) lastText = lastInput.value.trim();
+                    }
+                    if (!lastText) {
+                        const dest = document.getElementById('destination');
+                        lastText = dest ? dest.value.trim() : '';
+                    }
+                    // Only seed if the user hasn't already typed something.
+                    if (!rf.value && lastText) rf.value = lastText;
+                }
+            }
+        }
+        // Add Site button — visible only when TK2 is ticked AND there's room
+        // for another slot.
+        if (addSiteBtn) {
+            const roomForMore = activeExtraSiteCount() < 4;  // max 4 extras = 5 total sites
+            addSiteBtn.classList.toggle('hidden', !(tk2Ticked && roomForMore));
+        }
+        if (ccNote) ccNote.classList.toggle('hidden', !ccTicked);
+        const tk1Note = document.getElementById('tk1Note');
+        if (tk1Note) tk1Note.classList.toggle('hidden', !tk1Ticked);
+        // Opportunistic km auto-fill when user toggles an allowance after
+        // the tool has already run. Never overwrites manually typed values.
         if (lastLegs && lastLegs.morning) {
-            applyKmAutofill(lastLegs.morning, lastLegs.returnLeg, { onlyIfEmpty: true });
+            applyKmAutofill(lastLegs.morning, lastLegs.returnLeg, {
+                onlyIfEmpty: true,
+                betweenLegs: lastLegs.betweenLegs || []
+            });
         }
     }
     // Disable the Calculate button if Maps failed to load (offline, key
@@ -1360,7 +1480,32 @@
         if (!leg || leg.km == null || leg.minutes <= TRAVEL_BOUNDARY_MIN) return 0;
         return leg.km * (leg.minutes - TRAVEL_BOUNDARY_MIN) / leg.minutes;
     }
-    function calculateRouteTime() {
+    // Promise-wrapper for a single Distance Matrix query (one origin, one
+    // destination). Resolves to a leg object ({minutes, km}) or rejects
+    // with an Error carrying a user-friendly message.
+    function distanceMatrixLeg(origin, destination, matrixOptions, legLabel) {
+        return new Promise(function(resolve, reject) {
+            const service = new google.maps.DistanceMatrixService();
+            service.getDistanceMatrix(
+                Object.assign({ origins: [origin], destinations: [destination] }, matrixOptions),
+                function(response, status) {
+                    if (status !== 'OK') {
+                        return reject(new Error('Google Maps error (' + legLabel + '): ' + status));
+                    }
+                    const leg = readLeg(response && response.rows && response.rows[0] && response.rows[0].elements && response.rows[0].elements[0]);
+                    if (!leg) return reject(new Error('No route found (' + legLabel + ').'));
+                    resolve(leg);
+                }
+            );
+        });
+    }
+    // Resolve a text input + its Autocomplete-selected place into a spec
+    // suitable for DistanceMatrix (prefers place_id over raw text).
+    function specFromInputAndPlace(text, place) {
+        if (place && place.place_id) return { placeId: place.place_id };
+        return text;
+    }
+    async function calculateRouteTime() {
         const btn = document.getElementById('btnCalculateRoute');
         // Gate: API must be loaded.
         if (!window.google || !window.google.maps) {
@@ -1372,47 +1517,55 @@
             alert('Please select a start location (Devonport, Hobart, or Custom).');
             return;
         }
-        // --- MORNING LEG ---
-        // Origin resolution: office addresses are plain strings; Custom
-        // uses the Autocomplete-selected place_id when available (most
-        // reliable) and falls back to raw text otherwise.
+        // --- MORNING ORIGIN / DESTINATION ---
         let originSpec;
         if (flags.Office === 'Custom') {
             const customText = document.getElementById('customOrigin').value.trim();
             if (!customText) { alert('Please enter a custom start address.'); return; }
-            originSpec = (selectedPlaces.customOrigin && selectedPlaces.customOrigin.place_id)
-                ? { placeId: selectedPlaces.customOrigin.place_id }
-                : customText;
+            originSpec = specFromInputAndPlace(customText, selectedPlaces.customOrigin);
         } else {
             originSpec = OFFICES[flags.Office];
         }
-        // Destination — same pattern: prefer the Autocomplete-selected
-        // place_id for reliability; fall back to the raw input text.
         const destText = document.getElementById('destination').value.trim();
         if (!destText) { alert('Please enter a destination (site address).'); return; }
-        const destinationSpec = (selectedPlaces.destination && selectedPlaces.destination.place_id)
-            ? { placeId: selectedPlaces.destination.place_id }
-            : destText;
+        const destinationSpec = specFromInputAndPlace(destText, selectedPlaces.destination);
+        // --- TK2 EXTRA SITES (2..5) ---
+        const tk2Cb = document.getElementById('allow_tk2');
+        const tk2Ticked = !!(tk2Cb && tk2Cb.checked);
+        const extraSiteSpecs = [];
+        if (tk2Ticked) {
+            for (let i = 2; i <= 5; i++) {
+                const w = document.getElementById('siteWrap' + i);
+                if (!w || w.classList.contains('hidden')) continue;
+                const txt = document.getElementById('site' + i).value.trim();
+                if (!txt) { alert('Site ' + i + ' is empty \u2014 enter an address or remove the row.'); return; }
+                extraSiteSpecs.push(specFromInputAndPlace(txt, selectedPlaces['site' + i]));
+            }
+        }
+        // All sites, starting with morning destination. activeSites[N-1] is
+        // the last site of the day.
+        const activeSites = [destinationSpec].concat(extraSiteSpecs);
         // --- RETURN LEG (optional — only when Return section is visible) ---
-        const tk1Ticked = !!(document.getElementById('allow_tk1') && document.getElementById('allow_tk1').checked);
+        const tk1Cb = document.getElementById('allow_tk1');
+        const tk1Ticked = !!(tk1Cb && tk1Cb.checked);
         const returnSec = document.getElementById('returnSection');
-        const returnVisible = tk1Ticked && returnSec && !returnSec.classList.contains('hidden');
+        const returnVisible = (tk1Ticked || tk2Ticked) && returnSec && !returnSec.classList.contains('hidden');
         let returnOriginSpec = null, returnDestSpec = null;
         if (returnVisible) {
-            // Return starts at the site we left (returnFrom input).
-            const rfText = document.getElementById('returnFrom').value.trim();
-            if (!rfText) { alert('Return section: please enter the site address you are returning from.'); return; }
-            returnOriginSpec = (selectedPlaces.returnFrom && selectedPlaces.returnFrom.place_id)
-                ? { placeId: selectedPlaces.returnFrom.place_id }
-                : rfText;
-            // Return destination: office or custom.
+            // Return origin: last active site (morning Dest when no extras).
+            if (tk2Ticked && extraSiteSpecs.length > 0) {
+                // User-visible "Returning from" — may have been edited.
+                const rfText = document.getElementById('returnFrom').value.trim();
+                if (!rfText) { alert('Return section: please enter the last site of the day.'); return; }
+                returnOriginSpec = specFromInputAndPlace(rfText, selectedPlaces.returnFrom);
+            } else {
+                returnOriginSpec = destinationSpec;
+            }
             if (!flags.ReturnOffice) { alert('Return section: please select where you are returning to.'); return; }
             if (flags.ReturnOffice === 'Custom') {
                 const crText = document.getElementById('customReturn').value.trim();
                 if (!crText) { alert('Return section: please enter a custom return address.'); return; }
-                returnDestSpec = (selectedPlaces.customReturn && selectedPlaces.customReturn.place_id)
-                    ? { placeId: selectedPlaces.customReturn.place_id }
-                    : crText;
+                returnDestSpec = specFromInputAndPlace(crText, selectedPlaces.customReturn);
             } else {
                 returnDestSpec = OFFICES[flags.ReturnOffice];
             }
@@ -1428,72 +1581,42 @@
             if (typeof syncArriveTime === 'function') syncArriveTime();
             if (typeof calculate === 'function') calculate();
         };
-        const service = new google.maps.DistanceMatrixService();
         const matrixOptions = {
             travelMode: google.maps.TravelMode.DRIVING,
             drivingOptions: { departureTime: new Date(), trafficModel: 'bestguess' }
         };
-        // Morning call first, then (if needed) the return call. We chain
-        // rather than batch so an error in one produces a specific message.
-        service.getDistanceMatrix(
-            Object.assign({ origins: [originSpec], destinations: [destinationSpec] }, matrixOptions),
-            function(response, status) {
-                if (status !== 'OK') {
-                    restoreBtn();
-                    clearTravelFields();
-                    alert('Google Maps error (morning leg): ' + status + '. Try again, or enter Travel Hrs/Mins manually.');
-                    return;
-                }
-                const morningLeg = readLeg(response && response.rows && response.rows[0] && response.rows[0].elements && response.rows[0].elements[0]);
-                if (!morningLeg) {
-                    restoreBtn();
-                    clearTravelFields();
-                    alert('No route found for the morning leg. Try picking the destination from the Autocomplete dropdown, or enter a more specific address. Or enter Travel Hrs/Mins manually.');
-                    return;
-                }
-                // Fill Travel Hrs/Mins + syncArriveTime based on morning leg.
-                const totalMinutes = Math.round(morningLeg.minutes);
-                document.getElementById('manualHours').value   = Math.floor(totalMinutes / 60);
-                document.getElementById('manualMinutes').value = totalMinutes % 60;
-                if (typeof syncArriveTime === 'function') syncArriveTime();
-                // Cache morning leg so syncAllowanceBoundUI can opportunistically
-                // fill km fields when the user ticks an allowance later.
-                lastLegs.morning = morningLeg;
-                lastLegs.returnLeg = null;
-                // If no return leg needed → finish up here.
-                if (!returnVisible) {
-                    applyKmAutofill(morningLeg, null);
-                    restoreBtn();
-                    if (typeof calculate === 'function') calculate();
-                    return;
-                }
-                // Return leg call.
-                service.getDistanceMatrix(
-                    Object.assign({ origins: [returnOriginSpec], destinations: [returnDestSpec] }, matrixOptions),
-                    function(retResp, retStatus) {
-                        restoreBtn();
-                        if (retStatus !== 'OK') {
-                            // Morning filled, but return failed — keep morning data,
-                            // surface the return-specific error.
-                            applyKmAutofill(morningLeg, null);
-                            if (typeof calculate === 'function') calculate();
-                            alert('Morning leg calculated successfully, but the return-leg Google Maps call failed: ' + retStatus + '. Enter the TK1 return km manually.');
-                            return;
-                        }
-                        const returnLeg = readLeg(retResp && retResp.rows && retResp.rows[0] && retResp.rows[0].elements && retResp.rows[0].elements[0]);
-                        if (!returnLeg) {
-                            applyKmAutofill(morningLeg, null);
-                            if (typeof calculate === 'function') calculate();
-                            alert('No route found for the return leg. TK1 km not auto-filled — enter manually.');
-                            return;
-                        }
-                        lastLegs.returnLeg = returnLeg;
-                        applyKmAutofill(morningLeg, returnLeg);
-                        if (typeof calculate === 'function') calculate();
-                    }
-                );
+        try {
+            // 1. Morning leg (always)
+            const morningLeg = await distanceMatrixLeg(originSpec, destinationSpec, matrixOptions, 'morning leg');
+            // Fill Travel Hrs/Mins + syncArriveTime.
+            const totalMinutes = Math.round(morningLeg.minutes);
+            document.getElementById('manualHours').value   = Math.floor(totalMinutes / 60);
+            document.getElementById('manualMinutes').value = totalMinutes % 60;
+            if (typeof syncArriveTime === 'function') syncArriveTime();
+            // 2. Between-site legs (only if TK2 with extras)
+            const betweenLegs = [];
+            for (let i = 0; i < activeSites.length - 1; i++) {
+                const label = 'between-site leg ' + (i + 1) + '\u2192' + (i + 2);   /* U+2192 → */
+                const leg = await distanceMatrixLeg(activeSites[i], activeSites[i + 1], matrixOptions, label);
+                betweenLegs.push(leg);
             }
-        );
+            // 3. Return leg (if visible)
+            let returnLeg = null;
+            if (returnVisible) {
+                returnLeg = await distanceMatrixLeg(returnOriginSpec, returnDestSpec, matrixOptions, 'return leg');
+            }
+            // Cache + apply km autofill.
+            lastLegs.morning     = morningLeg;
+            lastLegs.returnLeg   = returnLeg;
+            lastLegs.betweenLegs = betweenLegs;
+            applyKmAutofill(morningLeg, returnLeg, { betweenLegs: betweenLegs });
+            if (typeof calculate === 'function') calculate();
+        } catch (err) {
+            clearTravelFields();
+            alert(err.message + ' Try again or enter Travel Hrs/Mins and km fields manually.');
+        } finally {
+            restoreBtn();
+        }
     }
     // Pre-fill km allowance fields based on the legs we just fetched.
     //   • Km's (Company Car) — morning km × 1 (per the inline note).
@@ -1506,7 +1629,9 @@
     // we want when the user ticks an allowance AFTER the tool has run; the
     // direct "Calculate" flow passes `onlyIfEmpty = false` to always apply.
     function applyKmAutofill(morningLeg, returnLeg, options) {
-        const onlyIfEmpty = !!(options && options.onlyIfEmpty);
+        const opts = options || {};
+        const onlyIfEmpty = !!opts.onlyIfEmpty;
+        const betweenLegs = Array.isArray(opts.betweenLegs) ? opts.betweenLegs : [];
         const setIf = function(input, value) {
             if (!input) return;
             if (onlyIfEmpty && input.value && String(input.value).trim() !== '') return;
@@ -1520,14 +1645,24 @@
         }
         // TK1 — requires both legs so the ratio-method total is accurate.
         // If user ticks TK1 after running the tool with only a morning call,
-        // we'll leave TK1 empty here; pressing Calculate again (once the
-        // Return section is filled) will complete the auto-fill.
+        // we'll leave TK1 empty; pressing Calculate again (once the Return
+        // section is filled) will complete the auto-fill.
         const tk1Cb = document.getElementById('allow_tk1');
         const tk1Input = document.getElementById('km_tk1');
         if (tk1Cb && tk1Cb.checked && tk1Input && morningLeg && returnLeg) {
             const morningOB = outsideBoundaryKm(morningLeg);
             const returnOB  = outsideBoundaryKm(returnLeg);
             setIf(tk1Input, Math.round(morningOB + returnOB));
+        }
+        // TK2 — sum of between-site km (Cl 64.4). Only populated when at
+        // least one between-site leg is known.
+        const tk2Cb = document.getElementById('allow_tk2');
+        const tk2Input = document.getElementById('km_tk2');
+        if (tk2Cb && tk2Cb.checked && tk2Input && betweenLegs.length > 0) {
+            const total = betweenLegs.reduce(function(sum, leg) {
+                return sum + (leg && leg.km != null ? leg.km : 0);
+            }, 0);
+            setIf(tk2Input, Math.round(total));
         }
     }
     window.onload = function() {
@@ -1541,6 +1676,14 @@
         initAutocomplete('customOrigin', function(p) { selectedPlaces.customOrigin = p; });
         initAutocomplete('returnFrom',   function(p) { selectedPlaces.returnFrom   = p; });
         initAutocomplete('customReturn', function(p) { selectedPlaces.customReturn = p; });
+        // TK2 extra site inputs — each pre-rendered hidden; Autocomplete
+        // attaches to the DOM node and works fine when the slot becomes
+        // visible via addNextSite().
+        for (let i = 2; i <= 5; i++) {
+            (function(n) {
+                initAutocomplete('site' + n, function(p) { selectedPlaces['site' + n] = p; });
+            })(i);
+        }
         syncMapsButtonState();
         syncAllowanceBoundUI();
     };
