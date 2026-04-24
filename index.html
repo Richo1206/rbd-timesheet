@@ -1,2059 +1,961 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>RBD Timesheet Calculator</title>
-    <link rel="icon" type="image/x-icon" href="favicon.ico">
-    <link rel="apple-touch-icon" href="favicon.ico">
-    <style>
-        * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
-        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; background: linear-gradient(135deg, #e8eef5 0%, #f0f4f8 50%, #e8eef5 100%); padding: 12px; margin: 0; line-height: 1.5; min-height: 100vh; }
-        .card { background: white; max-width: 520px; margin: 0 auto; padding: 20px; border-radius: 20px; box-shadow: 0 4px 24px rgba(0,40,100,0.10), 0 1px 3px rgba(0,0,0,0.06); overflow: hidden; position: relative; }
-        .card::before { content: ''; position: absolute; top: 0; left: 0; right: 0; height: 6px; background: linear-gradient(90deg, #003366, #004a99, #0066cc); }
-        h2 { color: #003366; margin: 12px 0 4px 0; text-align: center; font-size: 21px; font-weight: 800; letter-spacing: -0.3px; }
-        .sub { text-align: center; font-size: 10px; color: #8899aa; margin-bottom: 10px; letter-spacing: 0.3px; }
-        .section-header { font-size: 11px; font-weight: 800; color: #003366; margin: 22px 0 10px; text-transform: uppercase; border-bottom: 2px solid #e8eef5; padding-bottom: 6px; letter-spacing: 1.2px; display: flex; align-items: center; justify-content: space-between; }
-        .input-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 15px; }
-        @media (max-width: 400px) { .input-grid { grid-template-columns: 1fr; } }
-        label { display: block; font-weight: 600; margin-bottom: 5px; font-size: 12px; color: #4a5568; }
-        input[type="time"], input[type="text"], input[type="number"] { width: 100%; padding: 12px; border: 1.5px solid #d2dce6; border-radius: 10px; font-size: 16px; background: #f8fafc; appearance: none; transition: border-color 0.2s, box-shadow 0.2s; }
-        input:focus { border-color: #004a99; outline: none; background: #fff; box-shadow: 0 0 0 3px rgba(0,74,153,0.1); }
-        .route-box { background: linear-gradient(135deg, #f8fafc, #f0f5fa); padding: 14px; border-radius: 12px; border: 1.5px solid #d2dce6; margin-bottom: 20px; }
-        .maps-btn { width: 100%; padding: 14px; background: linear-gradient(135deg, #004a99, #0058b3); color: white; border: none; border-radius: 10px; font-weight: 700; cursor: pointer; margin-bottom: 12px; font-size: 14px; transition: transform 0.1s, box-shadow 0.2s; box-shadow: 0 2px 8px rgba(0,74,153,0.25); }
-        .maps-btn:active { transform: scale(0.98); }
-        .toggle-section { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 15px; }
-        .day-toggle-section { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 6px; margin-bottom: 15px; border-top: 1.5px solid #e8eef5; padding-top: 15px; }
-        .toggle-btn { padding: 15px 4px; border: 1.5px solid #b0c4de; background: #f8fafc; color: #3a4457; cursor: pointer; border-radius: 10px; text-align: center; font-weight: 700; font-size: 12px; transition: all 0.15s ease; user-select: none; }
-        .toggle-btn.active { background: linear-gradient(135deg, #FFD600, #FFEA00); color: #1a1a1a; border-color: #e6c200; box-shadow: 0 2px 8px rgba(255,214,0,0.35); }
-        #results { background: linear-gradient(135deg, #f8fafc, #f0f5fa); padding: 16px; border-radius: 14px; border-left: 4px solid #004a99; margin-top: 12px; box-shadow: inset 0 1px 3px rgba(0,0,0,0.04); }
-        #results h3 { margin: 0 0 10px 0; font-size: 14px; color: #003366; font-weight: 700; }
-        .code-row { display: flex; justify-content: space-between; padding: 9px 0; border-bottom: 1px solid #e1e8ed; font-size: 14px; font-weight: 500; }
-        .code-row:last-child { border-bottom: none; }
-        .code-row span:last-child { font-weight: 700; color: #003366; font-variant-numeric: tabular-nums; }
-        .notes { font-size: 10px; color: #6b7c8d; margin-top: 10px; padding-top: 8px; border-top: 1px dashed #c8d6e0; }
-        .footer-note { font-size: 9px; color: #8899aa; text-align: center; margin-top: 22px; font-style: italic; line-height: 1.6; }
-        .hidden { display: none !important; }
-        .info-btn { width: 24px; height: 24px; border-radius: 50%; border: 1.5px solid #004a99; background: white; color: #004a99; font-size: 13px; font-weight: bold; font-style: italic; font-family: Georgia, serif; cursor: pointer; display: inline-flex; align-items: center; justify-content: center; padding: 0; line-height: 1; flex-shrink: 0; transition: all 0.15s; }
-        .info-btn:hover, .info-btn:active { background: #004a99; color: white; }
-        .info-panel { background: linear-gradient(135deg, #f0f6fc, #e8f0fa); border: 1px solid #c0d4ea; border-radius: 10px; padding: 14px; margin: 0 0 12px 0; font-size: 12px; color: #334155; line-height: 1.7; display: none; }
-        .info-panel.open { display: block; }
-        .info-panel strong { color: #003366; }
-        .info-panel ul { margin: 6px 0; padding-left: 18px; }
-        .info-panel li { margin-bottom: 5px; }
-        .allow-panel { background: linear-gradient(135deg, #f8fafc, #f0f5fa); border: 1.5px solid #d2dce6; border-radius: 12px; padding: 14px; margin: 10px 0; display: none; max-height: 400px; overflow-y: auto; }
-        .allow-panel.open { display: block; }
-        .allow-group-title { font-size: 10px; font-weight: 800; color: #003366; text-transform: uppercase; margin: 14px 0 6px; letter-spacing: 0.8px; padding-bottom: 4px; border-bottom: 1px solid #e8eef5; }
-        .allow-group-title:first-child { margin-top: 0; }
-        .allow-item { display: flex; align-items: center; padding: 9px 0; border-bottom: 1px solid #eef2f6; font-size: 13px; transition: opacity 0.15s; }
-        .allow-item.disabled { opacity: 0.4; }
-        .allow-item.disabled label, .allow-item.disabled .allow-input, .allow-item.disabled input { cursor: not-allowed !important; }
-        .allow-item.disabled .allow-input { background: #f0f0f0; }
-        .allow-item:last-child { border-bottom: none; }
-        .allow-item label { display: flex; align-items: center; gap: 8px; margin: 0; font-weight: 400; flex: 1; cursor: pointer; font-size: 12px; line-height: 1.3; color: #334155; }
-        .allow-item input[type="checkbox"] { width: 20px; height: 20px; accent-color: #004a99; cursor: pointer; flex-shrink: 0; }
-        .allow-rate { color: #8899aa; font-size: 11px; white-space: nowrap; width: 65px; text-align: right; flex-shrink: 0; }
-        .allow-input { width: 70px; min-width: 70px; max-width: 70px; padding: 8px 4px; border: 1.5px solid #d2dce6; border-radius: 8px; font-size: 11px; text-align: center; margin-left: 6px; flex-shrink: 0; flex-grow: 0; background: #f8fafc; transition: border-color 0.2s; }
-        .allow-input:focus { border-color: #004a99; box-shadow: 0 0 0 2px rgba(0,74,153,0.1); }
-        @keyframes calcSpin { to { transform: rotate(360deg); } }
-        @keyframes sectionFlash {
-            0%   { background: #fff7d6; }
-            100% { background: transparent; }
-        }
-        .section-flash { animation: sectionFlash 1.5s ease-out; }
-        .print-only { display: none; }
-        @media print {
-            /* Hide interactive / decorative elements */
-            .no-print, .toggle-btn, input, label, .day-toggle-section, .route-box, .info-btn, .info-panel, .allow-panel { display: none !important; }
-            .card { box-shadow: none; border: none; padding: 8px 12px; }
-            .card::before { display: none; }
-            .print-only { display: block !important; }
-            /* Tighten vertical rhythm for print — on-screen spacing is
-               kept generous for usability; paper just needs compactness. */
-            body { padding: 4px; }
-            h2 { font-size: 16px; margin: 0 0 2px; }
-            .sub { font-size: 9px; margin-bottom: 4px; padding-bottom: 3px; border-bottom: 2px solid #e8eef5; }
-            .section-header { font-size: 10px; margin: 6px 0 2px; padding-bottom: 2px; }
-            #results { padding: 6px 8px; margin-top: 2px; }
-            #results h3 { margin: 6px 0 2px !important; font-size: 12px !important; }
-            .code-row { padding: 2px 0 !important; font-size: 12px !important; }
-            .notes { font-size: 9px; padding-top: 4px; margin-top: 4px; }
-            .footer-note { font-size: 8px; margin-top: 6px; }
-            /* Keep Extra Allowances and the print-only blocks together
-               across page breaks when possible. */
-            .print-only, #allowancesBlock { page-break-inside: avoid; }
-        }
-    </style>
-    <!--
-      Google Maps JavaScript API — required for the "Calculate time to
-      destination" button and Places Autocomplete on the destination field.
-      The key below is the GitHub Test key (restricted by HTTP referrer to
-      https://richo1206.github.io/rbd-timesheet/*). For the production
-      deployment at rbdelectrical.com.au/timesheet, swap this for the
-      Production key which is restricted to that domain. Any key must have
-      all THREE Google APIs enabled and included in the key's restrictions:
-        (a) Maps JavaScript API
-        (b) Distance Matrix API
-        (c) Places API     ← needed for the destination autocomplete
-      Plus: HTTP referrer restriction to the exact deployment domain(s),
-      and a monthly budget alert in GCP billing.
-      If the key fails or Maps doesn't load, the Calculate button greys out
-      and the user falls back to manual Travel Hrs/Mins entry — the rest
-      of the calculator still works.
-    -->
-    <script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyCJJtYddJaE3tYzw7CvjlvZRPTpb4vD2eo&libraries=places"></script>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>RBD Electrical — Honor Board</title>
+<link rel="icon" type="image/svg+xml" href="data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='6' fill='%2314396A'/><g fill='none' stroke='%23EDB220' stroke-width='2' stroke-linecap='round' stroke-linejoin='round' transform='translate(4 4)'><path d='M6 9H4.5A2.5 2.5 0 0 1 2 6.5V5a1 1 0 0 1 1-1h3'/><path d='M18 9h1.5A2.5 2.5 0 0 0 22 6.5V5a1 1 0 0 0-1-1h-3'/><path d='M6 4h12v5a6 6 0 0 1-12 0V4z'/><path d='M9 22h6'/><path d='M12 15v7'/></g></svg>">
+<link rel="apple-touch-icon" sizes="180x180" href="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAALQAAAC0CAYAAAA9zQYyAAAVGUlEQVR42u2de4zcV3XHP/f3nJmdffsVe53EsU3s2HmThCRQh3cIplCUAkUU1KZUgkpVBaKAaCUobUIoUkENz1IKrYroQyRxLCCCBCmYPMiDJH4lTRw7tmOv1/vyzmNnfo97+8dvZr3rndmH12Fmd85XWvmvHe+c+/md37nnnHuuWnb9xw0i0RKRJSYQCdAikQAtEgnQIpEALRKgRSIBWiQSoEUiAVokEqBFArRIJECLRAK0SCRAi0QCtEiAFokEaJFIgBaJBGiRSIAWCdAikQAtEgnQIpEALRIJ0CIBWiQSoEUiAVokEqBFIgFaJECLRAK0SCRAi0QCtEgkQIsEaJFIgBaJBGiRaN5ylsoXUUoWcyEyRoBuKoWxEL0Q2ZZBCdDN4517MgEKkFtEz8J+QD5wiLRa9FA7ix3kMFZ0pwPu/pNf050JiGKFkD03iqvwWpbhA/9+PbuPdZHxIrRRAvTvPFY20z10TyYgjBVKVV+hBgNIMDJdkVYTlrEtg2OZKT5gsp2NAH1uZSmDUhBrNREr28rg2gZtTsfQYawIKwuVKzoYIzDX3AACWT9KIDagK9DaymBbBh1PtbNjJ0aOtRKgFwoyQK7sEmlFZyqkNxOAgnzZYaToEWnoTIVYFYfj2obRcZf3/tuNjBQ9HNssmR38uZLWih99+BEuXT1KMXBQFYcxVnYpxxbtfjTNzkoZ2v0IS5mmDkmaFmjbMoyHNrFWbFs/wPYtx7h27TDLsmUUMDru8syxLnbsWcNvj3URGTUROhsDI0WPoaKHJ0DXDDcmbwANEEQW29YP8IErD3N138gUOz99rJuf7j+Pnz+/kmJs0+FHlZBFgJ7bH2UZRsZdLuot8A+37OYdm4/jWppyZBFpCwMsz5bZet4pPnjVYR473INra7Q5Hfs5tsG1NY6NAD1tH3I6RadUAvOd25/h6r4RMl5EKbSn2flDVx/i4UPL+NxPLuWxl3vpyQRNGYI4zQjzUNHj5k3H+catT7KqvcTIuIcxYClQlS1KGFsUAxul4Kq+EYLIItYKtxLvRbEijK1kYyhAT/PQVZMYk9j8mvOHGQ9siqFf084GuO78IXb+2a/47M7L+O6jF9HT1nxQq2XXf9w0E8wj4x63bD7GDz74GAoohjaONfOfqI2aiLcVEBnFgcEssU4yHpLCm74pvKi3QNo9naKbbMN6irXCsQ0dfsgnd1zBN3+9ge4m89RN46Fty5ArO1zVN8x33/84xihKkTUrzJM3j9XFcpThstWjkuGYQeXImrK5mw3m6hrFWjE67vKP73qG/lyKe3b30ZVuHqibAuhqgaTNi/j6e58i7cbkyw62Zc7aAxUDR6idoxOY7+9poyiGNv/07qfZc7yTIyMZUm7cFNkPp1mMO1r2uP2W3VyxZoSBfArX1nVhrYYWr8aCiWa3s6UM5chiebbEF2/ew4f+87rmeVCbAeZiYLN55RgfueYgoyUPpw7MSZyXJPsXc3m22TUXOzuWYbToccslx3jTxgHGSu5Zv1GXFNBKQSmy+ejrXjpduq5j5IwXEcaKQuCQXeQ9B80M81ztXMX3Yze+OFF1bGmglYJSaLO+N88fXHo0iZtrhAraJPH1nuOd3PztbWy7603c//wqOlLhlM2INkogn09YcYa95mrnyZvEfNlh2/qTXHfhEPmy0/BQr6FA25Vw4+2b+lnVXqIcW9Ma9Y0Bz9aczPt8+IfXsf9EBycLPn/6o2t5+pUu2ryIME5y0Bk3os2LJO88J5gh5ca0VTxwFCtcawY7+7U9dWwUKTfmPVtfIdRW0oLQqkBrk/RevGXjCWJTO9SIjSLrR3z/8XW8eLKdnkxAmxeRKzvctWsjKTemKx3QlQ7Zd6KThw8tw3O0pJ5ngdlzNPtPdPDkkW46UiGd6ZDOTFDXzq6lazoKWxlKoc3vXXSSnkxA0OCDFg3LciiV5ELXdhe4fM0o46Fd83XlWobhose9e9aQ8SIibaENtPsRD76wgieO9PDySBv/+0wfO/eu4V1bX+Gm9ScohX5TbFKaUVUnsWPPar70wCXccskx3r31FW7aMMCOPavPsHPIgy+s5MBgO31dRcrR1LdoEjZarOvNs2XVKR491EvWb9z+pmFAW8pQihy2nneKFdkSuZKLdQaAumL4Rw/1cmAwS8rVE+2iSerI5n0/uIGBfGrC44+HNuXIlrTdTM6EpOqXK7uA4Rf/t5Kf7T+Ptd1FciUHzzltZ9c2DOZ9HjnUyx9fk2M8tKftc2KjaPNiXrt2mIcOLMdSTPx+y4QcVaNuWTmGYxt0nZDEszW/OdxDIbBrbhjHyi7tfkhXOsC1DIMFn0Bbcmh2DmHHyULSt9GZDunKBAwWvJqhnwYePdw741pqA1tWjmFbje00aBjQBrAt2LAsX7cRv2qoFwbbUaq2oZxKrjTSFralGS56E9kS2RzWWXQrebudyPnYliaK1ZTGrjPBdy3Ni4PZJCysEcYllV6L9b150m7U0DJ4w4DWWpFyYvo6i0R1PGq1InVkNF03z2mmLBQUyw7FsoMlE0dmCPegHFucKrlT7FTbvklD0olcilzZxanhKBSGSFusaC9PpPga9YZsHNAk4US7H6F1fcOXIpvhoodt6VlfobZK8qLDRQ/H0hhpT6prp0LZYbjoz8lOtmUYK7lJntmqn7FKuzEZN25Y/NwwoKvnA9tTIcuy5cRDnxFQGFPpwCu5DBX8yiFONevnBtpiqOhjScgxQ6hnODXuMR7YSd7YzM1RDOZrPwBzWc8l76FfrcxJEFsVjy4019vCWcpwquRSDJJs0FKylLW0lgqMhuNjKSwlff31PK5jaU7kfMpx7U2eAL2A0EPNki82Zn5nAg0wXPQE5lk2hSPjXrJ5m4ddZ1sHpWjNXo6JuKzkMFxIKno147JKYaV6zGe2uMxUFqs/l8JomclRz0ZKJW8xPYe5JUqdblqqniGsud+pxNlDddZzyXvoattork6HHYDWkPbiyglja24PSqVUHsSWVAvrhGXawFDRr5vbP1OxTloN6nXdVb3+eGDX7Zhc8kDblqEc2xwbS+PYtRtftFH4dsyazvFkjsQcHnpLGYaKUi2c7cEfLPhz8qGnc8wlsn6UVBLP7IhEYduawYI/cXTOtGLpO4rhpaG2uhu4ajVxfW++7utRVR6OZLeucKRaOPOCT6oSOpUOOqVM3cPI1SrghT0FMnWqgMaAa2sODbdRCJ2GZpgaWvq2FOzt7ySuE+9aJIdnX7t2hNSkhpnJMIdaMVzwKIZJc7lrm2S+hFQL64YG5dhirOzi2jqpxoY2gwUPXcP7VtPU164dwbJmcDwK9p7oIIobO5K3cZXCSoP5nv5Ohop+zUOxSiXjwK5YM8ra7gLlyJ4wuDGJt/neB37D371jD5tWjJEvO4yVXEaKHiPjSXVRqoVTPamlDMWyw8mcT67sMlbyuKCnwKff/Bz33vYrVmRLBJMOWoRa0ZUOueHCQUqhXbOB36q0kD51tDsZoNnA7+g0zrgK39EcHGpj3/FObrhocNoRnurrbkW2xM2b+vnnX20k40UYk8yGeOvF/bxn6yvE5hgfvf4Aj73cy449a7hv72r6cymuqsZywvRErOtYmqGih1LwR1cd5r2XHeX1F56kKxPieRFvuzixc9skO79tUz+bV46RD6YfsTIGfCfm6GiGZ451kXJjTAOPwTV0jIFd8cAPHljBTRsH0JVxX7W89G3XHeSHT11AMXBw7cTz/sWNL1KObEbHXTxH85aNJ7h503H+alsHxsB4KJmOM21ZneK647ZdXLxiDGMU+SCZMJqJatv5Yze8iFK1nYM2irQb8/ChZZzMpehq8CSlBh/BSozx0/3nMVz0cGtsJiyVNO1vWJbjW7c+QcaLCGKLr/z+09y0YYBcOWlIBzhVdhks+KzpLNLXVSSUTMf0jbhW9LQFXNBdYKToMTruVo7CaUqhVdPOb9xQf0xBtY/j3r2rZy2S/U6+Y6Nn29lWMs/5e+9/nPddeZiROn0Y2ija/ZADg1nGI5stq05RCJya0YQxyetVvHP9cA9MzYd9PnauFlx+e7Sb7f/6hobmn5vCQ1fhcyzDNx9ZX+n+MnV254Zc2eX87iKbV4yRL7szhsaOpSV0rmcbW8+QBZm7naue/VuPrKdQdmTQTPUpz/oRjx/u5ce7++jKhMnFP3WMXY6siRRd3QfETvp3g1hJyFHDPsOVmw3q9S3Pxc6xVnSkIh4+uIz79q6mc4YqYksBXYU65Ub8/c+3cGQkQ9qrP/hvpgaYaum7FNrc8cBmDKphfbnNqGQqUsxXH3oNLw+3VZrxz97OYaz4m59eWknzNYedrWbxGilHc2Q0zSfuvQKvkvDX8+yyi42iKx1w+y82c++eNRNnFaVaWN0UJoZ49FAvf33f5ROFlbOxc08m4PP3b+XRl3uTU0dNMrGqaWppcSWBv3Pfaj6983I6KhcBzeU1po1Ca8WKbJmvPXQx33x4A76jK6MRBOSJxbagGNjYluH+/ectyM5ffeg1fGPXBrrTzTXwvKmWO9bJk//1XRv4xD1XknJispULamIzNXgwFQOHsYXvJB15X/nlJj6z8zK60iFjJTlbOC1MUIZC4DCQT9HbXuKuXRvP2s6f3XkZ7amooUWUmhveZjN8rBW9bQHffmQ9+wfauXP7s1y5ZoQgtihFya1Y1Tv1fDcm5ca8NJTl8z/byn8/vZbOdIilDOORM/VsYYszPfksYTGwMQZ6Mwuzc/VzBeg5eupfH1zOLf/ye9x62RG2bznOllWn6EiFKKAQ2DxzrIv7n1/Ff/32fI6OZk7f91E5LCtnC6dG0NWzhOOBjWMnVcMF2bkJ1bT3NkRa0ZFKUnjfeWQ93398HX1d46zIllAkqacjo5lkhrEfTjGynC2sHXJMPkvouSG6cl/h2dpZgD4LT20p6GkLMAb6x1IcHU1D5fXp25p0W5nYqGlGlrOFNTZMdc4SLsTOAvRZxH5VI3qOxq8galAYQ80bTeVsYW07znSW8GzsLECfg9fmXDIW1cT/UNGXs4UTEXRSqh4szH6WcK52bsq30NJ9vSaHZUuRLe65AmkUq+Rw7FIOq5bm67XSyF7wUEDGiwnj1g08Yq3wHE3K1fTnUhNnCQXoReSNPCeZmPmp+y7n+Fia5dnylDixFVS9RKk7ExDEFp/7yaU8e6yLjBcv2cuV7Mzaaz6/VBfUtuA3h3u5e3cfrm24um+UjBdRCm1UZZO0VDeAsU56lVNuzN3PruXP/+ca7tm9Bt9Z2m21TXV5/auy67UMpcgiX3Z5/bqTfO6t+3jjhgGKoc14aM/pLvHFFl64tqYjFfH0K13c/otL2LnvPDxb0+bFiyZbIUDP9CUrt6KOlZIm9A9edZhPvfE51vXmGRn30Fot+opiNYToSgcMFzzu2rWRbz2ygbGSS1c6yS+3wh2OLQH0RAiiDBrFaNFlTdc4n9z2PB+59hCeHTNWcrGUWXRhSDW8yHoRtmW4Z3cfdzywmb39HXSmQxzLtNS+oaWAXmphyGzhRbXBqJXUkkAv9jBEwgsBekmEIRJeCNBLJgyR8EKAXhJhiIQXAvSrGobky845D0HqHajRRpFxJbwQoF+FMOTGdSf527ft43UXDCVzQ+qMnZ0vZLZlqHWzWjJz2fD8QLuEFwL0uQ9DTpVc0m7MllWnTjf2qNP/VIcgfucPn6AjnZwAmc2TW5bhL398Fc+d6CDtRkwpSldaYF842c5gwac7I+HFnJyQmGCWcMBAZBQdfkhsFE8d7a4JfRgrejMBkZn7wG8FPDfQzpNHu2nzps+2MCTzSpr92JMAvQgVV2Br86K6QGe8aN6NP2k3ps2LagKdPFBKYBagX/2sw5mettqqeTafN/lHtDDJXCGRAC0SCdAikQAtEgnQIgFaJBKgRSIBWiQSoEUiAVokQItEArRIJECLRAK0SCRAiwRokUiAFokEaJFIgBaJBGiRAC0SCdAikQAtEp0jyVwOKhO9FjASQ6nTP2fzf0/8/kK+hEHm3bU60NVh5kFsYfTCgA5jdVaXe0ZaTfzuQgbNKMC1ky/RygNrnFaGuRTZlCOLFdkynnP2t6sqlVw73J0J5u2lO9MhvZmATJ1RYHOFOTaKgVxyj3fbAj5r0b9tW3H6qKUMxdDhgu4Cn3nzfq47fwjXNnXnNM/xjY8C2v1wXlDnyw7xPAY81vt/tVHs6+/gy7/cxJNHesj6YUtC3XJAVz3z2q4iO27bxUW9ecZK7oJgPjOEmI+q86HPhTJeRKHscOsPbuDhg8vJpkJ0iw16bLmQQykIIovPvHk/63rzHB9L4dn6nH7+vB+Ac+FSFAwWfHrSAV94+162f/cNLQcztFjarroBXJ4tc935w+RKLp6tp2QpFvqzoCzHQn4Az9bkA4dNK8fYsDxHKbKwlBGgl7KMAc/RExmBpSjbMqRcjTHioVsGavmOArRIJEA3ZSwt31GAXkqKl/j1D8bMP30oQC/WDaGtGcj57OvvIONFhHrpmCCKFb6jOTKa4aXBLCk3brniSmuGHAq+/MtNFMoOPekAw+Ju7Kn+/W1+TNqNuPPBzZwquQ2/n7wha9uqpe982eGGdUN84eY9bF4xhm0ZJt+nqZRp3kyBAszU22SNgSOjGe58cDN3P9snpe9Whdp3NBuX50g5Gl25vTXSFrFWqHNWED+3/tigsJTBtXXyd6rkSuYDg1lGSy6dqbBlm5NatttOG0XWT7rS9p3oTGBWkA9ssl5ERypCm2Z9GGE8tBkuemT9CGOSx853YrrSYUtf1NnS/dBVL5ZxIywr6Xx71yXH+NL2Zydgb7Zr4id31335wU38xxMX0p6K0FpunW15oE9DoggiyHoRt79zNxuX58iVHGyr+TaLCczgO5ovvmM3uw4u4+WRNnwnlhMrAvRUqF07uXe7HNlE2kI36a7QoDBRkqJLUnOVfaIsowBdzRB4tmaw4HPHA5u5453P4ju6eQExBtsyfO2h17Cvv7OlT6hIlmOW13khsFnXW2BZWzmJR5svyYFlQaHs8NxAO2k3loUTD11/w5X1I46OZjg43NbU/RCWMuKZBei5ZT48R+MvgohUYBag5xxTGwSWxSjphxYJ0CKRAC0SCdAikQAtEqBFIgFaJBKgRSIBWiQSoEUCtEgkQItEArRIJECLRAK0SIAWiQRokUiAFokEaJFIgBYJ0CKRAC0SCdAikQAtEk3X/wPtzzP7zTh1HQAAAABJRU5ErkJggg==">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Honor Board">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="theme-color" content="#14396A">
+<style>
+  :root {
+    --rbd-blue: #14396A;
+    --rbd-blue-light: #1B4F8F;
+    --rbd-blue-dark: #0E2A50;
+    --rbd-gold: #EDB220;
+    --rbd-gold-light: #F5C843;
+    --rbd-green: #7AB929;
+    --rbd-green-dark: #5A9A10;
+    --bg-main: #f4f6fa;
+    --card-bg: #ffffff;
+    --text-primary: #14203a;
+    --text-secondary: #555566;
+    --silver: #8a9bae;
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  html { scroll-behavior: smooth; }
+  body {
+    font-family: 'Segoe UI', -apple-system, BlinkMacSystemFont, 'Helvetica Neue', Arial, sans-serif;
+    background: var(--bg-main);
+    color: var(--text-primary);
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+
+  /* ── Header ── */
+  .header {
+    background: linear-gradient(135deg, var(--rbd-blue) 0%, var(--rbd-blue-light) 50%, #245da1 100%);
+    color: white;
+    padding: 1.4rem 2rem 2.2rem;
+    text-align: center;
+    position: relative;
+    overflow: hidden;
+  }
+  .header::after {
+    content: '';
+    position: absolute;
+    bottom: 0; left: 0; right: 0;
+    height: 6px;
+    background: linear-gradient(90deg, var(--rbd-gold) 0%, var(--rbd-green) 50%, var(--rbd-blue-light) 100%);
+  }
+  .header-logo {
+    height: 140px;
+    margin-bottom: 0.2rem;
+    object-fit: contain;
+    filter: drop-shadow(0 2px 4px rgba(0,0,0,0.15));
+  }
+  .header-brand-fallback {
+    font-size: 1.1rem;
+    font-weight: 700;
+    letter-spacing: 4px;
+    text-transform: uppercase;
+    opacity: 0.95;
+    margin-bottom: 0.4rem;
+    display: none;
+  }
+  .header h1 {
+    font-size: 2.4rem;
+    font-weight: 700;
+    letter-spacing: 0.5px;
+    margin-bottom: 0.3rem;
+  }
+  .header .subtitle {
+    font-size: 1rem;
+    opacity: 0.9;
+    font-weight: 400;
+    margin-bottom: 0.6rem;
+  }
+  .header .tagline {
+    display: inline-block;
+    font-size: 0.72rem;
+    letter-spacing: 3px;
+    text-transform: uppercase;
+    opacity: 0.8;
+    padding: 0.3rem 1rem;
+    border-top: 1px solid rgba(255,255,255,0.2);
+    border-bottom: 1px solid rgba(255,255,255,0.2);
+    font-weight: 500;
+  }
+  .stats-bar {
+    display: flex;
+    justify-content: center;
+    gap: 2.5rem;
+    margin-top: 1.3rem;
+    flex-wrap: wrap;
+  }
+  .stat-item { text-align: center; }
+  .stat-item .stat-num {
+    font-size: 2rem;
+    font-weight: 700;
+    line-height: 1;
+  }
+  .stat-item .stat-label {
+    font-size: 0.72rem;
+    opacity: 0.75;
+    text-transform: uppercase;
+    letter-spacing: 1.5px;
+    margin-top: 0.25rem;
+  }
+
+  /* ── Milestone ribbons (upcoming / recent) ── */
+  .ribbons-wrap { max-width: 1180px; margin: 1.2rem auto 0; padding: 0 1.5rem; }
+  .ribbon {
+    border-radius: 12px;
+    padding: 1rem 1.2rem;
+    margin-bottom: 0.8rem;
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    box-shadow: 0 2px 8px rgba(20, 57, 106, 0.08);
+    animation: fadeUp 0.5s ease-out both;
+  }
+  .ribbon-upcoming {
+    background: linear-gradient(135deg, #fff8e1 0%, #fdecb6 100%);
+    border: 1px solid var(--rbd-gold);
+  }
+  .ribbon-recent {
+    background: linear-gradient(135deg, #e8f5d9 0%, #d4ebb5 100%);
+    border: 1px solid var(--rbd-green-dark);
+  }
+  .ribbon-icon {
+    width: 44px; height: 44px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    color: white;
+  }
+  .ribbon-upcoming .ribbon-icon { background: var(--rbd-gold); color: var(--rbd-blue); }
+  .ribbon-recent .ribbon-icon { background: var(--rbd-green-dark); }
+  .ribbon-icon svg { width: 22px; height: 22px; }
+  .ribbon-body { flex: 1; min-width: 0; }
+  .ribbon-title {
+    font-size: 0.72rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 1.5px;
+    color: var(--text-secondary);
+    margin-bottom: 0.3rem;
+  }
+  .ribbon-content {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem 1rem;
+    font-size: 0.95rem;
+  }
+  .ribbon-entry {
+    font-weight: 500;
+    color: var(--text-primary);
+  }
+  .ribbon-entry strong { color: var(--rbd-blue); }
+  .ribbon-entry .when {
+    color: var(--text-secondary);
+    font-size: 0.85rem;
+    font-weight: 400;
+  }
+
+  /* ── Filter bar ── */
+  .filter-bar {
+    background: white;
+    border-bottom: 1px solid #e0e4ea;
+    padding: 0.8rem 2rem;
+    display: flex;
+    justify-content: center;
+    gap: 0.5rem;
+    flex-wrap: wrap;
+    position: sticky;
+    top: 0;
+    z-index: 100;
+    margin-top: 1rem;
+  }
+  .filter-btn {
+    padding: 0.4rem 1rem;
+    border: 2px solid #dde1e8;
+    border-radius: 20px;
+    background: white;
+    color: var(--text-secondary);
+    cursor: pointer;
+    font-size: 0.82rem;
+    font-weight: 500;
+    font-family: inherit;
+    transition: all 0.2s;
+  }
+  .filter-btn:hover { border-color: var(--rbd-blue); color: var(--rbd-blue); }
+  .filter-btn.active {
+    background: var(--rbd-blue);
+    border-color: var(--rbd-blue);
+    color: white;
+  }
+  .filter-btn.loc-btn.active {
+    background: var(--rbd-gold);
+    border-color: var(--rbd-gold);
+    color: var(--rbd-blue);
+  }
+  .filter-separator {
+    width: 1px;
+    background: #ddd;
+    margin: 0 0.3rem;
+    align-self: stretch;
+  }
+
+  /* ── Milestone sections ── */
+  .content { max-width: 1180px; margin: 0 auto; padding: 1.5rem; }
+  .milestone-section {
+    margin-bottom: 2.2rem;
+    animation: fadeUp 0.5s ease-out both;
+  }
+  .milestone-section:nth-child(2) { animation-delay: 0.08s; }
+  .milestone-section:nth-child(3) { animation-delay: 0.16s; }
+  .milestone-section:nth-child(4) { animation-delay: 0.24s; }
+  .milestone-section:nth-child(5) { animation-delay: 0.32s; }
+  @keyframes fadeUp {
+    from { opacity: 0; transform: translateY(16px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+  .milestone-header {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    margin-bottom: 0.5rem;
+  }
+  .milestone-icon {
+    width: 44px; height: 44px;
+    border-radius: 10px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+  }
+  .milestone-icon svg { width: 24px; height: 24px; }
+  .milestone-header h2 {
+    font-size: 1.2rem;
+    font-weight: 700;
+    color: var(--text-primary);
+  }
+  .milestone-header .count {
+    font-size: 0.82rem;
+    color: var(--text-secondary);
+    font-weight: 400;
+    margin-left: 0.3rem;
+  }
+  /* Dashed underline accent (matches main website style) */
+  .milestone-underline {
+    height: 6px;
+    margin-bottom: 1rem;
+    background-image: repeating-linear-gradient(
+      90deg,
+      var(--underline-color, var(--rbd-blue)) 0 10px,
+      transparent 10px 16px
+    );
+    opacity: 0.55;
+    border-radius: 2px;
+  }
+
+  /* Tier colours */
+  .tier-15 .milestone-icon { background: linear-gradient(135deg, var(--rbd-gold) 0%, #d4a017 100%); color: var(--rbd-blue); }
+  .tier-15 { --underline-color: var(--rbd-gold); }
+  .tier-10 .milestone-icon { background: linear-gradient(135deg, var(--rbd-blue) 0%, var(--rbd-blue-light) 100%); color: white; }
+  .tier-10 { --underline-color: var(--rbd-blue); }
+  .tier-5 .milestone-icon { background: linear-gradient(135deg, var(--rbd-green) 0%, var(--rbd-green-dark) 100%); color: white; }
+  .tier-5 { --underline-color: var(--rbd-green-dark); }
+  .tier-1 .milestone-icon { background: linear-gradient(135deg, var(--rbd-blue-light) 0%, #3572b5 100%); color: white; }
+  .tier-1 { --underline-color: var(--rbd-blue-light); }
+  .tier-0 .milestone-icon { background: linear-gradient(135deg, #8a9bae 0%, #6b7d8e 100%); color: white; }
+  .tier-0 { --underline-color: var(--silver); }
+
+  /* ── Employee cards grid ── */
+  .employees-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+    gap: 0.8rem;
+  }
+  .employee-card {
+    background: var(--card-bg);
+    border-radius: 10px;
+    padding: 1rem 1.1rem;
+    border: 1px solid #e8ecf1;
+    transition: transform 0.15s, box-shadow 0.15s;
+    display: flex;
+    align-items: center;
+    gap: 0.8rem;
+    position: relative;
+  }
+  .employee-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+  }
+  .employee-card.has-milestone {
+    border-color: var(--rbd-gold);
+    box-shadow: 0 0 0 2px rgba(237, 178, 32, 0.15);
+  }
+  .milestone-badge {
+    position: absolute;
+    top: -8px; right: 10px;
+    background: linear-gradient(135deg, var(--rbd-gold) 0%, #d4a017 100%);
+    color: var(--rbd-blue);
+    font-size: 0.64rem;
+    font-weight: 700;
+    padding: 3px 8px;
+    border-radius: 10px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    box-shadow: 0 2px 6px rgba(20, 57, 106, 0.2);
+    white-space: nowrap;
+  }
+  .avatar {
+    width: 44px; height: 44px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 700;
+    font-size: 0.9rem;
+    color: white;
+    flex-shrink: 0;
+  }
+  .emp-info { flex: 1; min-width: 0; }
+  .emp-name {
+    font-weight: 600;
+    font-size: 0.95rem;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .emp-meta {
+    font-size: 0.76rem;
+    color: var(--text-secondary);
+    margin-top: 2px;
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 0.3rem;
+  }
+  .emp-years {
+    font-size: 0.82rem;
+    font-weight: 600;
+    white-space: nowrap;
+    color: var(--rbd-blue);
+  }
+  .location-tag {
+    display: inline-block;
+    font-size: 0.67rem;
+    padding: 2px 7px;
+    border-radius: 8px;
+    font-weight: 500;
+  }
+  .loc-devonport { background: #e8f0fb; color: var(--rbd-blue); }
+  .loc-hobart { background: #fdf5e0; color: #9a7a0a; }
+
+  /* ── Updated date ── */
+  .updated {
+    text-align: center;
+    padding: 2rem 1rem;
+    color: var(--text-secondary);
+    font-size: 0.78rem;
+  }
+
+  /* ── No results ── */
+  .no-results {
+    text-align: center;
+    padding: 3rem 1rem;
+    color: var(--text-secondary);
+    font-size: 0.95rem;
+  }
+  .milestone-section.hidden { display: none; }
+
+  /* ────────────────────────────────────────────────
+     MOBILE (≤ 600px)
+     ──────────────────────────────────────────────── */
+  @media (max-width: 600px) {
+    .header { padding: 1rem 1rem 1.6rem; }
+    .header-logo { height: 95px; }
+    .header h1 { font-size: 1.6rem; }
+    .header .subtitle { font-size: 0.88rem; }
+    .header .tagline { font-size: 0.62rem; letter-spacing: 2px; padding: 0.25rem 0.75rem; }
+    .stats-bar { gap: 1.4rem; margin-top: 1rem; }
+    .stat-item .stat-num { font-size: 1.5rem; }
+    .employees-grid { grid-template-columns: 1fr; gap: 0.6rem; }
+    .filter-bar { padding: 0.6rem 0.7rem; gap: 0.35rem; }
+    .filter-btn { padding: 0.5rem 0.85rem; font-size: 0.78rem; }
+    .ribbons-wrap { padding: 0 0.8rem; margin-top: 0.8rem; }
+    .ribbon { padding: 0.8rem; gap: 0.7rem; }
+    .ribbon-icon { width: 36px; height: 36px; }
+    .ribbon-icon svg { width: 18px; height: 18px; }
+    .content { padding: 1rem 0.8rem; }
+    .milestone-header h2 { font-size: 1.05rem; }
+    .milestone-icon { width: 38px; height: 38px; }
+    .milestone-icon svg { width: 20px; height: 20px; }
+  }
+
+  /* ────────────────────────────────────────────────
+     TV / FRAME MODE (opt-in via ?mode=tv)
+     Larger type, no filter bar, no interactive affordances,
+     optimised to be readable from across a room.
+     ──────────────────────────────────────────────── */
+  body.tv-mode .filter-bar { display: none; }
+  body.tv-mode { background: var(--bg-main); }
+  body.tv-mode .header { padding: 2rem 2rem 2.8rem; }
+  body.tv-mode .header-logo { height: 200px; }
+  body.tv-mode .header h1 { font-size: 3.6rem; margin-bottom: 0.5rem; }
+  body.tv-mode .header .subtitle { font-size: 1.5rem; margin-bottom: 1rem; }
+  body.tv-mode .header .tagline { font-size: 1rem; letter-spacing: 5px; padding: 0.5rem 1.5rem; }
+  body.tv-mode .stats-bar { gap: 4rem; margin-top: 1.8rem; }
+  body.tv-mode .stat-item .stat-num { font-size: 3rem; }
+  body.tv-mode .stat-item .stat-label { font-size: 1rem; letter-spacing: 2.5px; }
+
+  body.tv-mode .ribbons-wrap { max-width: 1700px; padding: 0 2.5rem; margin-top: 1.8rem; }
+  body.tv-mode .ribbon { padding: 1.5rem 1.8rem; }
+  body.tv-mode .ribbon-icon { width: 64px; height: 64px; }
+  body.tv-mode .ribbon-icon svg { width: 34px; height: 34px; }
+  body.tv-mode .ribbon-title { font-size: 1rem; letter-spacing: 2.5px; margin-bottom: 0.5rem; }
+  body.tv-mode .ribbon-content { font-size: 1.4rem; gap: 0.6rem 2rem; }
+  body.tv-mode .ribbon-entry .when { font-size: 1.15rem; }
+
+  body.tv-mode .content { max-width: 1700px; padding: 2rem 2.5rem; }
+  body.tv-mode .milestone-section { margin-bottom: 3rem; }
+  body.tv-mode .milestone-header h2 { font-size: 1.85rem; }
+  body.tv-mode .milestone-header .count { font-size: 1.2rem; }
+  body.tv-mode .milestone-icon { width: 60px; height: 60px; }
+  body.tv-mode .milestone-icon svg { width: 32px; height: 32px; }
+  body.tv-mode .milestone-underline { height: 8px; margin-bottom: 1.5rem; }
+
+  body.tv-mode .employees-grid {
+    grid-template-columns: repeat(auto-fill, minmax(360px, 1fr));
+    gap: 1rem;
+  }
+  body.tv-mode .employee-card { padding: 1.4rem 1.5rem; gap: 1.1rem; }
+  body.tv-mode .avatar { width: 64px; height: 64px; font-size: 1.3rem; }
+  body.tv-mode .emp-name { font-size: 1.35rem; }
+  body.tv-mode .emp-meta { font-size: 1rem; gap: 0.5rem; margin-top: 4px; }
+  body.tv-mode .emp-years { font-size: 1.15rem; }
+  body.tv-mode .location-tag { font-size: 0.92rem; padding: 3px 10px; }
+  body.tv-mode .milestone-badge { font-size: 0.85rem; padding: 4px 12px; top: -12px; }
+
+  body.tv-mode .updated { font-size: 1rem; padding: 3rem 1rem 4rem; }
+
+  /* Disable hover animations in TV mode (no mouse) */
+  body.tv-mode .employee-card { transition: none; }
+  body.tv-mode .employee-card:hover { transform: none; box-shadow: none; }
+  body.tv-mode .employee-card.has-milestone { box-shadow: 0 0 0 3px rgba(237, 178, 32, 0.25); }
+
+  /* Hide scrollbar in TV mode */
+  body.tv-mode::-webkit-scrollbar { display: none; }
+  body.tv-mode { scrollbar-width: none; -ms-overflow-style: none; }
+</style>
 </head>
 <body>
-<div class="card">
-    <h2>RBD Timesheet Calculator</h2>
-    <div class="sub">EA 2025 &amp; Handbook Rev 8.0</div>
-    <div class="sub no-print" style="margin-bottom: 8px; font-size: 10px; color: #999; font-style: italic;">For more information on each section, click the <span style="display:inline-flex; align-items:center; justify-content:center; width:16px; height:16px; border-radius:50%; border:1.5px solid #004a99; color:#004a99; font-size:10px; font-weight:bold; font-family:Georgia,serif; vertical-align:middle;">i</span> button to the right.</div>
-    <div class="section-header no-print"><span>Google Maps Travel Tool</span><button class="info-btn" onclick="toggleInfo('infoMaps')">i</button></div>
-    <div id="infoMaps" class="info-panel no-print">
-        <strong>How it works:</strong>
-        <ul>
-            <li><strong>Fully automatic.</strong> Every field in this section triggers a background Google Maps lookup as soon as you tab away — no button to press. Travel Hrs/Mins and any ticked km allowances (TK1, TK2, Kms Company Car) fill themselves in a second or two.</li>
-            <li>Select your <strong>start location</strong> — Devonport Office, Hobart Office, or Custom. If Custom, start typing the address or place name and pick from the Google Autocomplete dropdown (accommodation, other RBD office, meeting point, etc.).</li>
-            <li>Start typing the <strong>destination</strong> (site name or address) and pick from the Google Autocomplete dropdown. If the place you need isn't listed, type a street address or town + state instead.</li>
-            <li>Tap <strong>Verify Route</strong> to open Google Maps in a new tab and visually sanity-check the route Google is using.</li>
-            <li>The calculator uses Travel Hrs/Mins (from the morning leg) to auto-set your "Arrived on Site" time based on when you left.</li>
-            <li><strong>TK1 / TK2:</strong> tick these in Extra Allowances and the km fields populate automatically using Google's distances. A "Return" section appears where you select where you're going back to (e.g. accommodation, different office). The return origin is always the last site in your chain — no need to type it in. For TK2 multi-site days, click <em>Add another site</em> to chain up to 5 sites (Dest → Site 2 → Site 3 → …).</li>
-            <li>Manual overrides are always preserved — if you type your own Travel Hrs/Mins or km values, auto-fires won't clobber them.</li>
-        </ul>
+
+<div class="header">
+  <img src="https://i.imgur.com/DgbxQPv.png" alt="RBD Electrical" class="header-logo"
+       onerror="this.style.display='none'; document.querySelector('.header-brand-fallback').style.display='block';">
+  <div class="header-brand-fallback">RBD Electrical</div>
+  <h1>Honor Board</h1>
+  <p class="subtitle">Recognising the dedication and service of our team</p>
+  <div><span class="tagline">Proudly Tasmanian Owned &amp; Operated</span></div>
+  <div class="stats-bar">
+    <div class="stat-item">
+      <div class="stat-num" id="statTotal">—</div>
+      <div class="stat-label">Team Members</div>
     </div>
-    <div class="route-box no-print">
-        <!--
-          Maps-unavailable banner: visible only when window.google.maps
-          failed to load (bad key, offline, referrer block, etc.). Keeps
-          the user informed so they fall back to manual Travel Hrs/Mins.
-        -->
-        <div id="mapsUnavailableBanner" class="hidden" style="background: #fff7d6; border: 1px solid #e0c24a; padding: 8px 10px; margin-bottom: 10px; border-radius: 6px; font-size: 12px; color: #6b5800;">
-            <strong>Google Maps unavailable.</strong> Auto-fill is off — enter Travel Hrs/Mins and km values manually.
-        </div>
-        <label>Centre of Employment / Custom Location:</label>
-        <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 6px; margin-bottom: 8px;">
-            <div id="btnOfficeDev" class="toggle-btn" onclick="setOffice('Dev')">Devonport Office</div>
-            <div id="btnOfficeHob" class="toggle-btn" onclick="setOffice('Hob')">Hobart Office</div>
-            <div id="btnOfficeCustom" class="toggle-btn" onclick="setOffice('Custom')">Custom</div>
-        </div>
-        <div id="customOriginWrap" class="hidden" style="margin-bottom: 8px;">
-            <input type="text" id="customOrigin" placeholder="Enter start address" onblur="morningOriginChanged()">
-        </div>
-        <label>Dest:</label>
-        <input type="text" id="destination" placeholder="Site address" style="margin-bottom: 12px;" onblur="destinationChanged()">
-        <button class="maps-btn" onclick="checkRoute()">Verify Route (opens Google Maps)</button>
-        <!--
-          TK2 multi-site UI. The "Add another site" button appears when the
-          TK2 allowance is ticked. Up to 4 extra sites (Site 2..5); Site 1 is
-          the main Destination field above. Each extra slot is pre-rendered
-          hidden so Autocomplete can be initialised once at page load — when
-          the slot becomes visible Autocomplete just works.
-        -->
-        <button id="btnAddSite" class="maps-btn hidden" onclick="addNextSite()" style="background:#004a99; margin-top: 6px; font-size: 13px; padding: 10px;">+ Add another site</button>
-        <div id="extraSitesContainer">
-            <div id="siteWrap2" class="site-wrap hidden" style="margin-top: 8px;">
-                <label style="display:flex; justify-content:space-between; align-items:center;"><span>Site 2 (between):</span><span onclick="removeSite(2)" style="cursor:pointer; color:#c33; font-weight:bold; padding:2px 8px;">&times;</span></label>
-                <input type="text" id="site2" placeholder="Site 2 address" onblur="siteInputChanged()">
-            </div>
-            <div id="siteWrap3" class="site-wrap hidden" style="margin-top: 8px;">
-                <label style="display:flex; justify-content:space-between; align-items:center;"><span>Site 3 (between):</span><span onclick="removeSite(3)" style="cursor:pointer; color:#c33; font-weight:bold; padding:2px 8px;">&times;</span></label>
-                <input type="text" id="site3" placeholder="Site 3 address" onblur="siteInputChanged()">
-            </div>
-            <div id="siteWrap4" class="site-wrap hidden" style="margin-top: 8px;">
-                <label style="display:flex; justify-content:space-between; align-items:center;"><span>Site 4 (between):</span><span onclick="removeSite(4)" style="cursor:pointer; color:#c33; font-weight:bold; padding:2px 8px;">&times;</span></label>
-                <input type="text" id="site4" placeholder="Site 4 address" onblur="siteInputChanged()">
-            </div>
-            <div id="siteWrap5" class="site-wrap hidden" style="margin-top: 8px;">
-                <label style="display:flex; justify-content:space-between; align-items:center;"><span>Site 5 (between):</span><span onclick="removeSite(5)" style="cursor:pointer; color:#c33; font-weight:bold; padding:2px 8px;">&times;</span></label>
-                <input type="text" id="site5" placeholder="Site 5 address" onblur="siteInputChanged()">
-            </div>
-        </div>
-        <div class="input-grid">
-            <div>
-                <label>Travel Hrs:</label>
-                <input type="number" id="manualHours" placeholder="Example: 1" oninput="syncArriveTime()">
-            </div>
-            <div>
-                <label>Travel Mins:</label>
-                <input type="number" id="manualMinutes" placeholder="Example: 30" oninput="syncArriveTime()">
-            </div>
-        </div>
-        <!--
-          Auto-calc status — brief "Calculating…" text that appears while a
-          background Distance Matrix fetch is in flight. Gives the user
-          visible feedback that something is happening after they blur a
-          field or pick an Autocomplete result.
-        -->
-        <div id="calcStatus" class="hidden" style="margin-top: 4px; font-size: 11px; color: #004a99; font-style: italic; display: flex; align-items: center; gap: 6px;">
-            <span style="display: inline-block; width: 10px; height: 10px; border: 2px solid #004a99; border-top-color: transparent; border-radius: 50%; animation: calcSpin 0.8s linear infinite;"></span>
-            <span>Calculating travel time &amp; distance&hellip;</span>
-        </div>
-        <!--
-          Return section — visible whenever TK1 or TK2 is ticked. Lets the
-          user specify where they're going back to (e.g. accommodation,
-          different office). When visible, the auto-calculator fires a
-          return-leg Distance Matrix query in addition to the morning leg,
-          feeding both into the TK1 km auto-fill.
-        -->
-        <div id="returnSection" class="hidden" style="margin-top: 12px; padding-top: 12px; border-top: 2px dashed #004a99;">
-            <label>Returning to:</label>
-            <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 6px; margin-bottom: 8px;">
-                <div id="btnReturnDev"    class="toggle-btn" onclick="setReturnOffice('Dev')">Devonport Office</div>
-                <div id="btnReturnHob"    class="toggle-btn" onclick="setReturnOffice('Hob')">Hobart Office</div>
-                <div id="btnReturnCustom" class="toggle-btn" onclick="setReturnOffice('Custom')">Custom</div>
-            </div>
-            <div id="customReturnWrap" class="hidden" style="margin-bottom: 8px;">
-                <input type="text" id="customReturn" placeholder="Enter return address (home, accommodation, other workshop)" onblur="returnDestChanged()">
-            </div>
-            <!--
-              Return origin is derived automatically from the chain:
-                • TK1 only (no extras)    → morning Destination
-                • TK2 with extras        → the last added site (Site 2–5)
-              No user input needed for the return origin — it always
-              follows the last site in the chain. Likewise, every Google
-              Maps call fires automatically as fields change, so there's
-              no Calculate button — auto-calc covers it.
-            -->
-        </div>
+    <div class="stat-item">
+      <div class="stat-num" id="statYears">—</div>
+      <div class="stat-label">Combined Years</div>
     </div>
-    <div class="section-header no-print"><span>Time Entries</span><button class="info-btn no-print" onclick="toggleInfo('infoTime')">i</button></div>
-    <div id="infoTime" class="info-panel no-print">
-        <strong>How to fill this in:</strong>
-        <ul>
-            <li><strong>Left Workshop/Accom</strong> — the time you left the workshop or accommodation.</li>
-            <li><strong>Arrived on Site</strong> — the time you arrived at the job site.</li>
-            <li><strong>Left Site</strong> — the time you left the job site at the end of the day.</li>
-            <li><strong>Arrived at Workshop/Accom</strong> — the time you got back to workshop or accommodation.</li>
-        </ul>
-        <strong>Toggle buttons:</strong>
-        <ul>
-            <li><strong>Start Workshop / Start Site</strong> — select where your working day commenced (Cl 53.a). Select <strong>Start Workshop</strong> if you were directed by your supervisor or project manager to carry out work-related tasks at your centre of employment before travelling to site. Select <strong>Start Site</strong> if you travelled directly to the worksite from home, your centre of employment (without carrying out work-related tasks), or an arranged meeting point.</li>
-            <li><strong>Finish Workshop / Finish Site</strong> — select where your working day ended. Select <strong>Finish Workshop</strong> if you were directed by your supervisor or project manager to return to your centre of employment to carry out work-related tasks (e.g. unloading a trailer, preparing for a job the following day). Select <strong>Finish Site</strong> if your working day ended at the worksite and you travelled home or to accommodation.</li>
-            <li><strong>Weekday / Weekend / Pub Holiday</strong> — select the day type. Weekday pays NT then OT. Weekend/PH pays double time for all work hours with a 4-hour minimum (Cl 62.3.a), or 2-hour minimum if you were notified 24h+ in advance (Cl 62.3.b). PH also includes 8 hours NT (Public Holiday) entitlement — applicable only on a day you were rostered to work (s116 FW Act).</li>
-            <li><strong>Company Car</strong> — select if a company vehicle was provided or offered. If unselected, Fares Allowance (FTR) applies. Selecting Company Car also makes TK1 and TK2 own-vehicle km allowances ineligible (Cl 64.3.b — the $0.57/km is not paid when the employee travels in company transport). The calculator enforces this by disabling the TK1 and TK2 checkboxes while Company Car is on.</li>
-            <li><strong>Incidentals-1</strong> — select when staying at accommodation on a distant job (>20 min from urban area, employer pays for accom without meals). All accom-to-site travel is paid. TAT and Fares do not apply for accom↔site legs. First/Last Day tick preserves TAT/Fares for the standard workshop↔site leg (Cl 64.5.b).</li>
-            <li><strong>Other ▼</strong> — expands to reveal the less-common flags below (Unnotified OT, RDO, Callout).</li>
-            <li><strong>Unnotified OT</strong> — select if you were required to work 2+ hours overtime without being notified the previous day. Triggers the $15.50 meal allowance (any day — Cl 60.1.a).</li>
-            <li><strong>RDO</strong> — select when working a scheduled Rostered Day Off. Treats the day as a Saturday-equivalent penalty day (Cl 62.3.a): DT rate for all work hours, 4-hour minimum (or 2-hour with 24h+ notice).</li>
-            <li><strong>Callout</strong> — select when recalled to site after hours (Cl 63.a). All work + travel is bundled at the appropriate OT rate with a 4-hour minimum. TT/TT+/TAT/Fares are suppressed — travel is already at OT. Not modelled: Cl 63.e/f on-call-roster variants (3h / 2h mins) and the Cl 63.a.iii TK1 $0.57/km own-vehicle allowance; enter these manually via Extra Allowances.</li>
-            <li><strong>Scheduled (24h+ notice)</strong> — when working a weekend/PH/RDO that was planned 24h+ in advance, minimum drops from 4h to 2h (Cl 62.3.b).</li>
-        </ul>
-        <strong>Key EA rules:</strong>
-        <ul>
-            <li>Ordinary hours are <strong>6am–6pm</strong> (Cl 55.a). Work outside this window is overtime regardless of total hours worked.</li>
-            <li><strong>Travel Boundary:</strong> the first 30 minutes of travel each way falls inside the 30-min Travel Boundary (Cl 64.1.a). It isn't paid as TT — instead it's compensated by the daily Fares Allowance (FTR, $14.61/day, Cl 64.1.b) when eligible. Under Inc-1 the boundary doesn't apply because accommodation becomes the centre of employment (Cl 64.5.a).</li>
-            <li><strong>Weekday overtime:</strong> first 2 hours at time-and-a-half (TH), then double time (DT) (Cl 62.2.a.i).</li>
-            <li><strong>Weekend / PH / RDO overtime:</strong> all hours at double time (Cl 62.2.a.ii/iii) with a 4-hour minimum (Cl 62.3.a), or 2-hour minimum with 24h+ notice (Cl 62.3.b).</li>
-            <li><strong>Meal break (Cl 60.a):</strong> 30-minute unpaid lunch for shifts of 5–12 hours. Shifts under 5 hours have no meal deduction. Shifts of 12+ hours get a paid meal break.</li>
-            <li><strong>Early travel (Cl 64.3.d):</strong> cross the boundary before 0630hrs AND have a site more than 1 hour beyond the boundary → claim 30 min TT and the ordinary workday is deemed to start at 0700 (conditional on safe driving).</li>
-            <li><strong>Rounding (Cl 53.b):</strong> time is rounded to 15-minute intervals. 7 minutes rounds down; 8 minutes rounds up to 15.</li>
-        </ul>
+    <div class="stat-item">
+      <div class="stat-num" id="statLongest">—</div>
+      <div class="stat-label">Longest Serving</div>
     </div>
-    <div class="input-grid">
-        <div id="leftWorkshopWrap">
-            <label id="startLabel">Left Workshop/Accom:</label>
-            <input type="time" id="leftWorkshop" value="06:00" oninput="syncArriveTime(); calculate();">
-        </div>
-        <div id="arriveSiteWrap">
-            <label>Arrived on Site:</label>
-            <input type="time" id="arriveSite" value="07:00" oninput="calculate()">
-        </div>
-        <div id="leaveSiteWrap">
-            <label>Left Site:</label>
-            <input type="time" id="leaveSite" value="15:30" oninput="calculate()">
-        </div>
-        <div id="arriveWorkshopWrap">
-            <label id="finishLabel">Arrived at Workshop/Accom:</label>
-            <input type="time" id="arriveWorkshop" value="16:30" oninput="calculate()">
-        </div>
-    </div>
-    <div class="toggle-section">
-        <div id="btnStartWork" class="toggle-btn" onclick="setStart('Work')">Start Workshop</div>
-        <div id="btnStartSite" class="toggle-btn active" onclick="setStart('Site')">Start Site</div>
-        <div id="btnFinWork" class="toggle-btn" onclick="setFinish('Work')">Finish Workshop</div>
-        <div id="btnFinSite" class="toggle-btn active" onclick="setFinish('Site')">Finish Site</div>
-    </div>
-    <div class="day-toggle-section" style="grid-template-columns: 1fr 1fr 1fr;">
-        <div id="btnWeekday" class="toggle-btn active" onclick="toggleDay('Weekday')">Weekday</div>
-        <div id="btnWeekend" class="toggle-btn" onclick="toggleDay('Weekend')">Weekend</div>
-        <div id="btnPH" class="toggle-btn" onclick="toggleDay('PH')">Pub Holiday</div>
-    </div>
-    <div class="day-toggle-section" style="border-top:none; padding-top:0;">
-        <div id="btnCo" class="toggle-btn active" onclick="toggle('Co')">Company Car</div>
-        <div id="btnInc1" class="toggle-btn" onclick="toggleInc1()">Incidentals-1</div>
-        <div id="btnOther" class="toggle-btn" onclick="toggleOther()">Other <span id="btnOtherArrow" style="display:inline-block; transition: transform 0.2s ease;">&#x25BC;</span></div>
-    </div>
-    <div id="otherPanel" class="day-toggle-section hidden" style="border-top:none; padding-top:0;">
-        <div id="btnUnnotifiedOT" class="toggle-btn" onclick="toggle('UnnotifiedOT')">Unnotified OT</div>
-        <div id="btnRDO" class="toggle-btn" onclick="toggle('RDO')">RDO</div>
-        <div id="btnCallout" class="toggle-btn" onclick="toggle('Callout')">Callout</div>
-    </div>
-    <div id="notified24hRow" class="day-toggle-section hidden" style="border-top:none; padding-top:0; grid-template-columns: 1fr;">
-        <div id="btnNotified24h" class="toggle-btn" onclick="toggle('Notified24h')">Scheduled (24h+ notice) &mdash; 2h min</div>
-    </div>
-    <div id="inc1DayRow" class="day-toggle-section hidden" style="border-top:none; padding-top:0;">
-        <div id="btnFirstDay" class="toggle-btn" onclick="toggleTripDay('FirstDay')">First Day</div>
-        <div id="btnLastDay" class="toggle-btn" onclick="toggleTripDay('LastDay')">Last Day</div>
-    </div>
-    <div id="results">
-        <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 4px;">
-            <span></span>
-            <button class="info-btn no-print" onclick="toggleInfo('infoResults')">i</button>
-        </div>
-        <div id="infoResults" class="info-panel no-print">
-            <strong>Work codes:</strong>
-            <ul>
-                <li><strong>NT</strong> — Normal Time. Your ordinary 8-hour day paid at the base rate (only applies on pure weekdays; weekend/PH/RDO days pay DT from minute one).</li>
-                <li><strong>NT (RDO, AL or LWOP)</strong> — Shortfall row. If you worked less than 8 hours on a pure weekday, the gap to 8 hours must be covered by a Rostered Day Off, Annual Leave, or Leave Without Pay (LWOP needs management approval). Doesn't fire on weekend/PH/RDO/Callout days — those have different minimums.</li>
-                <li><strong>NT (Public Holiday)</strong> — 8 hours paid automatically as your PH entitlement, in addition to DT for hours actually worked.</li>
-                <li><strong>TH</strong> — Time and a Half. The first 2 hours of weekday overtime (Cl 62.2.a.i). Also any weekday work that falls outside 6am–6pm gets counted toward TH/DT per Cl 55.a.</li>
-                <li><strong>DT</strong> — Double Time. Weekday overtime beyond the first 2 hours of TH (Cl 62.2.a.i), or all work hours on weekends, public holidays, or RDO days (Cl 62.2.a.ii/iii + 62.3.a).</li>
-            </ul>
-            <strong>Travel codes:</strong>
-            <ul>
-                <li><strong>TT (Morning)</strong> — Travel Time at single rate. Morning travel outside the 30-min boundary on a weekday (Cl 64.3.c.i). Paid regardless of time of day — travel rate is not affected by the 6am–6pm ordinary-hours window, which only applies to work.</li>
-                <li><strong>TT+ (Morning)</strong> — Travel Time at time-and-a-half. Applies to <em>all</em> morning travel outside the boundary on weekends, public holidays, or RDO days (Cl 64.3.c.iii). On weekdays morning travel is never TT+ — per Cl 64.3.d the weekday TT+ rate is return-only.</li>
-                <li><strong>TT (Return)</strong> — Return travel at single rate, when the day's work + outside-boundary travel hasn't exceeded 8 hours (Cl 64.3.c.i).</li>
-                <li><strong>TT+ (Return)</strong> — Return travel at time-and-a-half. Applies when the day's total work + outside-boundary travel exceeds 8 hours (Cl 64.3.c.ii), or always on weekends, public holidays, or RDO days (Cl 64.3.c.iii).</li>
-            </ul>
-            <strong>Allowance codes:</strong>
-            <ul>
-                <li><strong>TAT</strong> — Travel Time Allowance (Cl 64.2). A flat daily unit equal to 25% of your all-purpose hourly rate, payable when your working day commences at a worksite. Not payable under Inc-1 accom↔site travel or when the early-travel rule fires. One unit per day maximum.</li>
-                <li><strong>Fares (FTR)</strong> — Fares Allowance (Cl 64.1). $14.61/day when you travel in your own time/vehicle and no company transport was offered. Covers the 30-min Travel Boundary portion.</li>
-                <li><strong>Meal Allow ($15.50)</strong> — Meal Allowance for unnotified overtime of 2+ hours (Cl 60.1.a). Any day type. Rate increases to $16.41 from 01/07/2026 and $20.00 from 01/07/2027.</li>
-            </ul>
-            <strong>Interpretation notes:</strong>
-            <ul>
-                <li><strong>Rounding</strong> — each component is rounded to 15 min (Cl 53.b: 7 min rounds down, 8 min rounds up). Rounding each component separately can differ from rounding totals only, by up to ±15 min.</li>
-                <li><strong>Public Holiday (8h NT)</strong> — auto-added when PH is selected. Under s116 FW Act, PH NT only applies if you were rostered to work that day; untick PH if it falls on a non-rostered day.</li>
-                <li><strong>Casual rates</strong> — the calculator uses full-time treatment. Casual PH pays at <strong>double time and a half</strong> (2.5× base, Cl 62.2.a.iv); not auto-calculated here. Apply the uplift manually if you're casual.</li>
-                <li><strong>Early-travel weekend/PH (Appendix Ex 23–25)</strong> — the 30-min TT+ and TAT-suppression rule for weekend/PH early starts isn't auto-detected (weekday only). If your weekend early-start fits Ex 22–25, manually reduce the forward TT+ to 30 min and untick TAT.</li>
-            </ul>
-        </div>
-        <div id="calcOutput"></div>
-    </div>
-    <button id="allowanceBtn" class="no-print" style="width:100%; margin-top:12px; padding:14px; background:linear-gradient(135deg,#003366,#004a99); color:white; border:none; border-radius:12px; font-weight:700; cursor:pointer; font-size:14px; box-shadow:0 2px 10px rgba(0,74,153,0.25); transition:transform 0.1s; letter-spacing:0.3px;" onclick="this.style.transform='scale(0.98)'; setTimeout(()=>this.style.transform='',100); let p=document.getElementById('allowPanel'); p.classList.toggle('open'); this.textContent=p.classList.contains('open')?'Extra Allowances \u25B2':'Extra Allowances \u25BC'">Extra Allowances &#x25BC;</button>
-    <div id="allowPanel" class="allow-panel no-print"></div>
-    <button class="no-print" style="width:100%; margin-top:8px; padding:14px; background:linear-gradient(135deg,#003366,#004a99); color:white; border:none; border-radius:12px; font-weight:700; cursor:pointer; font-size:14px; box-shadow:0 2px 10px rgba(0,74,153,0.25); transition:transform 0.1s; letter-spacing:0.3px;" onclick="this.style.transform='scale(0.98)'; setTimeout(()=>this.style.transform='',100); let p=document.getElementById('projectPanel'); p.classList.toggle('open'); this.textContent=p.classList.contains('open')?'Project Information \u25B2':'Project Information \u25BC'">Project Information &#x25BC;</button>
-    <div id="projectPanel" class="allow-panel no-print">
-        <label>Project Name:</label>
-        <input type="text" id="projectName" placeholder="Enter project name" style="margin-bottom: 10px;" oninput="calculate()">
-        <label>Applicable Day:</label>
-        <select id="projectDay" style="width:100%; padding:12px; border:1.5px solid #d2dce6; border-radius:10px; font-size:14px; background:#f8fafc; margin-bottom: 10px; appearance: auto; color:#334155;" onchange="if(this.value) document.getElementById('projectDate').value=''; calculate();">
-            <option value="">— Select —</option>
-            <option>Start of Week</option>
-            <option>Mid Week</option>
-            <option>End of Week</option>
-            <option>Monday</option>
-            <option>Tuesday</option>
-            <option>Wednesday</option>
-            <option>Thursday</option>
-            <option>Friday</option>
-            <option>Saturday</option>
-            <option>Sunday</option>
-        </select>
-        <label>Or Select Date:</label>
-        <input type="date" id="projectDate" style="margin-bottom: 0;" onchange="if(this.value) document.getElementById('projectDay').value=''; calculate();">
-    </div>
-    <button class="no-print" style="width:100%; margin-top:15px; padding:16px; background:linear-gradient(135deg,#1e7a3a,#28a745); color:white; border:none; border-radius:12px; font-weight:700; cursor:pointer; font-size:15px; box-shadow:0 2px 10px rgba(40,167,69,0.3); transition:transform 0.1s;" onclick="this.style.transform='scale(0.98)'; setTimeout(()=>this.style.transform='',100); window.print()">Save to PDF / Print</button>
-    <button class="no-print" style="width:100%; margin-top:8px; padding:16px; background:linear-gradient(135deg,#1e7a3a,#28a745); color:white; border:none; border-radius:12px; font-weight:700; cursor:pointer; font-size:15px; box-shadow:0 2px 10px rgba(40,167,69,0.3); transition:transform 0.1s;" onclick="this.style.transform='scale(0.98)'; setTimeout(()=>this.style.transform='',100); downloadSummary()">Download Text File Summary</button>
-    <div class="footer-note" style="font-size: 9px; color: #999; text-align: center; margin-top: 20px; line-height: 1.5;">
-        <strong style="color:#666;">Disclaimer:</strong> This calculator is a guide only and does not override the RBD Enterprise Agreement 2025 or RBD Handbook Rev 8.0. Additional allowances can be selected under Extra Allowances. Some entitlements such as call-in, shift work, and overtime meal escalations may not be reflected. Always refer to the EA for definitive entitlements.
-    </div>
+  </div>
 </div>
+
+<div class="ribbons-wrap" id="ribbonsWrap"></div>
+
+<div class="filter-bar">
+  <button class="filter-btn active" data-filter="all" onclick="setFilter('all', this)">All</button>
+  <button class="filter-btn" data-filter="15" onclick="setFilter('15', this)">15+ Years</button>
+  <button class="filter-btn" data-filter="10" onclick="setFilter('10', this)">10+ Years</button>
+  <button class="filter-btn" data-filter="5" onclick="setFilter('5', this)">5+ Years</button>
+  <button class="filter-btn" data-filter="1" onclick="setFilter('1', this)">1–4 Years</button>
+  <button class="filter-btn" data-filter="0" onclick="setFilter('0', this)">&lt; 1 Year</button>
+  <span class="filter-separator"></span>
+  <button class="filter-btn loc-btn" data-loc="all" onclick="setLocation('all', this)">Both Offices</button>
+  <button class="filter-btn loc-btn" data-loc="Devonport" onclick="setLocation('Devonport', this)">Devonport</button>
+  <button class="filter-btn loc-btn" data-loc="Hobart" onclick="setLocation('Hobart', this)">Hobart</button>
+</div>
+
+<div class="content" id="content"></div>
+
+<div class="updated" id="updatedText"></div>
+
 <script>
-    // ------------------------------------------------------------------
-    // RBD Timesheet Calculator
-    // Implements EA 2025 clauses: 60 (meal), 62 (overtime),
-    // 64.1 (Fares / FTR), 64.2 (TAT), 64.3 (outside-boundary travel TT/TT+),
-    // 64.3(a) TK1 km rate, 64.4 (TK2 between-site km rate),
-    // 60.1 (Meal Allowance for unnotified 2+ hr OT).
-    // ------------------------------------------------------------------
-    let flags = {
-        Start: 'Site',
-        Fin: 'Site',
-        Day: 'Weekday',      // 'Weekday' | 'Weekend' | 'PH'
-        Co: true,            // company vehicle provided/offered
-        Inc1: false,         // incidentals 1 (suppresses TAT/Fares)
-        FirstDay: false,     // first day of Inc-1 trip (morning = standard, return = Inc-1)
-        LastDay: false,      // last day of Inc-1 trip (morning = Inc-1, return = standard)
-        UnnotifiedOT: false, // triggers $15.50 meal allowance (Cl 60.1)
-        Notified24h: false,  // Sat/Sun/RDO/PH: 24h+ notice reduces min to 2h (Cl 62.3.b)
-        RDO: false,          // overlay: working a scheduled RDO (Cl 62.3.a) — DT + 4h/2h min
-        Callout: false,      // overlay: Cl 63.a recall to site — bundled work+travel at OT, 4h min
-        Office: null,        // 'Dev' | 'Hob' | 'Custom' — morning origin
-        ReturnOffice: null   // 'Dev' | 'Hob' | 'Custom' — return destination (only when TK1 selected)
+// ══════════════════════════════════════════════════════════
+// DATA — Replace this array or load from external JSON
+// Power Automate can overwrite this section or provide
+// an external employees.json file.
+// ══════════════════════════════════════════════════════════
+const EMPLOYEES = [
+  {"firstName":"Adam","surname":"Britt","location":"Devonport","startDate":"2025-04-25"},
+  {"firstName":"Alex","surname":"Findlater","location":"Devonport","startDate":"2015-11-04"},
+  {"firstName":"Alex","surname":"Yeo","location":"Hobart","startDate":"2025-10-27"},
+  {"firstName":"Ben","surname":"Richardson","location":"Devonport","startDate":"2010-01-04"},
+  {"firstName":"Ben","surname":"Solomon","location":"Devonport","startDate":"2008-01-24"},
+  {"firstName":"Ben","surname":"Frankcombe","location":"Devonport","startDate":"2024-02-19"},
+  {"firstName":"Bianca","surname":"Eberle","location":"Devonport","startDate":"2021-06-21"},
+  {"firstName":"Billie","surname":"Coles","location":"Hobart","startDate":"2023-01-13"},
+  {"firstName":"Brayden","surname":"Schottmeier","location":"Hobart","startDate":"2022-01-17"},
+  {"firstName":"Brendan","surname":"Stark","location":"Devonport","startDate":"2014-06-05"},
+  {"firstName":"Brett","surname":"Saward","location":"Devonport","startDate":"2017-04-03"},
+  {"firstName":"Brock","surname":"Mitchell","location":"Devonport","startDate":"2022-01-10"},
+  {"firstName":"Brock","surname":"Wilton","location":"Hobart","startDate":"2018-07-23"},
+  {"firstName":"Brock","surname":"Webb","location":"Devonport","startDate":"2023-11-20"},
+  {"firstName":"Brodie","surname":"Whyte","location":"Hobart","startDate":"2021-01-11"},
+  {"firstName":"Bryce","surname":"Richardson","location":"Devonport","startDate":"2023-09-27"},
+  {"firstName":"Callum","surname":"Howe","location":"Devonport","startDate":"2014-04-09"},
+  {"firstName":"Charlie","surname":"Carr","location":"Hobart","startDate":"2026-01-28"},
+  {"firstName":"Chris","surname":"McKnight","location":"Hobart","startDate":"2021-11-10"},
+  {"firstName":"Chris","surname":"Meredith","location":"Hobart","startDate":"2025-09-22"},
+  {"firstName":"Cooper","surname":"Quinn","location":"Devonport","startDate":"2024-08-05"},
+  {"firstName":"Damien","surname":"Virieux","location":"Hobart","startDate":"2015-06-29"},
+  {"firstName":"Daniel","surname":"McGeorge-Oanta","location":"Devonport","startDate":"2024-06-06"},
+  {"firstName":"Declan","surname":"Wilson","location":"Hobart","startDate":"2023-01-30"},
+  {"firstName":"Dylan","surname":"Zantuck","location":"Hobart","startDate":"2021-03-26"},
+  {"firstName":"Edward","surname":"Broadby","location":"Hobart","startDate":"2025-02-03"},
+  {"firstName":"Fletcher","surname":"Moncrieff","location":"Devonport","startDate":"2025-02-03"},
+  {"firstName":"Flynn","surname":"Saward","location":"Devonport","startDate":"2021-07-05"},
+  {"firstName":"Gabriel","surname":"Peattie","location":"Hobart","startDate":"2026-03-16"},
+  {"firstName":"George","surname":"Dunham","location":"Devonport","startDate":"2023-10-20"},
+  {"firstName":"George","surname":"Auchterlonie","location":"Hobart","startDate":"2026-02-13"},
+  {"firstName":"Graeme","surname":"Smith","location":"Hobart","startDate":"2018-03-13"},
+  {"firstName":"Greg","surname":"Knowles","location":"Devonport","startDate":"2015-11-30"},
+  {"firstName":"Greg","surname":"Sharp","location":"Hobart","startDate":"2025-10-27"},
+  {"firstName":"Harrison","surname":"Henry","location":"Hobart","startDate":"2022-04-04"},
+  {"firstName":"Harry","surname":"Macleod","location":"Hobart","startDate":"2026-01-27"},
+  {"firstName":"Hayden","surname":"Rand","location":"Devonport","startDate":"2022-01-31"},
+  {"firstName":"Howard","surname":"Tapping","location":"Hobart","startDate":"2022-11-07"},
+  {"firstName":"Jaidan","surname":"Walmsley","location":"Hobart","startDate":"2026-03-02"},
+  {"firstName":"James","surname":"Cole","location":"Hobart","startDate":"2026-02-10"},
+  {"firstName":"Jesse","surname":"Foster","location":"Hobart","startDate":"2022-08-23"},
+  {"firstName":"Joe","surname":"Brogan","location":"Hobart","startDate":"2014-09-15"},
+  {"firstName":"Jordan","surname":"Lyons","location":"Devonport","startDate":"2026-03-31"},
+  {"firstName":"Josh","surname":"Brazendale","location":"Hobart","startDate":"2022-06-20"},
+  {"firstName":"Joshua","surname":"Langworthy","location":"Hobart","startDate":"2021-10-10"},
+  {"firstName":"Karen","surname":"Hall","location":"Devonport","startDate":"2014-06-17"},
+  {"firstName":"Kayden","surname":"Smith","location":"Devonport","startDate":"2023-03-06"},
+  {"firstName":"Kieran","surname":"Dooley","location":"Hobart","startDate":"2025-09-08"},
+  {"firstName":"Kobie","surname":"Saddington","location":"Devonport","startDate":"2026-03-31"},
+  {"firstName":"Len","surname":"Dyke","location":"Devonport","startDate":"2014-06-05"},
+  {"firstName":"Lily","surname":"Bain","location":"Hobart","startDate":"2024-08-06"},
+  {"firstName":"Magnus","surname":"Overdijk","location":"Devonport","startDate":"2021-02-01"},
+  {"firstName":"Marek","surname":"Porter","location":"Devonport","startDate":"2015-11-04"},
+  {"firstName":"Mark","surname":"Richardson","location":"Devonport","startDate":"2007-06-04"},
+  {"firstName":"Mark","surname":"Smith","location":"Devonport","startDate":"2016-08-01"},
+  {"firstName":"Mathew","surname":"Lehtinen","location":"Devonport","startDate":"2014-06-09"},
+  {"firstName":"Matthew","surname":"Hart","location":"Devonport","startDate":"2024-03-13"},
+  {"firstName":"Michael","surname":"Chadwick","location":"Hobart","startDate":"2023-02-14"},
+  {"firstName":"Michael","surname":"Hitchins","location":"Devonport","startDate":"2024-04-22"},
+  {"firstName":"Mick","surname":"Whyte","location":"Hobart","startDate":"2018-04-30"},
+  {"firstName":"Mitchell","surname":"Pulford","location":"Devonport","startDate":"2022-02-14"},
+  {"firstName":"Mitchell","surname":"Pursell","location":"Hobart","startDate":"2026-01-19"},
+  {"firstName":"Nicholas","surname":"Blackberry","location":"Hobart","startDate":"2024-03-29"},
+  {"firstName":"Nick","surname":"Davies","location":"Hobart","startDate":"2013-04-29"},
+  {"firstName":"Nick","surname":"Richardson","location":"Devonport","startDate":"2015-04-23"},
+  {"firstName":"Nigel","surname":"Beveridge","location":"Devonport","startDate":"2019-08-13"},
+  {"firstName":"Oscar","surname":"Dickson","location":"Hobart","startDate":"2026-02-24"},
+  {"firstName":"Paul","surname":"Greaves","location":"Hobart","startDate":"2025-12-01"},
+  {"firstName":"Paul","surname":"Reid","location":"Hobart","startDate":"2026-01-15"},
+  {"firstName":"Randall","surname":"Lees","location":"Devonport","startDate":"2011-05-10"},
+  {"firstName":"Riley","surname":"Parkin","location":"Hobart","startDate":null},
+  {"firstName":"Roman","surname":"Jopson","location":"Devonport","startDate":"2022-06-27"},
+  {"firstName":"Roy","surname":"Martin","location":"Devonport","startDate":"2016-06-20"},
+  {"firstName":"Ryan","surname":"Wakefield","location":"Hobart","startDate":"2020-08-20"},
+  {"firstName":"Ryan","surname":"Burnaby","location":"Hobart","startDate":"2022-01-24"},
+  {"firstName":"Ryan","surname":"Allen","location":"Devonport","startDate":"2024-08-05"},
+  {"firstName":"Samuel","surname":"Buxton","location":"Hobart","startDate":"2025-05-20"},
+  {"firstName":"Scott","surname":"Magrath","location":"Hobart","startDate":"2013-08-27"},
+  {"firstName":"Simon","surname":"Ackling","location":"Devonport","startDate":"2018-12-17"},
+  {"firstName":"Simon","surname":"Jones","location":"Devonport","startDate":"2017-02-28"},
+  {"firstName":"Steve","surname":"Dell","location":"Devonport","startDate":"2010-06-14"},
+  {"firstName":"Stuart","surname":"Baade","location":"Devonport","startDate":"2024-05-22"},
+  {"firstName":"Tarea","surname":"Kelly","location":"Devonport","startDate":"2015-10-03"},
+  {"firstName":"Tayte","surname":"Duggan","location":"Devonport","startDate":"2018-12-03"},
+  {"firstName":"Tim","surname":"McConnon","location":"Hobart","startDate":"2019-04-01"},
+  {"firstName":"Tim","surname":"Ackling","location":"Devonport","startDate":"2023-05-08"},
+  {"firstName":"Tom","surname":"Nibbs","location":"Devonport","startDate":"2021-07-05"},
+  {"firstName":"Tomas","surname":"Sullivan","location":"Devonport","startDate":"2022-06-27"},
+  {"firstName":"Trae","surname":"Stennings","location":"Hobart","startDate":"2024-01-15"},
+  {"firstName":"Will","surname":"Sutton","location":"Devonport","startDate":"2014-06-04"},
+  {"firstName":"Xavier","surname":"Brudenell","location":"Hobart","startDate":"2024-01-18"},
+  {"firstName":"Zachary","surname":"Collins","location":"Hobart","startDate":"2022-06-06"}
+];
+
+// ══════════════════════════════════════════════════════════
+// CONFIG — SVG icons for each tier
+// ══════════════════════════════════════════════════════════
+const SVG = {
+  star: '<svg viewBox="0 0 24 24" fill="currentColor" stroke="currentColor" stroke-width="1" stroke-linejoin="round"><path d="M12 2l2.92 6.48L22 9.52l-5.32 4.85L18.18 22 12 18.27 5.82 22l1.5-7.63L2 9.52l7.08-1.04L12 2z"/></svg>',
+  trophy: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9H4.5A2.5 2.5 0 0 1 2 6.5V5a1 1 0 0 1 1-1h3"/><path d="M18 9h1.5A2.5 2.5 0 0 0 22 6.5V5a1 1 0 0 0-1-1h-3"/><path d="M6 4h12v5a6 6 0 0 1-12 0V4z"/><path d="M9 22h6"/><path d="M12 15v7"/></svg>',
+  bolt: '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M13 2L3 14h7v8l10-12h-7V2z"/></svg>',
+  sparkle: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l2.09 5.26L20 10l-5.91 1.74L12 17l-2.09-5.26L4 10l5.91-1.74L12 3z"/><path d="M19 16l.75 1.88L21 18.5l-1.25.62L19 21l-.75-1.88L17 18.5l1.25-.62L19 16z"/></svg>',
+  welcome: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="8" r="4"/><path d="M2 21v-2a6 6 0 0 1 6-6h2a6 6 0 0 1 6 6v2"/><line x1="19" y1="8" x2="19" y2="14"/><line x1="22" y1="11" x2="16" y2="11"/></svg>',
+  calendar: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>',
+  party: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5.8 11.3L2 22l10.7-3.79"/><path d="M4 3h.01"/><path d="M22 8h.01"/><path d="M15 2h.01"/><path d="M22 20h.01"/><path d="M22 2L15 9"/><path d="M5 5l3 3"/><path d="M20 15l-3-3"/></svg>'
+};
+
+const TIERS = [
+  { key: '15', min: 15, label: '15+ Years of Service', icon: SVG.star },
+  { key: '10', min: 10, label: '10–14 Years of Service', icon: SVG.trophy },
+  { key: '5',  min: 5,  label: '5–9 Years of Service',  icon: SVG.bolt },
+  { key: '1',  min: 1,  label: '1–4 Years of Service',  icon: SVG.sparkle },
+  { key: '0',  min: 0,  label: 'Welcome — First Year',  icon: SVG.welcome },
+];
+
+const MILESTONE_YEARS = [1, 5, 10, 15, 20, 25, 30, 35, 40];
+const LOOKAHEAD_DAYS = 30; // upcoming window
+const LOOKBACK_DAYS  = 30; // recent window
+
+const AVATAR_COLORS = [
+  '#14396A','#c09a10','#5A9A10','#7b1fa2','#c62828',
+  '#00838f','#ad1457','#4e342e','#1B4F8F','#2e7d32',
+  '#b8900e','#6a1b9a','#00695c','#3572b5','#14396A'
+];
+
+// ══════════════════════════════════════════════════════════
+// STATE
+// ══════════════════════════════════════════════════════════
+let currentFilter = 'all';
+let currentLocation = 'all';
+
+// TV mode: activated via ?mode=tv URL parameter
+const urlParams = new URLSearchParams(window.location.search);
+const TV_MODE = urlParams.get('mode') === 'tv';
+if (TV_MODE) document.body.classList.add('tv-mode');
+
+// ══════════════════════════════════════════════════════════
+// HELPERS
+// ══════════════════════════════════════════════════════════
+const today = new Date();
+today.setHours(0, 0, 0, 0);
+
+function yearsOfService(startDate) {
+  if (!startDate) return 0;
+  const start = new Date(startDate);
+  let years = today.getFullYear() - start.getFullYear();
+  const mDiff = today.getMonth() - start.getMonth();
+  if (mDiff < 0 || (mDiff === 0 && today.getDate() < start.getDate())) years--;
+  return Math.max(0, years);
+}
+
+function exactYearsMonths(startDate) {
+  if (!startDate) return 'Start date pending';
+  const start = new Date(startDate);
+  if (start > today) return 'Starting soon';
+  let years = today.getFullYear() - start.getFullYear();
+  let months = today.getMonth() - start.getMonth();
+  if (today.getDate() < start.getDate()) months--;
+  if (months < 0) { years--; months += 12; }
+  if (years === 0 && months === 0) return 'Just started';
+  if (years === 0) return months + (months === 1 ? ' month' : ' months');
+  if (months === 0) return years + (years === 1 ? ' year' : ' years');
+  return years + (years === 1 ? ' yr ' : ' yrs ') + months + (months === 1 ? ' mo' : ' mos');
+}
+
+function formatDateShort(d) {
+  return d.toLocaleDateString('en-AU', { day: 'numeric', month: 'short', year: 'numeric' });
+}
+
+function formatStartDate(startDate) {
+  if (!startDate) return '';
+  return formatDateShort(new Date(startDate));
+}
+
+function getTier(years) {
+  if (years >= 15) return '15';
+  if (years >= 10) return '10';
+  if (years >= 5) return '5';
+  if (years >= 1) return '1';
+  return '0';
+}
+
+function avatarColor(name) {
+  let hash = 0;
+  for (let i = 0; i < name.length; i++) hash = name.charCodeAt(i) + ((hash << 5) - hash);
+  return AVATAR_COLORS[Math.abs(hash) % AVATAR_COLORS.length];
+}
+
+function initials(first, last) {
+  return (first.charAt(0) + last.charAt(0)).toUpperCase();
+}
+
+function daysBetween(a, b) {
+  // Returns (b - a) in days, truncated to whole days.
+  return Math.round((b - a) / (1000 * 60 * 60 * 24));
+}
+
+// Given a start date and a milestone year count, returns the Date
+// on which that milestone anniversary falls.
+function milestoneDate(startDate, years) {
+  const d = new Date(startDate);
+  d.setFullYear(d.getFullYear() + years);
+  d.setHours(0, 0, 0, 0);
+  return d;
+}
+
+// Returns { milestone, date, daysUntil } if the employee has a
+// milestone anniversary within the next LOOKAHEAD_DAYS days.
+function getUpcomingMilestone(employee) {
+  if (!employee.startDate) return null;
+  const start = new Date(employee.startDate);
+  // Find the next milestone anniversary after today.
+  for (const m of MILESTONE_YEARS) {
+    const d = milestoneDate(start, m);
+    if (d < today) continue; // already passed
+    const diff = daysBetween(today, d);
+    if (diff >= 0 && diff <= LOOKAHEAD_DAYS) {
+      return { milestone: m, date: d, daysUntil: diff };
+    }
+    break; // list is ascending; no need to look further
+  }
+  return null;
+}
+
+// Returns { milestone, date, daysSince } if the employee crossed a
+// milestone anniversary within the past LOOKBACK_DAYS days.
+function getRecentMilestone(employee) {
+  if (!employee.startDate) return null;
+  const start = new Date(employee.startDate);
+  // Walk the milestones; find most recent one that has passed.
+  let last = null;
+  for (const m of MILESTONE_YEARS) {
+    const d = milestoneDate(start, m);
+    if (d <= today) last = { milestone: m, date: d };
+    else break;
+  }
+  if (!last) return null;
+  const diff = daysBetween(last.date, today);
+  if (diff >= 0 && diff <= LOOKBACK_DAYS) {
+    return { ...last, daysSince: diff };
+  }
+  return null;
+}
+
+function relativeWhen(days, isFuture) {
+  if (days === 0) return 'today';
+  if (days === 1) return isFuture ? 'tomorrow' : 'yesterday';
+  if (isFuture) return 'in ' + days + ' days';
+  return days + ' days ago';
+}
+
+// ══════════════════════════════════════════════════════════
+// RENDER
+// ══════════════════════════════════════════════════════════
+function render() {
+  // Process employees
+  const processed = EMPLOYEES.map(e => {
+    const years = yearsOfService(e.startDate);
+    return {
+      ...e,
+      years,
+      tier: getTier(years),
+      display: exactYearsMonths(e.startDate),
+      started: formatStartDate(e.startDate),
+      upcoming: getUpcomingMilestone(e),
+      recent: getRecentMilestone(e),
     };
-    const OFFICES = {
-        Dev: '3 Bay Drive, Quoiba, TAS 7310',
-        Hob: '6 Lampton Avenue, Derwent Park, TAS 7009'
-    };
-    // ---------- extra allowances data ----------
-    const EXTRA_ALLOWANCES = [
-        // Site & Industrial
-        { id: 'industrial', name: 'Industrial Allowance', rate: 2.50, unit: 'hr', group: 'Site & Industrial', summaryNote: 'Trades only', siteOnly: true },
-        { id: 'site', name: 'Site Allowance', rate: 2.50, unit: 'hr', group: 'Site & Industrial', siteOnly: true },
-        { id: 'firmus', name: 'Firmus Allowance', rate: 5.00, unit: 'hr', group: 'Site & Industrial', siteOnly: true },
-        { id: 'hsm', name: 'HSM Allowance', rate: 10.00, unit: 'custom_hr', group: 'Site & Industrial' },
-        { id: 'inclement', name: 'Inclement Weather', rate: 2.50, unit: 'custom_hr', group: 'Site & Industrial' },
-        // Living Away
-        { id: 'mealOvernight', name: 'Meal Allowance (Overnight)', rate: 120.00, unit: 'day', group: 'Living Away' },
-        { id: 'inc1Allow', name: 'Incidentals 1 ($20)', rate: 20.00, unit: 'day', group: 'Living Away' },
-        { id: 'inc2Allow', name: 'Incidentals 2 ($45)', rate: 45.00, unit: 'day', group: 'Living Away' },
-        { id: 'inc3Allow', name: 'Incidentals 3 ($90)', rate: 90.00, unit: 'day', group: 'Living Away' },
-        { id: 'livingFriends', name: 'Living Away (Friends & Family)', rate: 160.00, unit: 'night', group: 'Living Away' },
-        { id: 'livingOwn', name: 'Living Away (Own Accommodation)', rate: 240.00, unit: 'night', group: 'Living Away' },
-        // Travel & Vehicle
-        { id: 'tk1', name: 'TK1 (Outside Boundary)', rate: 0.57, unit: 'km', group: 'Travel & Vehicle' },
-        { id: 'tk2', name: 'TK2 (Between Sites)', rate: 1.05, unit: 'km', group: 'Travel & Vehicle' },
-        { id: 'kmCompanyCar', name: "Km's (Company Car)", rate: 0.75, unit: 'km', group: 'Travel & Vehicle', summaryNote: 'Only if responsible for vehicle' },
-        // Supervision
-        { id: 'supG5G6', name: 'Supervisor G5 > G6', rate: 1.55, unit: 'hr', group: 'Supervision', hideRate: true, includeTravel: true },
-        { id: 'supG6G7', name: 'Supervisor G6 > G7', rate: 2.74, unit: 'hr', group: 'Supervision', hideRate: true, includeTravel: true },
-        { id: 'supG7G8', name: 'Supervisor G7 > G8', rate: 3.08, unit: 'hr', group: 'Supervision', hideRate: true, includeTravel: true },
-        // High Voltage
-        { id: 'hvTerm', name: 'HV Termination', rate: 35.00, unit: 'day', group: 'High Voltage' },
-        { id: 'hvSwitch', name: 'HV Switching', rate: 50.00, unit: 'day', group: 'High Voltage' },
-        { id: 'hvPrep', name: 'HV Prep & Documentation', rate: 100.00, unit: 'day', group: 'High Voltage', hideRate: true },
-        // Other
-        { id: 'onCall', name: 'On Call Allowance', rate: 45.71, unit: 'day', group: 'Other' },
-    ];
-    function buildAllowancePanel() {
-        let panel = document.getElementById('allowPanel');
-        let html = '';
-        html += '<div id="infoAllow" class="info-panel">';
-        html += '<strong>How to use:</strong> Select any additional allowances that apply to the day. These appear in the summary alongside the auto-calculated time codes.';
-        html += '<ul>';
-        html += '<li><strong>Per-hour allowances</strong> (Industrial, Site, Firmus, Supervisor) \u2014 automatically split into NT and OT hours based on the day\'s calculation. Supervisor allowances include travel time (Cl 49.c).</li>';
-        html += '<li><strong>Manual-entry allowances</strong> (HSM, Inclement Weather) \u2014 enter the number of hours that apply. Also split into NT and OT.</li>';
-        html += '<li><strong>Per-day/night allowances</strong> (Living Away, Incidentals 1/2/3, HV, On Call) \u2014 tick the box and 1 Unit is added to the summary.</li>';
-        html += '<li><strong>Per-km allowances</strong> (TK1, TK2, Kms Company Car) \u2014 enter the kilometres travelled, or let the Google Maps tool auto-fill them (see below).</li>';
-        html += '</ul>';
-        html += '<strong>km allowance EA references:</strong>';
-        html += '<ul>';
-        html += '<li><strong>TK1 ($0.57/km, Cl 64.3.a)</strong> \u2014 own-vehicle km travelled outside the 30-min Travel Boundary. Ratio-method: km \u00D7 (mins outside boundary) / (total mins). Not paid when company transport is used (Cl 64.3.b).</li>';
-        html += '<li><strong>TK2 ($1.05/km, Cl 64.4)</strong> \u2014 own-vehicle km travelled between worksites during the workday. Not applicable when company transport is used.</li>';
-        html += '<li><strong>Kms (Company Car) ($0.75/km)</strong> \u2014 km driven when you\'re responsible for a company vehicle. Internal operational allowance \u2014 tick only when relevant.</li>';
-        html += '<li><strong>Mutex:</strong> TK1 + TK2 (own vehicle) and Kms Company Car (company vehicle) are mutually exclusive. Ticking the top-of-form Company Car button disables TK1 and TK2; unticking it disables Kms Company Car.</li>';
-        html += '</ul>';
-        html += '<strong>Google Maps auto-fill:</strong>';
-        html += '<ul>';
-        html += '<li>With any of TK1/TK2/Kms CC ticked (as applicable), the km field auto-populates when you use the Google Maps Travel Tool above.</li>';
-        html += '<li><strong>TK1</strong> pulls the outside-boundary km for both the morning and return legs. A "Return" section in the Travel Tool appears so you can specify where you\'re going back to (e.g. accommodation, other office).</li>';
-        html += '<li><strong>TK2</strong> pulls the sum of between-site km. Click "Add another site" to chain multiple sites (up to 5 total). The return leg automatically starts from your last added site.</li>';
-        html += '<li><strong>Kms (Company Car)</strong> pulls the morning leg only \u2014 the Google tool doesn\'t know your full day\'s path. Add return km manually if the return is symmetrical with the morning trip.</li>';
-        html += '<li>Auto-filled values can always be overwritten manually. Once you type a km value it won\'t be clobbered by a later auto-calculate.</li>';
-        html += '</ul>';
-        html += '<strong>Note:</strong> TAT, Fares, and Meal Allowance (Overtime) are already auto-calculated by the timesheet above \u2014 they are not duplicated here.';
-        html += '</div>';
-        let currentGroup = '';
-        let firstGroup = true;
-        EXTRA_ALLOWANCES.forEach(a => {
-            if (a.group !== currentGroup) {
-                currentGroup = a.group;
-                if (firstGroup) {
-                    html += '<div class="allow-group-title" style="display:flex; align-items:center; justify-content:space-between;">' + currentGroup + '<button class="info-btn" onclick="toggleInfo(\'infoAllow\')" style="margin-left:auto;">i</button></div>';
-                    firstGroup = false;
-                } else {
-                    html += '<div class="allow-group-title">' + currentGroup + '</div>';
-                }
-            }
-            html += '<div class="allow-item">';
-            // onchange also syncs allowance-bound UI (Return section visibility,
-            // Km's CC inline note) so those react the moment the box is ticked.
-            html += '<label><input type="checkbox" id="allow_' + a.id + '" onchange="syncAllowanceBoundUI(); calculate();"> ' + a.name + '</label>';
-            if (a.unit === 'km') {
-                html += '<input type="number" class="allow-input" id="km_' + a.id + '" placeholder="km" oninput="calculate()">';
-            } else if (a.unit === 'custom_hr') {
-                html += '<input type="number" class="allow-input" id="hrs_' + a.id + '" placeholder="hrs" oninput="calculate()">';
-            }
-            if (!a.hideRate) {
-                let unitLabel = a.unit === 'custom_hr' ? 'hr' : a.unit;
-                html += '<span class="allow-rate">$' + a.rate.toFixed(2) + '/' + unitLabel + '</span>';
-            }
-            html += '</div>';
-            // Inline hint under Km's (Company Car) — only visible when that
-            // allowance is ticked. Flags that the auto-fill is morning-leg only.
-            if (a.id === 'kmCompanyCar') {
-                html += '<div id="ccKmNote" class="hidden" style="font-size: 10px; color: #888; font-style: italic; margin: -4px 0 6px; padding: 0 4px;">Auto-calculation for morning trip only \u2014 add return km manually if applicable.</div>';
-            }
-        });
-        panel.innerHTML = html;
+  });
+
+  // Filter by location
+  const filtered = currentLocation === 'all'
+    ? processed
+    : processed.filter(e => e.location === currentLocation);
+
+  // Stats (based on location-filtered list)
+  const total = filtered.length;
+  const combinedYears = filtered.reduce((sum, e) => sum + e.years, 0);
+  const longest = filtered.length > 0
+    ? filtered.reduce((max, e) => e.years > max.years ? e : max, filtered[0])
+    : { years: 0 };
+  document.getElementById('statTotal').textContent = total;
+  document.getElementById('statYears').textContent = combinedYears + '+';
+  document.getElementById('statLongest').textContent = longest.years + ' yrs';
+
+  // ── Milestone ribbons ──
+  renderRibbons(filtered);
+
+  // Group employees by tier
+  const groups = {};
+  TIERS.forEach(t => groups[t.key] = []);
+  filtered.forEach(e => groups[e.tier].push(e));
+
+  // Sort: most years first, then alphabetical by surname
+  Object.values(groups).forEach(arr =>
+    arr.sort((a, b) => b.years - a.years || a.surname.localeCompare(b.surname))
+  );
+
+  // Build tier HTML
+  let html = '';
+  TIERS.forEach(tier => {
+    const emps = groups[tier.key];
+    const show = currentFilter === 'all' || currentFilter === tier.key;
+    const hidden = !show || emps.length === 0;
+    html += `<div class="milestone-section tier-${tier.key} ${hidden ? 'hidden' : ''}">`;
+    html +=   `<div class="milestone-header">`;
+    html +=     `<div class="milestone-icon">${tier.icon}</div>`;
+    html +=     `<h2>${tier.label} <span class="count">(${emps.length})</span></h2>`;
+    html +=   `</div>`;
+    html +=   `<div class="milestone-underline"></div>`;
+    html +=   `<div class="employees-grid">`;
+    emps.forEach(e => {
+      const color = avatarColor(e.firstName + e.surname);
+      const locClass = e.location === 'Devonport' ? 'loc-devonport' : 'loc-hobart';
+      const hasBadge = e.recent || e.upcoming;
+      let badge = '';
+      if (e.recent) {
+        badge = `<div class="milestone-badge">Just hit ${e.recent.milestone} ${e.recent.milestone === 1 ? 'year' : 'years'}!</div>`;
+      } else if (e.upcoming) {
+        badge = `<div class="milestone-badge">${e.upcoming.milestone} ${e.upcoming.milestone === 1 ? 'year' : 'years'} ${relativeWhen(e.upcoming.daysUntil, true)}</div>`;
+      }
+      html += `
+        <div class="employee-card ${hasBadge ? 'has-milestone' : ''}">
+          ${badge}
+          <div class="avatar" style="background:${color}">${initials(e.firstName, e.surname)}</div>
+          <div class="emp-info">
+            <div class="emp-name">${e.firstName} ${e.surname}</div>
+            <div class="emp-meta">
+              <span class="location-tag ${locClass}">${e.location}</span>
+              <span>·</span>
+              <span>Started ${e.started}</span>
+            </div>
+          </div>
+          <div class="emp-years">${e.display}</div>
+        </div>`;
+    });
+    html +=   `</div>`;
+    html += `</div>`;
+  });
+
+  const anyVisible = TIERS.some(t => {
+    const show = currentFilter === 'all' || currentFilter === t.key;
+    return show && groups[t.key].length > 0;
+  });
+  if (!anyVisible) {
+    html += '<div class="no-results">No team members match the current filters.</div>';
+  }
+
+  document.getElementById('content').innerHTML = html;
+
+  document.getElementById('updatedText').textContent =
+    'Last updated: ' + today.toLocaleDateString('en-AU', {
+      day: 'numeric', month: 'long', year: 'numeric'
+    });
+}
+
+function renderRibbons(employees) {
+  const upcoming = employees
+    .filter(e => e.upcoming)
+    .sort((a, b) => a.upcoming.daysUntil - b.upcoming.daysUntil);
+  const recent = employees
+    .filter(e => e.recent)
+    .sort((a, b) => a.recent.daysSince - b.recent.daysSince);
+
+  let html = '';
+  if (recent.length > 0) {
+    html += `<div class="ribbon ribbon-recent">`;
+    html +=   `<div class="ribbon-icon">${SVG.party}</div>`;
+    html +=   `<div class="ribbon-body">`;
+    html +=     `<div class="ribbon-title">Recent milestones (last 30 days)</div>`;
+    html +=     `<div class="ribbon-content">`;
+    recent.forEach(e => {
+      html += `<span class="ribbon-entry"><strong>${e.firstName} ${e.surname}</strong> hit ${e.recent.milestone} ${e.recent.milestone === 1 ? 'year' : 'years'} <span class="when">· ${relativeWhen(e.recent.daysSince, false)}</span></span>`;
+    });
+    html +=     `</div>`;
+    html +=   `</div>`;
+    html += `</div>`;
+  }
+  if (upcoming.length > 0) {
+    html += `<div class="ribbon ribbon-upcoming">`;
+    html +=   `<div class="ribbon-icon">${SVG.calendar}</div>`;
+    html +=   `<div class="ribbon-body">`;
+    html +=     `<div class="ribbon-title">Coming up (next 30 days)</div>`;
+    html +=     `<div class="ribbon-content">`;
+    upcoming.forEach(e => {
+      html += `<span class="ribbon-entry"><strong>${e.firstName} ${e.surname}</strong> — ${e.upcoming.milestone} ${e.upcoming.milestone === 1 ? 'year' : 'years'} <span class="when">· ${relativeWhen(e.upcoming.daysUntil, true)}</span></span>`;
+    });
+    html +=     `</div>`;
+    html +=   `</div>`;
+    html += `</div>`;
+  }
+  document.getElementById('ribbonsWrap').innerHTML = html;
+}
+
+// ══════════════════════════════════════════════════════════
+// FILTER HANDLERS
+// ══════════════════════════════════════════════════════════
+function setFilter(tier, btn) {
+  currentFilter = tier;
+  document.querySelectorAll('.filter-btn:not(.loc-btn)').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  render();
+}
+function setLocation(loc, btn) {
+  currentLocation = loc;
+  document.querySelectorAll('.filter-btn.loc-btn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  render();
+}
+
+// ══════════════════════════════════════════════════════════
+// TV MODE — auto-scroll loop
+// Scrolls smoothly from top to bottom, pauses, returns to top,
+// repeats. Tuned for ~60–90 seconds per pass.
+// ══════════════════════════════════════════════════════════
+function startTvAutoScroll() {
+  const SCROLL_SPEED_PX_PER_SEC = 35; // adjust for pace
+  const BOTTOM_PAUSE_MS = 5000;
+  const TOP_PAUSE_MS    = 3500;
+  let lastTime = null;
+  let paused = false;
+
+  function step(t) {
+    if (paused) { requestAnimationFrame(step); return; }
+    if (lastTime === null) lastTime = t;
+    const dt = (t - lastTime) / 1000;
+    lastTime = t;
+    const maxScroll = document.documentElement.scrollHeight - window.innerHeight;
+    if (maxScroll <= 0) {
+      requestAnimationFrame(step);
+      return;
     }
-    // ---------- utilities ----------
-    function toggleInfo(id) {
-        document.getElementById(id).classList.toggle('open');
+    if (window.scrollY >= maxScroll - 1) {
+      paused = true;
+      setTimeout(() => {
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+        setTimeout(() => { lastTime = null; paused = false; requestAnimationFrame(step); }, TOP_PAUSE_MS);
+      }, BOTTOM_PAUSE_MS);
+    } else {
+      window.scrollBy(0, SCROLL_SPEED_PX_PER_SEC * dt);
+      requestAnimationFrame(step);
     }
-    // Dynamic label helpers — mirror the on-screen labels that change with
-    // the Start/Finish Workshop/Site toggles. Used by both the print-only
-    // Time Entries block and the .txt download so every output matches
-    // what the user sees on screen.
-    function getStartLabel() {
-        return (flags.Start === 'Work') ? 'Workshop Start' : 'Left Workshop/Accom';
-    }
-    function getFinishLabel() {
-        return (flags.Fin === 'Work') ? 'Workshop Finish' : 'Arrived at Workshop/Accom';
-    }
-    function setOffice(code) {
-        const prev = flags.Office;
-        flags.Office = code;
-        document.getElementById('btnOfficeDev').classList.toggle('active', code === 'Dev');
-        document.getElementById('btnOfficeHob').classList.toggle('active', code === 'Hob');
-        document.getElementById('btnOfficeCustom').classList.toggle('active', code === 'Custom');
-        document.getElementById('customOriginWrap').classList.toggle('hidden', code !== 'Custom');
-        // Morning origin changed — invalidate all cached legs so the auto-
-        // calculate re-fetches with the new origin.
-        if (prev && prev !== code) {
-            lastLegs.morning = null;
-            lastLegs.returnLeg = null;
-            lastLegs.betweenLegs = [];
-            scheduleAutoCalculate();
-        }
-    }
-    // Return section — identical UI to the morning Office toggle, but
-    // scoped to the return leg (used when the TK1 allowance is ticked so
-    // we can feed an asymmetric return into the km auto-fill).
-    function setReturnOffice(code) {
-        const prev = flags.ReturnOffice;
-        flags.ReturnOffice = code;
-        document.getElementById('btnReturnDev').classList.toggle('active', code === 'Dev');
-        document.getElementById('btnReturnHob').classList.toggle('active', code === 'Hob');
-        document.getElementById('btnReturnCustom').classList.toggle('active', code === 'Custom');
-        document.getElementById('customReturnWrap').classList.toggle('hidden', code !== 'Custom');
-        // If the return destination actually changed (not just the initial
-        // default being applied), invalidate the cached return leg so TK1
-        // re-computes against the NEW destination. The sync at the end
-        // triggers the background refetch.
-        if (prev && prev !== code) {
-            invalidateReturnLeg();
-            scheduleAutoCalculate();
-        }
-        if (typeof syncAllowanceBoundUI === 'function') syncAllowanceBoundUI();
-    }
-    // Invalidate the cached return leg + clear TK1 km so the background
-    // refetch (fired from syncAllowanceBoundUI) can write a fresh value
-    // under the onlyIfEmpty guard.
-    function invalidateReturnLeg() {
-        if (typeof lastLegs !== 'undefined') lastLegs.returnLeg = null;
-        const tk1Input = document.getElementById('km_tk1');
-        if (tk1Input) tk1Input.value = '';
-    }
-    // Called from the customReturn input — text change means the return
-    // destination has changed, so invalidate and refetch.
-    function returnDestChanged() {
-        invalidateReturnLeg();
-        if (typeof syncAllowanceBoundUI === 'function') syncAllowanceBoundUI();
-        scheduleAutoCalculate();
-    }
-    // Morning Destination field change — invalidate every cached leg (morning,
-    // between-sites, return all depend on this text) and schedule a full
-    // refetch. For TK1-only cases the return origin is the morning Dest, so
-    // returnLeg must re-fetch too.
-    function destinationChanged() {
-        lastLegs.morning = null;
-        lastLegs.returnLeg = null;
-        lastLegs.betweenLegs = [];
-        scheduleAutoCalculate();
-    }
-    // Custom morning origin field change — invalidate morning + return legs.
-    function morningOriginChanged() {
-        lastLegs.morning = null;
-        lastLegs.returnLeg = null;
-        lastLegs.betweenLegs = [];
-        scheduleAutoCalculate();
-    }
-    // ----------------------------------------------------------------
-    // AUTOMATIC CALCULATE — debounced so rapid field changes don't spam
-    // the Google API. Fires ~400ms after the user stops interacting.
-    // Silent mode skips alerts when prerequisites aren't met, so partial
-    // states (e.g. typing mid-address) don't pop dialogs.
-    // ----------------------------------------------------------------
-    let _autoCalcTimer = null;
-    function scheduleAutoCalculate(delay) {
-        if (_autoCalcTimer) clearTimeout(_autoCalcTimer);
-        _autoCalcTimer = setTimeout(function() {
-            _autoCalcTimer = null;
-            if (typeof calculateRouteTime === 'function') {
-                calculateRouteTime({ silent: true });
-            }
-        }, (typeof delay === 'number') ? delay : 400);
-    }
-    // --- TK2 multi-site helpers -------------------------------------------
-    // Count of extra site slots (2..5) currently visible. Site 1 is always
-    // the morning Destination field above — not counted here.
-    function activeExtraSiteCount() {
-        let n = 0;
-        for (let i = 2; i <= 5; i++) {
-            const w = document.getElementById('siteWrap' + i);
-            if (w && !w.classList.contains('hidden')) n++;
-        }
-        return n;
-    }
-    // Reveal the next hidden site slot (2..5) in order. No-op if all 5 slots
-    // are already visible.
-    function addNextSite() {
-        for (let i = 2; i <= 5; i++) {
-            const w = document.getElementById('siteWrap' + i);
-            if (w && w.classList.contains('hidden')) {
-                w.classList.remove('hidden');
-                const input = document.getElementById('site' + i);
-                if (input) input.focus();
-                autoPopulateReturnFrom();
-                syncAllowanceBoundUI();
-                return;
-            }
-        }
-    }
-    // Hide a site slot and clear its value + any cached Autocomplete place.
-    // The TK2 km field gets reset so the opportunistic fill on the next sync
-    // will re-compute from the remaining sites.
-    function removeSite(n) {
-        const w = document.getElementById('siteWrap' + n);
-        const input = document.getElementById('site' + n);
-        if (w) w.classList.add('hidden');
-        if (input) input.value = '';
-        if (selectedPlaces['site' + n]) selectedPlaces['site' + n] = null;
-        // Invalidate cached between-site data + return leg (last site moved).
-        lastLegs.betweenLegs = [];
-        lastLegs.returnLeg = null;
-        const tk2Input = document.getElementById('km_tk2');
-        if (tk2Input) tk2Input.value = '';
-        const tk1Input = document.getElementById('km_tk1');
-        if (tk1Input) tk1Input.value = '';
-        syncAllowanceBoundUI();
-        scheduleAutoCalculate();
-    }
-    // Fires when a site input loses focus (user finished typing). Kicks the
-    // auto-calculate so TK2 km populates without requiring Calculate again.
-    function siteInputChanged() {
-        // Invalidate cached between-site + return data — input text changed.
-        lastLegs.betweenLegs = [];
-        lastLegs.returnLeg = null;
-        syncAllowanceBoundUI();
-        scheduleAutoCalculate();
-    }
-    function checkRoute() {
-        if (!flags.Office) {
-            alert('Please select a start location (Devonport, Hobart, or Custom).');
-            return;
-        }
-        let origin;
-        if (flags.Office === 'Custom') {
-            origin = document.getElementById('customOrigin').value.trim();
-            if (!origin) { alert('Please enter a custom start address.'); return; }
-        } else {
-            origin = OFFICES[flags.Office];
-        }
-        const destValue = document.getElementById('destination').value.trim();
-        if (!destValue) {
-            alert('Please enter a destination (site address) before verifying the route.');
-            return;
-        }
-        const start = encodeURIComponent(origin);
-        const end = encodeURIComponent(destValue);
-        if (end) {
-            let url = `https://www.google.com/maps/dir/${start}/${end}`;
-            // On iOS home-screen apps, redirect so it opens in Safari
-            // cleanly (avoids the in-app browser overlay).
-            // On desktop/other browsers, use a temp anchor link which
-            // avoids popup blocker issues in Edge/Chrome.
-            if (window.navigator.standalone) {
-                location.href = url;
-            } else {
-                let a = document.createElement('a');
-                a.href = url;
-                a.target = '_blank';
-                a.rel = 'noopener';
-                a.style.display = 'none';
-                document.body.appendChild(a);
-                a.click();
-                document.body.removeChild(a);
-            }
-        }
-    }
-    function syncArriveTime() {
-        const hInput = document.getElementById('manualHours').value;
-        const mInput = document.getElementById('manualMinutes').value;
-        if (hInput !== "" || mInput !== "") {
-            const h = parseInt(hInput) || 0;
-            const m = parseInt(mInput) || 0;
-            const leftMins = timeToMin(document.getElementById('leftWorkshop').value);
-            document.getElementById('arriveSite').value = minToTime(leftMins + (h * 60) + m);
-        }
-        calculate();
-    }
-    function setStart(type) {
-        flags.Start = type;
-        document.getElementById('btnStartWork').classList.toggle('active', type === 'Work');
-        document.getElementById('btnStartSite').classList.toggle('active', type === 'Site');
-        // Always show "Arrived on Site" — needed for allowance calculations even when starting at workshop
-        document.getElementById('startLabel').innerText = (type === 'Work') ? "Workshop Start:" : "Left Workshop/Accom:";
-        calculate();
-    }
-    function setFinish(type) {
-        flags.Fin = type;
-        document.getElementById('btnFinWork').classList.toggle('active', type === 'Work');
-        document.getElementById('btnFinSite').classList.toggle('active', type === 'Site');
-        document.getElementById('leaveSiteWrap').classList.toggle('hidden', type === 'Work');
-        document.getElementById('finishLabel').innerText = (type === 'Work') ? "Workshop Finish:" : "Arrived at Workshop/Accom:";
-        calculate();
-    }
-    // Helper — penalty-rate day triggers DT + 4h/2h min (Cl 62.3.a)
-    // Covers Weekend, Public Holiday, or a Weekday with the RDO overlay on.
-    function isPenaltyDay() {
-        return flags.Day !== 'Weekday' || flags.RDO;
-    }
-    // Keep the 24h-notice row visibility in sync with the current day type + RDO flag.
-    function syncNoticeRow() {
-        let showNotice = isPenaltyDay();
-        document.getElementById('notified24hRow').classList.toggle('hidden', !showNotice);
-        if (!showNotice && flags.Notified24h) {
-            flags.Notified24h = false;
-            document.getElementById('btnNotified24h').classList.remove('active');
-        }
-    }
-    function toggleDay(type) {
-        flags.Day = type;
-        document.getElementById('btnWeekday').classList.toggle('active', type === 'Weekday');
-        document.getElementById('btnWeekend').classList.toggle('active', type === 'Weekend');
-        document.getElementById('btnPH').classList.toggle('active', type === 'PH');
-        syncNoticeRow();
-        calculate();
-    }
-    function toggle(id) {
-        flags[id] = !flags[id];
-        document.getElementById('btn' + id).classList.toggle('active');
-        // RDO flip changes whether the day is a penalty-rate day, so
-        // refresh the 24h-notice row visibility.
-        if (id === 'RDO') syncNoticeRow();
-        // Keep the "Other" header indicator in sync with its contents.
-        if (['UnnotifiedOT', 'RDO', 'Callout'].indexOf(id) !== -1) syncOtherHeader();
-        // Company Car flag gates the km allowances — refresh the mutex.
-        if (id === 'Co') syncAllowanceBoundUI();
-        calculate();
-    }
-    function toggleOther() {
-        let panel = document.getElementById('otherPanel');
-        panel.classList.toggle('hidden');
-        syncOtherHeader();
-    }
-    function syncOtherHeader() {
-        const panel = document.getElementById('otherPanel');
-        const btn   = document.getElementById('btnOther');
-        const arrow = document.getElementById('btnOtherArrow');
-        const isOpen = !panel.classList.contains('hidden');
-        const anyActive = flags.UnnotifiedOT || flags.RDO || flags.Callout;
-        // Rebuild the button label: "Other" + rotating arrow + optional dot.
-        btn.innerHTML = 'Other <span id="btnOtherArrow" style="display:inline-block; transition: transform 0.2s ease;">\u25BC</span>' +
-            (anyActive && !isOpen ? ' \u2022' : '');
-        const arrowEl = document.getElementById('btnOtherArrow');
-        if (arrowEl) arrowEl.style.transform = isOpen ? 'rotate(180deg)' : 'rotate(0deg)';
-        btn.classList.toggle('active', anyActive);
-    }
-    function toggleInc1() {
-        flags.Inc1 = !flags.Inc1;
-        document.getElementById('btnInc1').classList.toggle('active');
-        // Show/hide First Day / Last Day row
-        document.getElementById('inc1DayRow').classList.toggle('hidden', !flags.Inc1);
-        // Reset trip day flags when Inc-1 is turned off
-        if (!flags.Inc1) {
-            flags.FirstDay = false;
-            flags.LastDay = false;
-            document.getElementById('btnFirstDay').classList.remove('active');
-            document.getElementById('btnLastDay').classList.remove('active');
-        }
-        // Auto-tick the "Incidentals 1 ($20)" allowance so the $20/day
-        // is included in the summary without the user having to tick it
-        // separately. Untick when Inc-1 is turned off.
-        const inc1AllowCb = document.getElementById('allow_inc1Allow');
-        if (inc1AllowCb) inc1AllowCb.checked = flags.Inc1;
-        calculate();
-    }
-    function toggleTripDay(id) {
-        // First Day and Last Day are mutually exclusive
-        if (id === 'FirstDay') {
-            flags.FirstDay = !flags.FirstDay;
-            if (flags.FirstDay) flags.LastDay = false;
-        } else {
-            flags.LastDay = !flags.LastDay;
-            if (flags.LastDay) flags.FirstDay = false;
-        }
-        document.getElementById('btnFirstDay').classList.toggle('active', flags.FirstDay);
-        document.getElementById('btnLastDay').classList.toggle('active', flags.LastDay);
-        calculate();
-    }
-    function timeToMin(t) {
-        if (!t) return 0;
-        let parts = t.split(':');
-        return parseInt(parts[0]) * 60 + parseInt(parts[1]);
-    }
-    function minToTime(m) {
-        let h = Math.floor(m / 60) % 24;
-        let mins = m % 60;
-        return String(h).padStart(2, '0') + ":" + String(mins).padStart(2, '0');
-    }
-    // diffMins — compute a positive duration between two "minutes-since-midnight"
-    // values. Handles shifts that cross midnight (e.g. left 22:00, arrived 01:00).
-    // If `to` is strictly earlier than `from`, assume it's on the next day.
-    function diffMins(from, to) {
-        if (to === from) return 0;
-        if (to < from) return (to + 1440) - from;
-        return to - from;
-    }
-    function roundTo15(totalMins) {
-        if (totalMins <= 0) return 0;
-        let intervals = Math.floor(totalMins / 15);
-        let remainder = totalMins % 15;
-        return (remainder >= 8) ? (intervals + 1) * 15 : intervals * 15;
-    }
-    // ---------- main calculation ----------
-    function calculate() {
-        let tLeftBase   = timeToMin(document.getElementById('leftWorkshop').value);
-        let tArriveSite = timeToMin(document.getElementById('arriveSite').value);
-        let tLeaveSite  = timeToMin(document.getElementById('leaveSite').value);
-        let tArriveBase = timeToMin(document.getElementById('arriveWorkshop').value);
-        let results = {
-            "TT+ (Morning)": 0,
-            "TT (Morning)": 0,
-            "NT": 0,
-            "NT (RDO, AL or LWOP)": 0,
-            "NT (Public Holiday)": 0,
-            "TH": 0,
-            "DT": 0,
-            "TT (Return)": 0,
-            "TT+ (Return)": 0,
-            "TAT": 0,
-            "Fares (FTR)": 0,
-            "Meal Allow ($15.50)": 0
-        };
-        // Inc-1 direction flags:
-        // First Day: morning = standard, return = Inc-1
-        // Last Day:  morning = Inc-1, return = standard
-        // Normal:    both = Inc-1
-        let inc1Morning = flags.Inc1 && !flags.FirstDay;
-        let inc1Return  = flags.Inc1 && !flags.LastDay;
-        // Paid work span depends on Start/Finish mode
-        let paidWorkStart = (flags.Start === 'Work') ? tLeftBase   : tArriveSite;
-        let paidWorkEnd   = (flags.Fin   === 'Work') ? tArriveBase : tLeaveSite;
-        // ----------------------------------------------------------
-        // 1) EARLY TRAVEL DEEMING (Cl 64.3.d, Travel Appendix Ex 22)
-        //    BOTH conditions required:
-        //      (a) travel boundary crossed before 0630 — proxied as
-        //          `tLeftBase + 30 < 390` (boundary ≈ 30 min from base)
-        //          i.e. the employee left before 0600.
-        //      (b) worksite is > 1 hour from the travel boundary, i.e.
-        //          total morning travel > 90 min (30 min boundary + 60+).
-        //    When both engage → entitlement is 30 min TT only and the
-        //    ordinary day is deemed to start at 0700 (weekday).
-        //    Weekday only — weekend/PH early-start edge cases (Ex 23/24)
-        //    are handled via the standard weekend/PH branch.
-        // ----------------------------------------------------------
-        let morningTravelTotal = (flags.Start === 'Site') ? diffMins(tLeftBase, tArriveSite) : 0;
-        let isEarlyTravel = (
-            flags.Start === 'Site' &&
-            flags.Day === 'Weekday' &&
-            !flags.RDO &&
-            (tLeftBase + 30) < 390 &&
-            morningTravelTotal > 90
-        );
-        // Deemed workday starts at 0700 when early travel applies.
-        // Only meaningful when arrival is AFTER 0700 (rare for early-travel
-        // scenarios but preserved for edge cases).
-        let deemedWorkMins = isEarlyTravel ? Math.max(0, tArriveSite - 420) : 0;
-        // Span uses diffMins to handle shifts that cross midnight.
-        let spanOfWork = diffMins(paidWorkStart, paidWorkEnd) + deemedWorkMins;
-        // ----------------------------------------------------------
-        // 2) MEAL BREAK (Cl 60.a / 60.b / 60.d)
-        //    Meal break rules:
-        //    - Shifts < 5 hours: no meal break (Cl 60.a/60.b — meal break
-        //      applies once 5+ hours worked). No deduction.
-        //    - Shifts ≥ 12 hours (workday/span, per Cl 60.a "works a
-        //      12-hour day or greater" and Cl 60.d "workday exceeds 12
-        //      hours duration"): meal break PAID. No deduction.
-        //    - Otherwise: 30-min unpaid meal deduction.
-        // ----------------------------------------------------------
-        let mealDeduct = 30;
-        if (spanOfWork < 300) {
-            mealDeduct = 0;                 // <5h: no meal break (Cl 60.a/b)
-        } else if (spanOfWork >= 720) {
-            mealDeduct = 0;                 // 12h+: paid meal (Cl 60.a/d)
-        }
-        let netWorkMins = roundTo15(Math.max(0, spanOfWork - mealDeduct));
-        // ----------------------------------------------------------
-        // 3) TRAVEL POOLS (Cl 64.3, Cl 64.5, Travel Appendix)
-        //    The first 30 minutes of travel in each direction is the
-        //    Travel Boundary (Cl 64.1) and is the Employee's own time.
-        //    Anything beyond is paid as TT / TT+.
-        //
-        //    Weekday, non-Inc-1 forward journey (Cl 64.3.d):
-        //      "outside of weekends and public holidays, travel time
-        //       at the time and a half rate (TT+) is only applicable
-        //       for the return journey."
-        //    → All weekday outside-boundary forward travel is TT (single).
-        //
-        //    Weekend/PH forward journey (Cl 64.3.c.iii, Ex 14/15):
-        //      All outside-boundary travel is TT+. The weekend/PH render
-        //      branch lumps morningTT + morningTTPlus → TT+.
-        //
-        //    Early travel (Cl 64.3.d.i, Ex 22):
-        //      "The Employee may claim 30-minutes of Travel Time (TT)."
-        //      Entitlement is exactly 30 min TT — not the actual travel.
-        //      Plus deemed 07:00 ordinary-day start.
-        //
-        //    Inc-1 morning (Cl 64.5.a): TT on weekdays; TT+ on weekends/PH
-        //      (Cl 64.5.a.ii weekends/PH clause — morning and return both
-        //      elevated on penalty-rate days).
-        // ----------------------------------------------------------
-        let morningTTPlus = 0;
-        let morningTT    = 0;
-        if (flags.Start === 'Site') {
-            if (inc1Morning) {
-                // Cl 64.5.a.i — Inc-1 morning: all TT, no boundary.
-                let windowEnd = isEarlyTravel ? Math.min(420, tArriveSite) : tArriveSite;
-                morningTT = Math.max(0, windowEnd - tLeftBase);
-                morningTTPlus = 0;
-            } else if (isEarlyTravel) {
-                // Cl 64.3.d.i: 30 min TT only, deemed 07:00 start.
-                morningTT = 30;
-                morningTTPlus = 0;
-            } else {
-                // Standard: all outside-boundary forward travel = TT (weekday)
-                // or is re-lumped to TT+ for weekend/PH in the render branch.
-                let boundaryCrossTime = tLeftBase + 30;
-                morningTT = Math.max(0, tArriveSite - boundaryCrossTime);
-                morningTTPlus = 0;
-            }
-        }
-        let returnTransitGross = (flags.Fin === 'Site')
-            ? diffMins(tLeaveSite, tArriveBase)
-            : 0;
-        // ----------------------------------------------------------
-        // 4) TIME-OF-DAY SPLIT (Cl 55.a + Cl 62.2.a.i)
-        //    Ordinary hours are 6am–6pm (360–1080 min). Work outside
-        //    that window is overtime by definition, regardless of
-        //    total hours worked. This matters for short days with
-        //    early starts or late finishes (e.g. 5am start, RDO afternoon).
-        //
-        //    Calculation:
-        //    a) Count net work minutes falling outside 6am–6pm = outsideOT
-        //    b) Count net work minutes within 6am–6pm
-        //    c) Within-window: first 8h = NT, excess = overtime
-        //    d) Total OT = outsideOT + within-window excess
-        //    e) OT split: first 2h = TH, rest = DT (Cl 62.2.a.i)
-        // ----------------------------------------------------------
-        // Work window (after meal deduction applied proportionally)
-        let grossWorkMins = spanOfWork; // before meal deduction
-        let mealRatio = grossWorkMins > 0 ? netWorkMins / grossWorkMins : 0;
-        // When early travel deeming applies, the effective work start is
-        // 07:00 (420 min), not the actual arrival time on site.
-        let effectiveWorkStart = isEarlyTravel ? 420 : paidWorkStart;
-        // Minutes of work outside 6am-6pm (pre-6am + post-6pm)
-        let pre6am  = Math.max(0, Math.min(effectiveWorkStart + grossWorkMins, 360) - effectiveWorkStart);
-        let post6pm = Math.max(0, (effectiveWorkStart + grossWorkMins) - Math.max(effectiveWorkStart, 1080));
-        let outsideOrdinaryGross = pre6am + post6pm;
-        // Apply meal ratio so we're working with net minutes
-        let outsideOT = roundTo15(Math.round(outsideOrdinaryGross * mealRatio));
-        // Within-window work (net)
-        let withinWindowNet = Math.max(0, netWorkMins - outsideOT);
-        let withinNT = Math.min(480, withinWindowNet);
-        let withinOT = Math.max(0, withinWindowNet - 480);
-        // Total overtime from work hours
-        let totalWorkOT = outsideOT + withinOT;
-        // NT top-up from travel pools (only TT, not TT+)
-        // Only applies on pure weekdays — weekends/RDO/PH have no NT concept,
-        // all work is DT and all outside-boundary travel is TT+ (Cl 64.3.c.iii).
-        let topUpMorning = 0;
-        let topUpReturn = 0;
-        let returnTransitPayable = returnTransitGross;
-        if (flags.Day === 'Weekday' && !flags.RDO) {
-            let ntRemaining = Math.max(0, 480 - withinNT);
-            // Under Inc-1, travel is from temporary centre of employment —
-            // all travel stays as TT, no top-up into NT (Cl 64.5).
-            topUpMorning = inc1Morning ? 0 : Math.min(ntRemaining, morningTT);
-            ntRemaining -= topUpMorning;
-            morningTT -= topUpMorning;
-            // Return transit used to top up NT carries no boundary deduction
-            topUpReturn = inc1Return ? 0 : Math.min(ntRemaining, returnTransitGross);
-            ntRemaining -= topUpReturn;
-            returnTransitPayable = returnTransitGross - topUpReturn;
-        }
-        // ----------------------------------------------------------
-        // 5) OVERTIME & TRAVEL OVERFLOW (Cl 62.2 / 64.3)
-        // ----------------------------------------------------------
-        if (flags.Day === 'Weekday' && !flags.RDO) {
-            results.NT = roundTo15(withinNT + topUpMorning + topUpReturn) / 60;
-            // Weekday OT: first 2h at time & half, rest at double time (Cl 62.2.a.i)
-            let workOT = totalWorkOT;
-            results.TH = Math.min(120, workOT) / 60;
-            results.DT = Math.max(0, workOT - 120) / 60;
-            // Morning travel overflow (remaining pools after NT top-up)
-            results["TT (Morning)"]  = roundTo15(morningTT) / 60;
-            results["TT+ (Morning)"] = roundTo15(morningTTPlus) / 60;
-            // Return transit net of 30-min boundary deduction (non-Inc-1 only)
-            let returnTransitNet = Math.max(0, returnTransitPayable - 30);
-            // Cl 64.3.c.ii / 64.5.a.ii — return leg is TT+ when the day's
-            // total "work + outside-boundary travel" already exceeds 8h at
-            // the moment the return journey begins. The pre-return accrual is:
-            //
-            //   non-Inc-1: netWorkMins + max(0, morningTravelTotal − 30)
-            //              (morning travel minus its 30-min boundary)
-            //
-            //   Inc-1:     netWorkMins + morningTravelTotal
-            //              (no boundary under Inc-1 — accommodation IS the centre)
-            //
-            // We use minutes of elapsed time here, not the rounded pay codes —
-            // rounding and NT-capping can hide outside-boundary time and push
-            // marginal shifts onto the wrong side of the 8h threshold.
-            let accruedAtReturn = netWorkMins + (inc1Return
-                ? morningTravelTotal
-                : Math.max(0, morningTravelTotal - 30));
-            if (inc1Return) {
-                if (accruedAtReturn > 480) {
-                    results["TT+ (Return)"] = roundTo15(returnTransitPayable) / 60;
-                } else {
-                    results["TT (Return)"] = roundTo15(returnTransitPayable) / 60;
-                }
-            } else if (accruedAtReturn > 480) {
-                results["TT+ (Return)"] = roundTo15(returnTransitNet) / 60;
-            } else {
-                results["TT (Return)"] = roundTo15(returnTransitNet) / 60;
-            }
-        } else {
-            // ------------------------------------------------------
-            // Weekend / RDO / Public Holiday (Cl 62.3.a, 62.3.b)
-            //   Work hours → double time, minimum 4h unless notified
-            //     24h+ in advance (then 2h min per Cl 62.3.b).
-            //   Public Holiday → additionally 8 hrs NT paid automatically
-            //     (Cl 62.2.a.iii: double time IN ADDITION TO PH entitlement).
-            //   Outside-boundary travel → TT+ (Cl 64.3.c.iii, Ex 14/15).
-            //   Inc-1 travel (Cl 64.5.a.ii weekends/PH clause):
-            //     - morning travel = TT+ (penalty-rate day, both legs elevated)
-            //     - return travel  = TT+
-            // ------------------------------------------------------
-            let minMins = flags.Notified24h ? 120 : 240;
-            let workDT = Math.max(minMins, roundTo15(netWorkMins)) / 60;
-            results.DT = workDT;
-            results.NT = 0; // NT does not apply on weekends/RDO/PH
-            // Public Holiday entitlement: 8 hours NT automatically
-            if (flags.Day === 'PH') {
-                results["NT (Public Holiday)"] = 8;
-            }
-            // Morning travel — weekend/RDO/PH: ALL morning travel at TT+
-            //   Cl 64.3.c.iii — "time and one half (TT+) during weekends and public holidays"
-            //   Cl 64.5.a.ii — TT+ for Inc-1 travel "on weekends or public holidays"
-            // Covers both standard (outside-boundary) and Inc-1 (accommodation→site) legs.
-            // RDO is treated the same as weekend here for consistency with penalty-rate
-            // days, though strict reading of 64.3.c.iii covers weekends and PH only.
-            let weekendMorningMins = morningTT + morningTTPlus;
-            results["TT+ (Morning)"] = roundTo15(weekendMorningMins) / 60;
-            // Return travel — weekend/RDO/PH
-            if (inc1Return) {
-                // Inc-1 return: TT+ (Cl 64.5.a.ii weekends/PH). No boundary deduction.
-                results["TT+ (Return)"]  = roundTo15(returnTransitGross) / 60;
-            } else {
-                // Standard weekend/RDO/PH: outside-boundary travel at TT+ with 30-min boundary
-                let returnTransitNet = Math.max(0, returnTransitGross - 30);
-                results["TT+ (Return)"]  = roundTo15(returnTransitNet) / 60;
-            }
-        }
-        // ----------------------------------------------------------
-        // 6) ALLOWANCES
-        //    TAT (Cl 64.2): one unit per day when working day commences
-        //      at a worksite (standard rules). Not payable under Inc-1
-        //      (Cl 64.5.a.iii) or when early-travel engages
-        //      (Ex 22/23/24/25: "TAT is not applicable").
-        //    First/Last Day exemption (Cl 64.5.b): Inc-1 suppressions
-        //      do NOT apply to workshop↔site legs on the first/last day
-        //      of an Inc-1 trip — standard rules restore TAT/Fares on
-        //      those legs.
-        //    Fares/FTR (Cl 64.1): daily allowance when employee uses own
-        //      vehicle and no company vehicle was offered.
-        //    Meal Allow (Cl 60.1.a): $15.50 when unnotified 2+ hr OT worked.
-        // ----------------------------------------------------------
-        // Determine whether each leg of the day runs under standard
-        // rules vs Inc-1 accommodation rules:
-        let morningIsStandard = !flags.Inc1 || flags.FirstDay;
-        let returnIsStandard  = !flags.Inc1 || flags.LastDay;
-        // TAT — only payable on the morning leg when it's a standard
-        // workshop↔site leg AND not an early-travel day.
-        if (morningIsStandard && flags.Start === 'Site' && !isEarlyTravel) {
-            results.TAT = 1;
-        }
-        // Fares — one unit per day when employee isn't provided a company
-        // vehicle AND at least one leg of the day is a standard
-        // workshop↔site leg (Start Site morning OR Finish Site return).
-        if (!flags.Co && (
-            (morningIsStandard && flags.Start === 'Site') ||
-            (returnIsStandard  && flags.Fin   === 'Site')
-        )) {
-            results["Fares (FTR)"] = 1;
-        }
-        // ----------------------------------------------------------
-        // 6a) CALLOUT OVERRIDE (Cl 63.a — Recall to site)
-        //     When Callout is active, all normal pay codes are replaced:
-        //       - Work + travel bundled into a single payable block
-        //         (no boundary deduction, no meal deduction).
-        //       - 4-hour minimum at "appropriate overtime rate".
-        //       - Weekday callout: first 2h TH, rest DT (Cl 62.2.a.i).
-        //       - Weekend/PH/RDO callout: all DT (Cl 62.2.a.ii/iii).
-        //       - PH entitlement (8h NT) preserved — independent of the
-        //         callout itself.
-        //       - TT/TT+/TAT/Fares all suppressed — travel time is paid
-        //         at the OT rate per Cl 63.a.ii.
-        //     NOT modelled yet (flagged in info panel):
-        //       - Cl 63.e/f on-call-roster variants (3h / 2h mins)
-        //       - Cl 63.a.iii TK1 km allowance ($0.57/km own vehicle)
-        // ----------------------------------------------------------
-        if (flags.Callout) {
-            let totalTime = diffMins(tLeftBase, tArriveBase);
-            let paidTime  = Math.max(240, roundTo15(totalTime));
-            // Reset all normal pay codes — callout bundles everything.
-            results.NT = 0;
-            results.TH = 0;
-            results.DT = 0;
-            results["TT (Morning)"]  = 0;
-            results["TT+ (Morning)"] = 0;
-            results["TT (Return)"]   = 0;
-            results["TT+ (Return)"]  = 0;
-            results.TAT              = 0;
-            results["Fares (FTR)"]   = 0;
-            results["NT (RDO, AL or LWOP)"] = 0;
-            // Pay at appropriate OT rate (depends on underlying day type).
-            if (isPenaltyDay()) {
-                results.DT = paidTime / 60;
-            } else {
-                results.TH = Math.min(120, paidTime) / 60;
-                results.DT = Math.max(0, paidTime - 120) / 60;
-            }
-            // PH entitlement stays regardless (NES s116 — only if rostered).
-            if (flags.Day === 'PH') results["NT (Public Holiday)"] = 8;
-        }
-        // NT shortfall — show RDO/AL/LWOP gap on pure weekdays only
-        // (penalty-rate days and callouts don't have an 8h NT day to hit)
-        if (flags.Day === 'Weekday' && !flags.RDO && !flags.Callout && results.NT > 0.001 && results.NT < 7.999) {
-            results["NT (RDO, AL or LWOP)"] = Math.round((8 - results.NT) * 100) / 100;
-        }
-        // Meal Allowance — unnotified 2+ hour OT (Cl 60.1.a).
-        // Cl 60.1 is not restricted to weekdays — unnotified OT can
-        // happen any day.
-        let totalOT = (results.TH || 0) + (results.DT || 0);
-        if (flags.UnnotifiedOT && totalOT >= 2) {
-            results["Meal Allow ($15.50)"] = 1;
-        }
-        // ----------------------------------------------------------
-        // 7) Render
-        // ----------------------------------------------------------
-        // Project info header
-        let projName = (document.getElementById('projectName') || {}).value || '';
-        let projDay = (document.getElementById('projectDay') || {}).value || '';
-        let projDateRaw = (document.getElementById('projectDate') || {}).value || '';
-        let projDate = projDateRaw ? new Date(projDateRaw + 'T00:00:00').toLocaleDateString('en-AU', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' }) : '';
-        let projApplicable = projDay || projDate || '';
-        let html = '';
-        if (projName || projApplicable) {
-            html += '<div style="margin-bottom: 4px; padding-bottom: 2px; border-bottom: 2px solid #004a99;">';
-            if (projName) html += '<div style="font-weight:bold; font-size:14px; color:#004a99;">' + projName + '</div>';
-            if (projApplicable) html += '<div style="font-size:12px; color:#555;">Timesheet summary applicable for: <strong>' + projApplicable + '</strong></div>';
-            html += '</div>';
-        }
-        // Print-only Time Entries block (hidden on screen, visible on print).
-        // Mirrors the four time inputs so the printed page always shows what
-        // times the totals are based on — the raw inputs themselves are
-        // hidden by the print stylesheet.
-        const timeLabels = [
-            [getStartLabel(),   'leftWorkshop'],
-            ['Arrived on Site', 'arriveSite'],
-            ['Left Site',       'leaveSite'],
-            [getFinishLabel(),  'arriveWorkshop']
-        ];
-        html += '<div class="print-only" style="margin-bottom: 6px; padding: 4px 8px; background: #f8fafc; border-left: 5px solid #004a99; border-radius: 6px;">';
-        html += '<div style="font-weight: 700; color: #004a99; font-size: 12px; margin-bottom: 2px;">Time Entries</div>';
-        timeLabels.forEach(function(pair) {
-            const v = (document.getElementById(pair[1]) || {}).value || '\u2014';
-            html += '<div class="code-row" style="padding: 2px 0; font-size: 12px;"><span>' + pair[0] + '</span><span>' + v + '</span></div>';
-        });
-        html += '</div>';
-        // Print-only Settings Selected block. Mirrors the on-screen toggle
-        // buttons so the printed timesheet shows which modes were active
-        // when the totals were calculated. Hidden on screen. Laid out as a
-        // 3-column invisible table so items align vertically across rows
-        // (a flex layout stretches to fill the row and misaligns when
-        // different rows have different item counts).
-        // Settings Selected cell helpers. We use inline-block <span> boxes
-        // instead of Unicode ☑/☐ glyphs so the checkboxes render crisply
-        // on every printer (older inkjets and thermal printers sometimes
-        // mis-render the Unicode symbols).
-        const stgCellStyle = 'padding: 2px 8px 2px 0; vertical-align: top; width: 33%;';
-        const stgBoxBase = 'display:inline-block; width:10px; height:10px; border:1px solid #333; margin-right:4px; vertical-align:middle; box-sizing:border-box;';
-        const stgBoxOn   = stgBoxBase + ' background:#004a99;';
-        const stgCell = function(label, on) {
-            if (label === null) return '<td style="' + stgCellStyle + '"></td>';
-            return '<td style="' + stgCellStyle + '">' +
-                '<span style="' + (on ? stgBoxOn : stgBoxBase) + '"></span>' +
-                label + '</td>';
-        };
-        html += '<div class="print-only" style="margin-bottom: 6px; padding: 4px 8px; background: #f8fafc; border-left: 5px solid #004a99; border-radius: 6px;">';
-        html += '<div style="font-weight: 700; color: #004a99; font-size: 12px; margin-bottom: 2px;">Settings Selected</div>';
-        html += '<table style="width: 100%; font-size: 12px; border-collapse: collapse; table-layout: fixed;"><tbody>';
-        // Day type — 3 items, 1 per cell
-        html += '<tr>';
-        html += stgCell('Weekday',        flags.Day === 'Weekday');
-        html += stgCell('Weekend',        flags.Day === 'Weekend');
-        html += stgCell('Public Holiday', flags.Day === 'PH');
-        html += '</tr>';
-        // Main flags — 2 items + empty
-        html += '<tr>';
-        html += stgCell('Company Car',    flags.Co);
-        html += stgCell('Incidentals-1',  flags.Inc1);
-        html += stgCell(null);
-        html += '</tr>';
-        // Other flags — 3 items
-        html += '<tr>';
-        html += stgCell('Unnotified OT',  flags.UnnotifiedOT);
-        html += stgCell('RDO (worked)',   flags.RDO);
-        html += stgCell('Callout',        flags.Callout);
-        html += '</tr>';
-        // Inc-1 trip day (only when relevant)
-        if (flags.Inc1) {
-            html += '<tr>';
-            html += stgCell('First Day', flags.FirstDay);
-            html += stgCell('Last Day',  flags.LastDay);
-            html += stgCell(null);
-            html += '</tr>';
-        }
-        // 24h notice (only on penalty days)
-        if (isPenaltyDay()) {
-            html += '<tr>';
-            html += stgCell('24h+ Notice (2h min)', flags.Notified24h);
-            html += stgCell(null);
-            html += stgCell(null);
-            html += '</tr>';
-        }
-        html += '</tbody></table>';
-        // Start / Finish — always shown, on its own line below the grid
-        html += '<div style="margin-top: 3px; font-size: 12px;">';
-        html += '<span style="margin-right: 20px;">Start: <strong>' + (flags.Start === 'Work' ? 'Workshop' : 'Site') + '</strong></span>';
-        html += '<span>Finish: <strong>' + (flags.Fin === 'Work' ? 'Workshop' : 'Site') + '</strong></span>';
-        html += '</div>';
-        html += '</div>';
-        html += "<h3>Daily Timesheet (Excludes most allowances)</h3>";
-        for (let code in results) {
-            if (results[code] > 0.001) {
-                let unit = (code === 'TAT' || code === 'Fares (FTR)' || code === 'Meal Allow ($15.50)') ? 'Unit' : 'hrs';
-                html += `<div class="code-row"><span>${code}</span><span>${results[code].toFixed(2)} ${unit}</span></div>`;
-            }
-        }
-        // Status notes
-        let notes = [];
-        if (isEarlyTravel) notes.push("Early travel rule applied (Cl 64.3.d): 30m TT + deemed 0700 start; TAT suppressed.");
-        if (flags.Day === 'Weekday' && !flags.RDO && outsideOT > 0) notes.push("Work outside ordinary hours (6am\u20136pm) detected \u2014 " + (outsideOT/60).toFixed(2) + "h paid as overtime (Cl 55.a).");
-        if (mealDeduct === 0 && spanOfWork >= 720) notes.push("12+ hours worked \u2014 meal break paid (Cl 60.a).");
-        if (mealDeduct === 0 && spanOfWork > 0 && spanOfWork < 300) notes.push("Less than 5h worked \u2014 no meal break deducted (Cl 60.a/b).");
-        if (flags.Start === 'Site' && morningTravelTotal > 0 && morningTravelTotal <= 30) {
-            notes.push("Morning travel within 30-min Travel Boundary \u2014 no TT (Cl 64.1).");
-        }
-        if (flags.Inc1) {
-            let tripNote = "Incidentals-1 active";
-            if (flags.FirstDay) tripNote += " (First Day \u2014 morning standard, return Inc-1)";
-            else if (flags.LastDay) tripNote += " (Last Day \u2014 morning Inc-1, return standard)";
-            tripNote += " \u2014 TAT and Fares not payable for accom\u2194site travel (Cl 64.5.a.iii); First/Last Day legs follow standard rules (Cl 64.5.b).";
-            notes.push(tripNote);
-        }
-        if (isPenaltyDay() && results.DT > 0 && flags.Notified24h) {
-            notes.push("24h+ notice \u2014 2h minimum applied (Cl 62.3.b).");
-        }
-        if (flags.RDO) {
-            notes.push("RDO overlay \u2014 work treated as Saturday-equivalent penalty day (Cl 62.3.a): DT rate, 4h min (or 2h with 24h+ notice).");
-        }
-        if (flags.Callout) {
-            notes.push("Callout (Cl 63.a) \u2014 bundled work+travel at OT rate, 4h min, TT/TT+/TAT/Fares suppressed. On-call roster variants (Cl 63.e/f) and TK1 km allowance (Cl 63.a.iii) not auto-calculated.");
-        }
-        if (results["NT (RDO, AL or LWOP)"] > 0.001) notes.push("Less than 8 hours NT worked — remaining hours must be covered by RDO, Annual Leave, or LWOP. Note: LWOP is only allowed if approved by management.");
-        if (notes.length) {
-            html += `<div class="notes">${notes.join('<br>')}</div>`;
-        }
-        // ----------------------------------------------------------
-        // 8) EXTRA ALLOWANCES — render selected items
-        //    Per-hour allowances auto-split into (NT) and (OT) lines
-        //    to match AroFlo overhead entries.
-        // ----------------------------------------------------------
-        let allowNT = results.NT || 0;
-        let allowOT = (results.TH || 0) + (results.DT || 0);
-        // Site-only hours: time on site (arrive → leave), minus meal break if unpaid.
-        // NT/OT split follows the timesheet — if NT was partly used before
-        // arriving on site (workshop/travel), only the remaining NT applies on site.
-        let grossSiteMins = diffMins(tArriveSite, tLeaveSite);
-        let netSiteMins = roundTo15(Math.max(0, grossSiteMins - mealDeduct));
-        let preSiteMins = (flags.Start === 'Work') ? diffMins(tLeftBase, tArriveSite) : 0;
-        // When early travel deeming applies, deemed work from 07:00 to arrival
-        // counts as pre-site NT consumption even though Start is 'Site'.
-        if (isEarlyTravel) preSiteMins += deemedWorkMins;
-        let siteNTmins = roundTo15(Math.min(netSiteMins, Math.max(0, (results.NT || 0) * 60 - preSiteMins)));
-        let siteOTmins = netSiteMins - siteNTmins;
-        let siteNT = siteNTmins / 60;
-        let siteOT = siteOTmins / 60;
-        // Supervisor travel components — split rather than summed
-        // so payroll reviewers can audit each rate factor individually.
-        let supTH   = results.TH || 0;
-        let supDT   = results.DT || 0;
-        let supTT   = (results["TT (Morning)"] || 0) + (results["TT (Return)"] || 0);
-        let supTTP  = (results["TT+ (Morning)"] || 0) + (results["TT+ (Return)"] || 0);
-        // HV cap (Cl 50.c): when BOTH HV Termination ($35) and HV Switching
-        // ($50) are ticked, suppress HV Termination so only HVS ($50) applies.
-        let _hvTermCb   = document.getElementById('allow_hvTerm');
-        let _hvSwitchCb = document.getElementById('allow_hvSwitch');
-        let hvCapActive = !!(_hvTermCb && _hvTermCb.checked && _hvSwitchCb && _hvSwitchCb.checked);
-        let allowanceHtml = '';
-        EXTRA_ALLOWANCES.forEach(a => {
-            let cb = document.getElementById('allow_' + a.id);
-            if (cb && cb.checked) {
-                // HV cap: silently skip HVT when both HVT + HVS are ticked (Cl 50.c)
-                if (a.id === 'hvTerm' && hvCapActive) return;
-                if (a.unit === 'hr') {
-                    if (a.includeTravel) {
-                        // Supervisor: show separate lines for NT / TH / DT / TT / TT+
-                        // so each weighted rate is visible to payroll.
-                        let hrNoteSup = a.summaryNote ? ' <span style="font-size:10px;color:#888;font-style:italic;">(' + a.summaryNote + ')</span>' : '';
-                        let nt = allowNT;
-                        if (nt > 0.001)   allowanceHtml += '<div class="code-row"><span>' + a.name + ' (NT)' + hrNoteSup + '</span><span>' + nt.toFixed(2) + ' hrs</span></div>';
-                        if (supTH > 0.001)  allowanceHtml += '<div class="code-row"><span>' + a.name + ' (TH)' + hrNoteSup + '</span><span>' + supTH.toFixed(2) + ' hrs</span></div>';
-                        if (supDT > 0.001)  allowanceHtml += '<div class="code-row"><span>' + a.name + ' (DT)' + hrNoteSup + '</span><span>' + supDT.toFixed(2) + ' hrs</span></div>';
-                        if (supTT > 0.001)  allowanceHtml += '<div class="code-row"><span>' + a.name + ' (TT)' + hrNoteSup + '</span><span>' + supTT.toFixed(2) + ' hrs</span></div>';
-                        if (supTTP > 0.001) allowanceHtml += '<div class="code-row"><span>' + a.name + ' (TT+)' + hrNoteSup + '</span><span>' + supTTP.toFixed(2) + ' hrs</span></div>';
-                    } else {
-                        let nt = a.siteOnly ? siteNT : allowNT;
-                        let ot = a.siteOnly ? siteOT : allowOT;
-                        let hrNote = a.summaryNote ? ' <span style="font-size:10px;color:#888;font-style:italic;">(' + a.summaryNote + ')</span>' : '';
-                        if (nt > 0.001) allowanceHtml += '<div class="code-row"><span>' + a.name + ' (NT)' + hrNote + '</span><span>' + nt.toFixed(2) + ' hrs</span></div>';
-                        if (ot > 0.001) allowanceHtml += '<div class="code-row"><span>' + a.name + ' (OT)' + hrNote + '</span><span>' + ot.toFixed(2) + ' hrs</span></div>';
-                    }
-                } else if (a.unit === 'custom_hr') {
-                    let hrsEl = document.getElementById('hrs_' + a.id);
-                    let totalHrs = parseFloat(hrsEl ? hrsEl.value : 0) || 0;
-                    if (totalHrs > 0) {
-                        let ntPortion = Math.min(totalHrs, allowNT);
-                        let otPortion = Math.max(0, totalHrs - ntPortion);
-                        if (ntPortion > 0.001) allowanceHtml += '<div class="code-row"><span>' + a.name + ' (NT)</span><span>' + ntPortion.toFixed(2) + ' hrs</span></div>';
-                        if (otPortion > 0.001) allowanceHtml += '<div class="code-row"><span>' + a.name + ' (OT)</span><span>' + otPortion.toFixed(2) + ' hrs</span></div>';
-                    }
-                } else if (a.unit === 'km') {
-                    let kmEl = document.getElementById('km_' + a.id);
-                    let km = parseFloat(kmEl ? kmEl.value : 0) || 0;
-                    if (km > 0) {
-                        let note = a.summaryNote ? ' <span style="font-size:10px;color:#888;font-style:italic;">(' + a.summaryNote + ')</span>' : '';
-                        allowanceHtml += '<div class="code-row"><span>' + a.name + note + '</span><span>' + km.toFixed(0) + ' km</span></div>';
-                    }
-                } else {
-                    allowanceHtml += '<div class="code-row"><span>' + a.name + '</span><span>1 Unit</span></div>';
-                }
-            }
-        });
-        if (allowanceHtml) {
-            html += '<div id="allowancesBlock" style="border-top: 2px solid #004a99; margin-top: 10px; padding-top: 8px;">';
-            html += '<h3 style="font-size: 13px; color: #004a99; margin: 0 0 6px;">Extra Allowances</h3>';
-            html += allowanceHtml;
-            html += '</div>';
-        }
-        // Store summary data for download function
-        window._lastResults = results;
-        window._lastAllowNT = allowNT;
-        window._lastAllowOT = allowOT;
-        window._lastSiteNT = siteNT;
-        window._lastSiteOT = siteOT;
-        window._lastSupTH = supTH;
-        window._lastSupDT = supDT;
-        window._lastSupTT = supTT;
-        window._lastSupTTP = supTTP;
-        window._lastHvCapActive = hvCapActive;
-        window._lastNotes = notes;
-        document.getElementById('calcOutput').innerHTML = html;
-    }
-    function downloadSummary() {
-        let output = document.getElementById('calcOutput');
-        let lines = [];
-        lines.push('RBD Timesheet Summary');
-        lines.push('Generated: ' + new Date().toLocaleDateString('en-AU'));
-        // Project info
-        let dlProjName = (document.getElementById('projectName') || {}).value || '';
-        let dlProjDay = (document.getElementById('projectDay') || {}).value || '';
-        let dlProjDateRaw = (document.getElementById('projectDate') || {}).value || '';
-        let dlProjDate = dlProjDateRaw ? new Date(dlProjDateRaw + 'T00:00:00').toLocaleDateString('en-AU', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' }) : '';
-        let dlApplicable = dlProjDay || dlProjDate || '';
-        if (dlProjName) lines.push('Project: ' + dlProjName);
-        if (dlApplicable) lines.push('Applicable for: ' + dlApplicable);
-        lines.push('');
-        // Time entries — raw HH:MM from the four time inputs.
-        // Labels track the on-screen Start/Finish toggles.
-        const dlTimeLabels = [
-            [getStartLabel(),   'leftWorkshop'],
-            ['Arrived on Site', 'arriveSite'],
-            ['Left Site',       'leaveSite'],
-            [getFinishLabel(),  'arriveWorkshop']
-        ];
-        lines.push('Time Entries');
-        dlTimeLabels.forEach(function(pair) {
-            const v = (document.getElementById(pair[1]) || {}).value || '—';
-            lines.push('• ' + pair[0] + ': ' + v);
-        });
-        // Travel Details — bridging the inputs to the outputs so payroll can
-        // see what the km / TT hours were based on.
-        const manualH = (document.getElementById('manualHours')   || {}).value || '0';
-        const manualM = (document.getElementById('manualMinutes') || {}).value || '0';
-        if (parseInt(manualH,10) > 0 || parseInt(manualM,10) > 0) {
-            lines.push('');
-            lines.push('Travel (Morning leg)');
-            lines.push('• Travel time: ' + parseInt(manualH,10) + ' hr ' + parseInt(manualM,10) + ' min');
-        }
-        // Per-leg route summary — present when the Google Maps tool has
-        // fetched leg data. Gives payroll the raw route numbers for audit.
-        if (lastLegs && lastLegs.morning && lastLegs.morning.km != null) {
-            lines.push('');
-            lines.push('Route Summary (Google Maps)');
-            const fmtLeg = function(label, leg) {
-                if (!leg || leg.km == null) return null;
-                const mins = Math.round(leg.minutes);
-                const h = Math.floor(mins / 60), mm = mins % 60;
-                const timeStr = (h > 0 ? h + 'h ' : '') + mm + 'm';
-                return '• ' + label + ': ' + Math.round(leg.km) + ' km / ' + timeStr;
-            };
-            const ml = fmtLeg('Morning leg (origin → Dest)', lastLegs.morning);
-            if (ml) lines.push(ml);
-            (lastLegs.betweenLegs || []).forEach(function(leg, i) {
-                const bl = fmtLeg('Between-site leg ' + (i + 1) + ' → ' + (i + 2), leg);
-                if (bl) lines.push(bl);
-            });
-            const rl = fmtLeg('Return leg (last site → home)', lastLegs.returnLeg);
-            if (rl) lines.push(rl);
-        }
-        lines.push('');
-        // Gather inputs
-        let dayTypeMap = { Weekday: 'Weekday', Weekend: 'Weekend', PH: 'Public Holiday' };
-        let dayType = dayTypeMap[flags.Day] || flags.Day;
-        if (flags.RDO) dayType += ' (RDO worked)';
-        lines.push('Settings');
-        lines.push('• Day Type: ' + dayType);
-        lines.push('• Start: ' + (flags.Start === 'Work' ? 'Workshop' : 'Site'));
-        lines.push('• Finish: ' + (flags.Fin === 'Work' ? 'Workshop' : 'Site'));
-        lines.push('• Company Car: ' + (flags.Co ? 'Yes' : 'No'));
-        let inc1Label = 'No';
-        if (flags.Inc1) {
-            inc1Label = 'Yes';
-            if (flags.FirstDay) inc1Label += ' (First Day)';
-            else if (flags.LastDay) inc1Label += ' (Last Day)';
-        }
-        lines.push('• Incidentals-1: ' + inc1Label);
-        lines.push('• Unnotified OT: ' + (flags.UnnotifiedOT ? 'Yes' : 'No'));
-        if (flags.Callout) lines.push('• Callout (Cl 63.a recall): Yes');
-        if (isPenaltyDay()) {
-            lines.push('• 24h+ Notice (2h min): ' + (flags.Notified24h ? 'Yes' : 'No'));
-        }
-        lines.push('');
-        // --- Daily Timesheet ---
-        let r = window._lastResults || {};
-        lines.push('Daily Timesheet');
-        for (let code in r) {
-            if (r[code] > 0.001) {
-                let unit = (code === 'TAT' || code === 'Fares (FTR)' || code === 'Meal Allow ($15.50)') ? 'Unit' : 'hrs';
-                lines.push('• ' + code + ': ' + r[code].toFixed(2) + ' ' + unit);
-            }
-        }
-        // Notes
-        let dlNotes = window._lastNotes || [];
-        if (dlNotes.length) {
-            lines.push('');
-            lines.push('Notes');
-            dlNotes.forEach(n => lines.push('• ' + n));
-        }
-        // --- Extra Allowances ---
-        let aNT = window._lastAllowNT || 0;
-        let aOT = window._lastAllowOT || 0;
-        let sNT = window._lastSiteNT || 0;
-        let sOT = window._lastSiteOT || 0;
-        let sTH = window._lastSupTH || 0;
-        let sDT = window._lastSupDT || 0;
-        let sTT = window._lastSupTT || 0;
-        let sTTP = window._lastSupTTP || 0;
-        let hvCapActiveDL = !!window._lastHvCapActive;
-        let extraLines = [];
-        EXTRA_ALLOWANCES.forEach(a => {
-            let cb = document.getElementById('allow_' + a.id);
-            if (cb && cb.checked) {
-                // HV cap (Cl 50.c): skip HV Termination when both HVT + HVS ticked
-                if (a.id === 'hvTerm' && hvCapActiveDL) return;
-                if (a.unit === 'hr') {
-                    let dlNote = a.summaryNote ? ' (' + a.summaryNote + ')' : '';
-                    if (a.includeTravel) {
-                        // Supervisor: split into NT / TH / DT / TT / TT+
-                        if (aNT > 0.001) extraLines.push('• ' + a.name + ' (NT)' + dlNote + ': ' + aNT.toFixed(2) + ' hrs');
-                        if (sTH > 0.001) extraLines.push('• ' + a.name + ' (TH)' + dlNote + ': ' + sTH.toFixed(2) + ' hrs');
-                        if (sDT > 0.001) extraLines.push('• ' + a.name + ' (DT)' + dlNote + ': ' + sDT.toFixed(2) + ' hrs');
-                        if (sTT > 0.001) extraLines.push('• ' + a.name + ' (TT)' + dlNote + ': ' + sTT.toFixed(2) + ' hrs');
-                        if (sTTP > 0.001) extraLines.push('• ' + a.name + ' (TT+)' + dlNote + ': ' + sTTP.toFixed(2) + ' hrs');
-                    } else {
-                        let nt = a.siteOnly ? sNT : aNT;
-                        let ot = a.siteOnly ? sOT : aOT;
-                        if (nt > 0.001) extraLines.push('• ' + a.name + ' (NT)' + dlNote + ': ' + nt.toFixed(2) + ' hrs');
-                        if (ot > 0.001) extraLines.push('• ' + a.name + ' (OT)' + dlNote + ': ' + ot.toFixed(2) + ' hrs');
-                    }
-                } else if (a.unit === 'custom_hr') {
-                    let hrsEl = document.getElementById('hrs_' + a.id);
-                    let totalHrs = parseFloat(hrsEl ? hrsEl.value : 0) || 0;
-                    if (totalHrs > 0) {
-                        let ntP = Math.min(totalHrs, aNT);
-                        let otP = Math.max(0, totalHrs - ntP);
-                        if (ntP > 0.001) extraLines.push('• ' + a.name + ' (NT): ' + ntP.toFixed(2) + ' hrs');
-                        if (otP > 0.001) extraLines.push('• ' + a.name + ' (OT): ' + otP.toFixed(2) + ' hrs');
-                    }
-                } else if (a.unit === 'km') {
-                    let kmEl = document.getElementById('km_' + a.id);
-                    let km = parseFloat(kmEl ? kmEl.value : 0) || 0;
-                    if (km > 0) {
-                        let dlNote = a.summaryNote ? ' (' + a.summaryNote + ')' : '';
-                        extraLines.push('• ' + a.name + dlNote + ': ' + km.toFixed(0) + ' km');
-                    }
-                } else {
-                    let dlNote = a.summaryNote ? ' (' + a.summaryNote + ')' : '';
-                    extraLines.push('• ' + a.name + dlNote + ': 1 Unit');
-                }
-            }
-        });
-        if (extraLines.length) {
-            lines.push('');
-            lines.push('Extra Allowances');
-            extraLines.forEach(l => lines.push(l));
-        }
-        lines.push('\n---');
-        lines.push('This is a guide only. Refer to EA 2025 for definitive entitlements.');
-        let text = lines.join('\n');
-        let blob = new Blob([text], { type: 'text/plain' });
-        let url = URL.createObjectURL(blob);
-        let a = document.createElement('a');
-        a.href = url;
-        a.download = 'RBD_Timesheet_' + new Date().toISOString().slice(0,10) + '.txt';
-        document.body.appendChild(a);
-        a.click();
-        document.body.removeChild(a);
-        URL.revokeObjectURL(url);
-    }
-    // ------------------------------------------------------------------
-    // GOOGLE MAPS — Auto-fill Travel Hrs/Mins from Distance Matrix
-    //
-    //   Destination field uses Places Autocomplete (biased to Australia)
-    //   so users pick a real indexed place rather than typing free-form
-    //   text that Google may not geocode. When a place is selected we
-    //   remember its place_id and pass that to Distance Matrix — the
-    //   most reliable form of route lookup Google offers.
-    //
-    //   If the user types without selecting from the dropdown (or Places
-    //   Autocomplete isn't available for any reason), we fall back to
-    //   sending the raw text to Distance Matrix — the same behaviour as
-    //   before Autocomplete was added.
-    //
-    //   Requires API key loaded in <head> with the following enabled:
-    //   Maps JavaScript API, Distance Matrix API, Places API. Referrer
-    //   restrictions must match the deployment domain.
-    // ------------------------------------------------------------------
-    // Last place selected from each Autocomplete dropdown. Each entry is
-    // cleared on a real keystroke in its field, so we never send a stale
-    // place_id for a different text value.
-    let selectedPlaces = {
-        destination:   null, customOrigin: null,
-        customReturn:  null,
-        site2: null, site3: null, site4: null, site5: null
-    };
-    // Cached legs from the most recent successful auto-calculate run. Lets
-    // us opportunistically fill km fields when the user ticks an allowance
-    // AFTER the Google tool has already fetched data.
-    let lastLegs = { morning: null, returnLeg: null, betweenLegs: [] };
-    function initAutocomplete(inputId, setterFn) {
-        if (!window.google || !google.maps || !google.maps.places) return;
-        const input = document.getElementById(inputId);
-        if (!input) return;
-        const autocomplete = new google.maps.places.Autocomplete(input, {
-            componentRestrictions: { country: 'au' },  // Bias to Australia
-            fields: ['place_id', 'name', 'formatted_address', 'geometry'],
-            types: []  // all place types (addresses + establishments + POIs)
-        });
-        // When user picks from the dropdown, remember the place AND schedule
-        // an auto-calculate. Blur doesn't always fire after a dropdown pick
-        // (focus can stay on the input), so we can't rely on the onblur
-        // handler alone to trigger a recalc.
-        autocomplete.addListener('place_changed', function() {
-            const p = autocomplete.getPlace();
-            setterFn((p && p.place_id) ? p : null);
-            if (typeof scheduleAutoCalculate === 'function') scheduleAutoCalculate();
-        });
-        // Any real keystroke invalidates the stored place — they might be
-        // editing to search for something else. (Widget-driven input
-        // events don't fire keydown, so this only catches user typing.)
-        input.addEventListener('keydown', function() { setterFn(null); });
-    }
-    // Show/hide UI pieces that depend on which Extra Allowances are ticked:
-    //   • Return section appears when TK1 is ticked.
-    //   • Km's (Company Car) inline note appears when that allowance is ticked.
-    // Called on pageload and whenever an allowance checkbox toggles.
-    function syncAllowanceBoundUI() {
-        const tk1Cb      = document.getElementById('allow_tk1');
-        const tk2Cb      = document.getElementById('allow_tk2');
-        const ccCb       = document.getElementById('allow_kmCompanyCar');
-        const returnSec  = document.getElementById('returnSection');
-        const ccNote     = document.getElementById('ccKmNote');
-        const addSiteBtn = document.getElementById('btnAddSite');
-        const tk1Ticked = !!(tk1Cb && tk1Cb.checked);
-        const tk2Ticked = !!(tk2Cb && tk2Cb.checked);
-        const ccTicked  = !!(ccCb && ccCb.checked);
-        // km-allowance gating driven by the top-of-form Company Car flag
-        // (flags.Co). EA Cl 64.3.b excludes TK1 (own-vehicle outside-boundary)
-        // when company transport is provided/used. TK2 is by definition own-
-        // vehicle between-sites, so it's also excluded. Conversely, the Kms
-        // (Company Car) allowance only makes sense WHEN a company car is on
-        // issue.
-        //
-        //   Company Car flag = ON  → disable TK1 + TK2 allowances
-        //   Company Car flag = OFF → disable Kms (Company Car) allowance
-        //
-        // We also toggle a `.disabled` class on the parent `.allow-item` row
-        // so the whole row (label + km input + rate) visibly greys out, not
-        // just the tiny checkbox box. If an allowance is currently ticked
-        // when it becomes disabled, we auto-untick it so it can't show up in
-        // the summary.
-        const setRow = function(cb, isDisabled, tooltip) {
-            if (!cb) return;
-            if (isDisabled && cb.checked) cb.checked = false;
-            cb.disabled = isDisabled;
-            const row = cb.closest ? cb.closest('.allow-item') : null;
-            if (row) {
-                row.classList.toggle('disabled', isDisabled);
-                row.title = isDisabled ? (tooltip || '') : '';
-            }
-        };
-        const hasCompanyCar = !!flags.Co;
-        const ownVehTip = 'Disabled \u2014 Company Car is active. Cl 64.3.b: own-vehicle km allowances not payable when company transport is provided.';
-        const noCarTip  = 'Disabled \u2014 Company Car is not active. Select Company Car at the top of the form to enable.';
-        setRow(tk1Cb, hasCompanyCar,  ownVehTip);
-        setRow(tk2Cb, hasCompanyCar,  ownVehTip);
-        setRow(ccCb,  !hasCompanyCar, noCarTip);
-        if (returnSec) {
-            const wasHidden = returnSec.classList.contains('hidden');
-            returnSec.classList.toggle('hidden', !(tk1Ticked || tk2Ticked));
-            if (wasHidden && (tk1Ticked || tk2Ticked)) {
-                if (!flags.ReturnOffice && flags.Office) setReturnOffice(flags.Office);
-                // Brief flash to draw the eye to the newly-revealed section,
-                // since the user ticked an allowance elsewhere (Extra Allowances
-                // panel) and the Return section can be below the fold.
-                returnSec.classList.remove('section-flash');
-                void returnSec.offsetWidth;  // restart animation
-                returnSec.classList.add('section-flash');
-            }
-        }
-        // Add Site button — visible only when TK2 is ticked AND there's room
-        // for another slot.
-        if (addSiteBtn) {
-            const roomForMore = activeExtraSiteCount() < 4;  // max 4 extras = 5 total sites
-            addSiteBtn.classList.toggle('hidden', !(tk2Ticked && roomForMore));
-        }
-        if (ccNote) ccNote.classList.toggle('hidden', !ccTicked);
-        // Opportunistic km auto-fill when user toggles an allowance after
-        // the tool has already run. Never overwrites manually typed values.
-        if (lastLegs && lastLegs.morning) {
-            applyKmAutofill(lastLegs.morning, lastLegs.returnLeg, {
-                onlyIfEmpty: true,
-                betweenLegs: lastLegs.betweenLegs || []
-            });
-        }
-        // If the user ticked TK1 / TK2 AFTER an earlier successful Calculate
-        // press — OR changed a Return-related field so the cached leg is
-        // stale — fire the silent background refetch so the km fields
-        // populate without requiring a second Calculate press.
-        if (lastLegs && lastLegs.morning) {
-            const tk2Active = tk2Ticked && activeExtraSiteCount() > 0;
-            const needReturn  = tk1Ticked && !lastLegs.returnLeg;
-            const needBetween = tk2Active && (lastLegs.betweenLegs || []).length === 0;
-            if (tk2Active && (needReturn || needBetween)) {
-                // TK2 helper re-fetches between-legs + return leg in one chain.
-                backgroundFetchTk2Legs();
-            } else if (needReturn) {
-                // TK1-only path: just the return leg.
-                backgroundFetchReturnLeg();
-            }
-        }
-    }
-    // Helper — build an origin / destination spec from the current field
-    // state (mirrors the logic in calculateRouteTime so we can reuse it for
-    // opportunistic background fetches).
-    function currentMorningOriginSpec() {
-        if (!flags.Office) return null;
-        if (flags.Office === 'Custom') {
-            const t = (document.getElementById('customOrigin') || {}).value || '';
-            const text = t.trim();
-            if (!text) return null;
-            return (selectedPlaces.customOrigin && selectedPlaces.customOrigin.place_id)
-                ? { placeId: selectedPlaces.customOrigin.place_id } : text;
-        }
-        return OFFICES[flags.Office];
-    }
-    function currentDestinationSpec() {
-        const t = (document.getElementById('destination') || {}).value || '';
-        const text = t.trim();
-        if (!text) return null;
-        return (selectedPlaces.destination && selectedPlaces.destination.place_id)
-            ? { placeId: selectedPlaces.destination.place_id } : text;
-    }
-    function currentReturnDestSpec() {
-        if (!flags.ReturnOffice) return null;
-        if (flags.ReturnOffice === 'Custom') {
-            const t = (document.getElementById('customReturn') || {}).value || '';
-            const text = t.trim();
-            if (!text) return null;
-            return (selectedPlaces.customReturn && selectedPlaces.customReturn.place_id)
-                ? { placeId: selectedPlaces.customReturn.place_id } : text;
-        }
-        return OFFICES[flags.ReturnOffice];
-    }
-    // In-flight guards so we don't spam the API while a previous background
-    // call is still resolving.
-    let _bgReturnInFlight = false;
-    let _bgTk2InFlight = false;
-    // Fire a single return-leg call in the background when TK1 is ticked
-    // post-Calculate. Silently no-ops if we can't build a valid spec.
-    function backgroundFetchReturnLeg() {
-        if (_bgReturnInFlight) return;
-        if (!window.google || !window.google.maps) return;
-        const destSpec   = currentDestinationSpec();
-        const returnDest = currentReturnDestSpec();
-        if (!destSpec || !returnDest) return;
-        _bgReturnInFlight = true;
-        const matrixOptions = {
-            travelMode: google.maps.TravelMode.DRIVING,
-            drivingOptions: { departureTime: new Date(), trafficModel: 'bestguess' }
-        };
-        // TK1-only case: return origin = morning destination (same as what
-        // calculateRouteTime does when the "Returning from" field is hidden).
-        // If TK2 is active with extras we skip — those go through the TK2
-        // helper instead, which owns the whole multi-leg chain.
-        const tk2Cb = document.getElementById('allow_tk2');
-        const tk2Ticked = !!(tk2Cb && tk2Cb.checked);
-        if (tk2Ticked && activeExtraSiteCount() > 0) { _bgReturnInFlight = false; return; }
-        setCalcInFlight(true);
-        distanceMatrixLeg(destSpec, returnDest, matrixOptions, 'return leg (auto)')
-            .then(function(leg) {
-                lastLegs.returnLeg = leg;
-                applyKmAutofill(lastLegs.morning, leg, {
-                    onlyIfEmpty: true,
-                    betweenLegs: lastLegs.betweenLegs || []
-                });
-                if (typeof calculate === 'function') calculate();
-            })
-            .catch(function() { /* silent — errors surface on explicit recalc */ })
-            .then(function() { _bgReturnInFlight = false; setCalcInFlight(false); });
-    }
-    // Fire between-site legs + return leg in the background when TK2 is
-    // ticked and sites are filled post-Calculate. Requires every visible
-    // site slot to have text; otherwise no-ops.
-    function backgroundFetchTk2Legs() {
-        if (_bgTk2InFlight) return;
-        if (!window.google || !window.google.maps) return;
-        const destSpec = currentDestinationSpec();
-        if (!destSpec) return;
-        // Gather filled extra sites.
-        const extras = [];
-        for (let i = 2; i <= 5; i++) {
-            const w = document.getElementById('siteWrap' + i);
-            if (!w || w.classList.contains('hidden')) continue;
-            const input = document.getElementById('site' + i);
-            const text = (input && input.value || '').trim();
-            if (!text) return;  // any unfilled visible site → abort silently
-            const spec = (selectedPlaces['site' + i] && selectedPlaces['site' + i].place_id)
-                ? { placeId: selectedPlaces['site' + i].place_id } : text;
-            extras.push(spec);
-        }
-        if (extras.length === 0) return;  // nothing to do
-        const returnDest = currentReturnDestSpec();
-        if (!returnDest) return;
-        // Return origin = the last site in the chain (last extra site).
-        const returnOriginSpec = extras[extras.length - 1];
-        const activeSites = [destSpec].concat(extras);
-        _bgTk2InFlight = true;
-        setCalcInFlight(true);
-        const matrixOptions = {
-            travelMode: google.maps.TravelMode.DRIVING,
-            drivingOptions: { departureTime: new Date(), trafficModel: 'bestguess' }
-        };
-        (async function() {
-            try {
-                const between = [];
-                for (let i = 0; i < activeSites.length - 1; i++) {
-                    const leg = await distanceMatrixLeg(activeSites[i], activeSites[i + 1], matrixOptions, 'between-site (auto)');
-                    between.push(leg);
-                }
-                const returnLeg = await distanceMatrixLeg(returnOriginSpec, returnDest, matrixOptions, 'return leg (auto)');
-                lastLegs.betweenLegs = between;
-                lastLegs.returnLeg   = returnLeg;
-                applyKmAutofill(lastLegs.morning, returnLeg, {
-                    onlyIfEmpty: true, betweenLegs: between
-                });
-                if (typeof calculate === 'function') calculate();
-            } catch (e) { /* silent */ }
-            finally { _bgTk2InFlight = false; setCalcInFlight(false); }
-        })();
-    }
-    // Check Maps API availability at page load and show/hide the banner.
-    // Called from window.onload and also after a small retry to catch
-    // late-loading scripts.
-    function syncMapsButtonState() {
-        const banner = document.getElementById('mapsUnavailableBanner');
-        if (!banner) return;
-        const mapsLoaded = !!(window.google && window.google.maps && window.google.maps.places);
-        banner.classList.toggle('hidden', mapsLoaded);
-    }
-    // Show/hide the inline "Calculating..." indicator during a fetch.
-    // Count-based so overlapping calls don't flicker it off prematurely.
-    let _inFlightCount = 0;
-    function setCalcInFlight(on) {
-        _inFlightCount = Math.max(0, _inFlightCount + (on ? 1 : -1));
-        const status = document.getElementById('calcStatus');
-        if (status) status.classList.toggle('hidden', _inFlightCount === 0);
-    }
-    // 30-min Travel Boundary (Cl 64.1). Used to compute TK1 outside-boundary km
-    // via the ratio method — km × (totalMin − BOUNDARY) ÷ totalMin when trip > 30 min.
-    const TRAVEL_BOUNDARY_MIN = 30;
-    // Pull distance (meters) and duration (seconds) from a DistanceMatrix
-    // response element. Returns null if the element is missing or errored.
-    function readLeg(element) {
-        if (!element || element.status !== 'OK') return null;
-        const durObj = element.duration_in_traffic || element.duration;
-        const distObj = element.distance;
-        if (!durObj || typeof durObj.value !== 'number') return null;
-        return {
-            minutes: durObj.value / 60,
-            km:      distObj && typeof distObj.value === 'number' ? distObj.value / 1000 : null
-        };
-    }
-    // Outside-boundary km via the ratio method (Cl 64.3.c — km outside the
-    // 30-min Travel Boundary). Returns 0 for trips within the boundary.
-    function outsideBoundaryKm(leg) {
-        if (!leg || leg.km == null || leg.minutes <= TRAVEL_BOUNDARY_MIN) return 0;
-        return leg.km * (leg.minutes - TRAVEL_BOUNDARY_MIN) / leg.minutes;
-    }
-    // Promise-wrapper for a single Distance Matrix query (one origin, one
-    // destination). Resolves to a leg object ({minutes, km}) or rejects
-    // with an Error carrying a user-friendly message.
-    function distanceMatrixLeg(origin, destination, matrixOptions, legLabel) {
-        return new Promise(function(resolve, reject) {
-            const service = new google.maps.DistanceMatrixService();
-            service.getDistanceMatrix(
-                Object.assign({ origins: [origin], destinations: [destination] }, matrixOptions),
-                function(response, status) {
-                    if (status !== 'OK') {
-                        return reject(new Error('Google Maps error (' + legLabel + '): ' + status));
-                    }
-                    const leg = readLeg(response && response.rows && response.rows[0] && response.rows[0].elements && response.rows[0].elements[0]);
-                    if (!leg) return reject(new Error('No route found (' + legLabel + ').'));
-                    resolve(leg);
-                }
-            );
-        });
-    }
-    // Resolve a text input + its Autocomplete-selected place into a spec
-    // suitable for DistanceMatrix (prefers place_id over raw text).
-    function specFromInputAndPlace(text, place) {
-        if (place && place.place_id) return { placeId: place.place_id };
-        return text;
-    }
-    async function calculateRouteTime(options) {
-        const silent = !!(options && options.silent);
-        const warn = function(msg) { if (!silent) alert(msg); };
-        // Gate: API must be loaded.
-        if (!window.google || !window.google.maps) {
-            warn('Google Maps API not loaded \u2014 check the API key in the page head, or your network connection.');
-            return;
-        }
-        // Gate: start location selected.
-        if (!flags.Office) {
-            warn('Please select a start location (Devonport, Hobart, or Custom).');
-            return;
-        }
-        // --- MORNING ORIGIN / DESTINATION ---
-        let originSpec;
-        if (flags.Office === 'Custom') {
-            const customText = document.getElementById('customOrigin').value.trim();
-            if (!customText) { warn('Please enter a custom start address.'); return; }
-            originSpec = specFromInputAndPlace(customText, selectedPlaces.customOrigin);
-        } else {
-            originSpec = OFFICES[flags.Office];
-        }
-        const destText = document.getElementById('destination').value.trim();
-        if (!destText) { warn('Please enter a destination (site address).'); return; }
-        const destinationSpec = specFromInputAndPlace(destText, selectedPlaces.destination);
-        // --- TK2 EXTRA SITES (2..5) ---
-        const tk2Cb = document.getElementById('allow_tk2');
-        const tk2Ticked = !!(tk2Cb && tk2Cb.checked);
-        const extraSiteSpecs = [];
-        if (tk2Ticked) {
-            for (let i = 2; i <= 5; i++) {
-                const w = document.getElementById('siteWrap' + i);
-                if (!w || w.classList.contains('hidden')) continue;
-                const txt = document.getElementById('site' + i).value.trim();
-                if (!txt) { warn('Site ' + i + ' is empty \u2014 enter an address or remove the row.'); return; }
-                extraSiteSpecs.push(specFromInputAndPlace(txt, selectedPlaces['site' + i]));
-            }
-        }
-        // All sites, starting with morning destination. activeSites[N-1] is
-        // the last site of the day.
-        const activeSites = [destinationSpec].concat(extraSiteSpecs);
-        // --- RETURN LEG (optional — only when Return section is visible) ---
-        const tk1Cb = document.getElementById('allow_tk1');
-        const tk1Ticked = !!(tk1Cb && tk1Cb.checked);
-        const returnSec = document.getElementById('returnSection');
-        const returnVisible = (tk1Ticked || tk2Ticked) && returnSec && !returnSec.classList.contains('hidden');
-        let returnOriginSpec = null, returnDestSpec = null;
-        if (returnVisible) {
-            // Return origin is always the last active site in the chain:
-            //   • With extras (TK2) → the last extra site
-            //   • Without extras    → the morning destination
-            returnOriginSpec = (extraSiteSpecs.length > 0)
-                ? extraSiteSpecs[extraSiteSpecs.length - 1]
-                : destinationSpec;
-            if (!flags.ReturnOffice) { warn('Return section: please select where you are returning to.'); return; }
-            if (flags.ReturnOffice === 'Custom') {
-                const crText = document.getElementById('customReturn').value.trim();
-                if (!crText) { warn('Return section: please enter a custom return address.'); return; }
-                returnDestSpec = specFromInputAndPlace(crText, selectedPlaces.customReturn);
-            } else {
-                returnDestSpec = OFFICES[flags.ReturnOffice];
-            }
-        }
-        const clearTravelFields = () => {
-            document.getElementById('manualHours').value = '';
-            document.getElementById('manualMinutes').value = '';
-            if (typeof syncArriveTime === 'function') syncArriveTime();
-            if (typeof calculate === 'function') calculate();
-        };
-        const matrixOptions = {
-            travelMode: google.maps.TravelMode.DRIVING,
-            drivingOptions: { departureTime: new Date(), trafficModel: 'bestguess' }
-        };
-        setCalcInFlight(true);
-        try {
-            // 1. Morning leg (always)
-            const morningLeg = await distanceMatrixLeg(originSpec, destinationSpec, matrixOptions, 'morning leg');
-            // Fill Travel Hrs/Mins + syncArriveTime.
-            const totalMinutes = Math.round(morningLeg.minutes);
-            document.getElementById('manualHours').value   = Math.floor(totalMinutes / 60);
-            document.getElementById('manualMinutes').value = totalMinutes % 60;
-            if (typeof syncArriveTime === 'function') syncArriveTime();
-            // 2. Between-site legs (only if TK2 with extras)
-            const betweenLegs = [];
-            for (let i = 0; i < activeSites.length - 1; i++) {
-                const label = 'between-site leg ' + (i + 1) + '\u2192' + (i + 2);   /* U+2192 → */
-                const leg = await distanceMatrixLeg(activeSites[i], activeSites[i + 1], matrixOptions, label);
-                betweenLegs.push(leg);
-            }
-            // 3. Return leg (if visible)
-            let returnLeg = null;
-            if (returnVisible) {
-                returnLeg = await distanceMatrixLeg(returnOriginSpec, returnDestSpec, matrixOptions, 'return leg');
-            }
-            // Cache + apply km autofill.
-            lastLegs.morning     = morningLeg;
-            lastLegs.returnLeg   = returnLeg;
-            lastLegs.betweenLegs = betweenLegs;
-            applyKmAutofill(morningLeg, returnLeg, { betweenLegs: betweenLegs });
-            if (typeof calculate === 'function') calculate();
-        } catch (err) {
-            // Silent auto-fires leave existing manual entries alone; only
-            // explicit (non-silent) failures clear Travel Hrs/Mins.
-            if (!silent) clearTravelFields();
-            warn(err.message + ' Enter Travel Hrs/Mins and km fields manually.');
-        } finally {
-            setCalcInFlight(false);
-        }
-    }
-    // Pre-fill km allowance fields based on the legs we just fetched.
-    //   • Km's (Company Car) — morning km × 1 (per the inline note).
-    //   • TK1 — outside-boundary km (ratio method), morning + return.
-    //            Only fills when BOTH legs are known so we never show an
-    //            incomplete one-leg-only figure.
-    //
-    // `options.onlyIfEmpty = true` makes the fill non-destructive — we won't
-    // overwrite a value the user has already typed or edited. This is what
-    // we want when the user ticks an allowance AFTER the tool has run; the
-    // direct "Calculate" flow passes `onlyIfEmpty = false` to always apply.
-    function applyKmAutofill(morningLeg, returnLeg, options) {
-        const opts = options || {};
-        const onlyIfEmpty = !!opts.onlyIfEmpty;
-        const betweenLegs = Array.isArray(opts.betweenLegs) ? opts.betweenLegs : [];
-        const setIf = function(input, value) {
-            if (!input) return;
-            if (onlyIfEmpty && input.value && String(input.value).trim() !== '') return;
-            input.value = value;
-        };
-        // Km's (Company Car) — morning leg only, always ×1.
-        const ccCb = document.getElementById('allow_kmCompanyCar');
-        const ccInput = document.getElementById('km_kmCompanyCar');
-        // REVENUE-PROTECTION REMINDER: when Company Car is on AND the driver
-        // covered more than 30 km on the morning leg, auto-tick the Kms (CC)
-        // allowance so the claim isn't missed. Only fires when the row is in
-        // a "pristine" state (not ticked AND km input empty) — respects a
-        // prior manual untick by the user. Short trips (<= 30 km) are left
-        // alone: the worker can still tick manually for small site runs.
-        if (flags.Co && morningLeg && morningLeg.km != null && morningLeg.km > 30 &&
-            ccCb && !ccCb.checked && ccInput &&
-            (!ccInput.value || String(ccInput.value).trim() === '')) {
-            ccCb.checked = true;
-            // Re-sync so the row styling and inline note update. Safe from
-            // infinite recursion because the auto-tick guard (cb.checked)
-            // is now false on the inner call.
-            if (typeof syncAllowanceBoundUI === 'function') syncAllowanceBoundUI();
-        }
-        if (ccCb && ccCb.checked && ccInput && morningLeg && morningLeg.km != null) {
-            setIf(ccInput, Math.round(morningLeg.km));
-        }
-        // TK1 — requires both legs so the ratio-method total is accurate.
-        // If user ticks TK1 after running the tool with only a morning call,
-        // we'll leave TK1 empty; pressing Calculate again (once the Return
-        // section is filled) will complete the auto-fill.
-        const tk1Cb = document.getElementById('allow_tk1');
-        const tk1Input = document.getElementById('km_tk1');
-        if (tk1Cb && tk1Cb.checked && tk1Input && morningLeg && returnLeg) {
-            const morningOB = outsideBoundaryKm(morningLeg);
-            const returnOB  = outsideBoundaryKm(returnLeg);
-            setIf(tk1Input, Math.round(morningOB + returnOB));
-        }
-        // TK2 — sum of between-site km (Cl 64.4). Only populated when at
-        // least one between-site leg is known.
-        const tk2Cb = document.getElementById('allow_tk2');
-        const tk2Input = document.getElementById('km_tk2');
-        if (tk2Cb && tk2Cb.checked && tk2Input && betweenLegs.length > 0) {
-            const total = betweenLegs.reduce(function(sum, leg) {
-                return sum + (leg && leg.km != null ? leg.km : 0);
-            }, 0);
-            setIf(tk2Input, Math.round(total));
-        }
-    }
-    window.onload = function() {
-        buildAllowancePanel();
-        calculate();
-        // Wire Places Autocomplete to all place inputs. The custom-origin,
-        // return-from, and custom-return wrappers are hidden at load, but
-        // Autocomplete attaches to the DOM node and works fine once the
-        // wrapper becomes visible.
-        initAutocomplete('destination',  function(p) { selectedPlaces.destination  = p; });
-        initAutocomplete('customOrigin', function(p) { selectedPlaces.customOrigin = p; });
-        initAutocomplete('customReturn', function(p) { selectedPlaces.customReturn = p; });
-        // TK2 extra site inputs — each pre-rendered hidden; Autocomplete
-        // attaches to the DOM node and works fine when the slot becomes
-        // visible via addNextSite().
-        for (let i = 2; i <= 5; i++) {
-            (function(n) {
-                initAutocomplete('site' + n, function(p) { selectedPlaces['site' + n] = p; });
-            })(i);
-        }
-        syncMapsButtonState();
-        // Re-check after a brief delay in case the Maps script loaded late.
-        setTimeout(syncMapsButtonState, 1500);
-        syncAllowanceBoundUI();
-    };
-</script>
-</body>
-</html>
+  }
+  requestAnimationFrame(step);
+}
+
+// ══════════════════════════════════════════════════════════
+// INIT
+// ══════════════════════════════════════════════════════════
+render();
+if (TV_MODE) {
+  // Giv
