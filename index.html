@@ -24,7 +24,7 @@
         .maps-btn:active { transform: scale(0.98); }
         .toggle-section { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 15px; }
         .day-toggle-section { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 6px; margin-bottom: 15px; border-top: 1.5px solid #e8eef5; padding-top: 15px; }
-        .toggle-btn { padding: 12px 4px; border: 1.5px solid #b0c4de; background: #f8fafc; color: #4a5568; cursor: pointer; border-radius: 10px; text-align: center; font-weight: 700; font-size: 11px; transition: all 0.15s ease; user-select: none; }
+        .toggle-btn { padding: 15px 4px; border: 1.5px solid #b0c4de; background: #f8fafc; color: #3a4457; cursor: pointer; border-radius: 10px; text-align: center; font-weight: 700; font-size: 12px; transition: all 0.15s ease; user-select: none; }
         .toggle-btn.active { background: linear-gradient(135deg, #FFD600, #FFEA00); color: #1a1a1a; border-color: #e6c200; box-shadow: 0 2px 8px rgba(255,214,0,0.35); }
         #results { background: linear-gradient(135deg, #f8fafc, #f0f5fa); padding: 16px; border-radius: 14px; border-left: 4px solid #004a99; margin-top: 12px; box-shadow: inset 0 1px 3px rgba(0,0,0,0.04); }
         #results h3 { margin: 0 0 10px 0; font-size: 14px; color: #003366; font-weight: 700; }
@@ -55,6 +55,12 @@
         .allow-rate { color: #8899aa; font-size: 11px; white-space: nowrap; width: 65px; text-align: right; flex-shrink: 0; }
         .allow-input { width: 70px; min-width: 70px; max-width: 70px; padding: 8px 4px; border: 1.5px solid #d2dce6; border-radius: 8px; font-size: 11px; text-align: center; margin-left: 6px; flex-shrink: 0; flex-grow: 0; background: #f8fafc; transition: border-color 0.2s; }
         .allow-input:focus { border-color: #004a99; box-shadow: 0 0 0 2px rgba(0,74,153,0.1); }
+        @keyframes calcSpin { to { transform: rotate(360deg); } }
+        @keyframes sectionFlash {
+            0%   { background: #fff7d6; }
+            100% { background: transparent; }
+        }
+        .section-flash { animation: sectionFlash 1.5s ease-out; }
         .print-only { display: none; }
         @media print {
             /* Hide interactive / decorative elements */
@@ -116,6 +122,14 @@
         </ul>
     </div>
     <div class="route-box no-print">
+        <!--
+          Maps-unavailable banner: visible only when window.google.maps
+          failed to load (bad key, offline, referrer block, etc.). Keeps
+          the user informed so they fall back to manual Travel Hrs/Mins.
+        -->
+        <div id="mapsUnavailableBanner" class="hidden" style="background: #fff7d6; border: 1px solid #e0c24a; padding: 8px 10px; margin-bottom: 10px; border-radius: 6px; font-size: 12px; color: #6b5800;">
+            <strong>Google Maps unavailable.</strong> Auto-fill is off — enter Travel Hrs/Mins and km values manually.
+        </div>
         <label>Centre of Employment / Custom Location:</label>
         <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 6px; margin-bottom: 8px;">
             <div id="btnOfficeDev" class="toggle-btn" onclick="setOffice('Dev')">Devonport Office</div>
@@ -163,6 +177,16 @@
                 <label>Travel Mins:</label>
                 <input type="number" id="manualMinutes" placeholder="Example: 30" oninput="syncArriveTime()">
             </div>
+        </div>
+        <!--
+          Auto-calc status — brief "Calculating…" text that appears while a
+          background Distance Matrix fetch is in flight. Gives the user
+          visible feedback that something is happening after they blur a
+          field or pick an Autocomplete result.
+        -->
+        <div id="calcStatus" class="hidden" style="margin-top: 4px; font-size: 11px; color: #004a99; font-style: italic; display: flex; align-items: center; gap: 6px;">
+            <span style="display: inline-block; width: 10px; height: 10px; border: 2px solid #004a99; border-top-color: transparent; border-radius: 50%; animation: calcSpin 0.8s linear infinite;"></span>
+            <span>Calculating travel time &amp; distance&hellip;</span>
         </div>
         <!--
           Return section — visible whenever TK1 or TK2 is ticked. Lets the
@@ -257,7 +281,7 @@
     <div class="day-toggle-section" style="border-top:none; padding-top:0;">
         <div id="btnCo" class="toggle-btn active" onclick="toggle('Co')">Company Car</div>
         <div id="btnInc1" class="toggle-btn" onclick="toggleInc1()">Incidentals-1</div>
-        <div id="btnOther" class="toggle-btn" onclick="toggleOther()">Other &#x25BC;</div>
+        <div id="btnOther" class="toggle-btn" onclick="toggleOther()">Other <span id="btnOtherArrow" style="display:inline-block; transition: transform 0.2s ease;">&#x25BC;</span></div>
     </div>
     <div id="otherPanel" class="day-toggle-section hidden" style="border-top:none; padding-top:0;">
         <div id="btnUnnotifiedOT" class="toggle-btn" onclick="toggle('UnnotifiedOT')">Unnotified OT</div>
@@ -460,6 +484,16 @@
     function toggleInfo(id) {
         document.getElementById(id).classList.toggle('open');
     }
+    // Dynamic label helpers — mirror the on-screen labels that change with
+    // the Start/Finish Workshop/Site toggles. Used by both the print-only
+    // Time Entries block and the .txt download so every output matches
+    // what the user sees on screen.
+    function getStartLabel() {
+        return (flags.Start === 'Work') ? 'Workshop Start' : 'Left Workshop/Accom';
+    }
+    function getFinishLabel() {
+        return (flags.Fin === 'Work') ? 'Workshop Finish' : 'Arrived at Workshop/Accom';
+    }
     function setOffice(code) {
         const prev = flags.Office;
         flags.Office = code;
@@ -610,8 +644,13 @@
         } else {
             origin = OFFICES[flags.Office];
         }
+        const destValue = document.getElementById('destination').value.trim();
+        if (!destValue) {
+            alert('Please enter a destination (site address) before verifying the route.');
+            return;
+        }
         const start = encodeURIComponent(origin);
-        const end = encodeURIComponent(document.getElementById('destination').value);
+        const end = encodeURIComponent(destValue);
         if (end) {
             let url = `https://www.google.com/maps/dir/${start}/${end}`;
             // On iOS home-screen apps, redirect so it opens in Safari
@@ -699,11 +738,16 @@
         syncOtherHeader();
     }
     function syncOtherHeader() {
-        let panel = document.getElementById('otherPanel');
-        let btn = document.getElementById('btnOther');
-        let isOpen = !panel.classList.contains('hidden');
-        let anyActive = flags.UnnotifiedOT || flags.RDO || flags.Callout;
-        btn.innerHTML = (isOpen ? 'Other \u25B2' : 'Other \u25BC') + (anyActive && !isOpen ? ' \u2022' : '');
+        const panel = document.getElementById('otherPanel');
+        const btn   = document.getElementById('btnOther');
+        const arrow = document.getElementById('btnOtherArrow');
+        const isOpen = !panel.classList.contains('hidden');
+        const anyActive = flags.UnnotifiedOT || flags.RDO || flags.Callout;
+        // Rebuild the button label: "Other" + rotating arrow + optional dot.
+        btn.innerHTML = 'Other <span id="btnOtherArrow" style="display:inline-block; transition: transform 0.2s ease;">\u25BC</span>' +
+            (anyActive && !isOpen ? ' \u2022' : '');
+        const arrowEl = document.getElementById('btnOtherArrow');
+        if (arrowEl) arrowEl.style.transform = isOpen ? 'rotate(180deg)' : 'rotate(0deg)';
         btn.classList.toggle('active', anyActive);
     }
     function toggleInc1() {
@@ -1117,10 +1161,10 @@
         // times the totals are based on — the raw inputs themselves are
         // hidden by the print stylesheet.
         const timeLabels = [
-            ['Left Workshop/Accom', 'leftWorkshop'],
-            ['Arrived on Site',     'arriveSite'],
-            ['Left Site',           'leaveSite'],
-            ['Arrived at Workshop/Accom', 'arriveWorkshop']
+            [getStartLabel(),   'leftWorkshop'],
+            ['Arrived on Site', 'arriveSite'],
+            ['Left Site',       'leaveSite'],
+            [getFinishLabel(),  'arriveWorkshop']
         ];
         html += '<div class="print-only" style="margin-bottom: 6px; padding: 4px 8px; background: #f8fafc; border-left: 5px solid #004a99; border-radius: 6px;">';
         html += '<div style="font-weight: 700; color: #004a99; font-size: 12px; margin-bottom: 2px;">Time Entries</div>';
@@ -1135,11 +1179,18 @@
         // 3-column invisible table so items align vertically across rows
         // (a flex layout stretches to fill the row and misaligns when
         // different rows have different item counts).
+        // Settings Selected cell helpers. We use inline-block <span> boxes
+        // instead of Unicode ☑/☐ glyphs so the checkboxes render crisply
+        // on every printer (older inkjets and thermal printers sometimes
+        // mis-render the Unicode symbols).
         const stgCellStyle = 'padding: 2px 8px 2px 0; vertical-align: top; width: 33%;';
+        const stgBoxBase = 'display:inline-block; width:10px; height:10px; border:1px solid #333; margin-right:4px; vertical-align:middle; box-sizing:border-box;';
+        const stgBoxOn   = stgBoxBase + ' background:#004a99;';
         const stgCell = function(label, on) {
             if (label === null) return '<td style="' + stgCellStyle + '"></td>';
             return '<td style="' + stgCellStyle + '">' +
-                (on ? '\u2611' : '\u2610') + ' ' + label + '</td>';
+                '<span style="' + (on ? stgBoxOn : stgBoxBase) + '"></span>' +
+                label + '</td>';
         };
         html += '<div class="print-only" style="margin-bottom: 6px; padding: 4px 8px; background: #f8fafc; border-left: 5px solid #004a99; border-radius: 6px;">';
         html += '<div style="font-weight: 700; color: #004a99; font-size: 12px; margin-bottom: 2px;">Settings Selected</div>';
@@ -1332,17 +1383,48 @@
         if (dlApplicable) lines.push('Applicable for: ' + dlApplicable);
         lines.push('');
         // Time entries — raw HH:MM from the four time inputs.
+        // Labels track the on-screen Start/Finish toggles.
         const dlTimeLabels = [
-            ['Left Workshop/Accom',        'leftWorkshop'],
-            ['Arrived on Site',            'arriveSite'],
-            ['Left Site',                  'leaveSite'],
-            ['Arrived at Workshop/Accom',  'arriveWorkshop']
+            [getStartLabel(),   'leftWorkshop'],
+            ['Arrived on Site', 'arriveSite'],
+            ['Left Site',       'leaveSite'],
+            [getFinishLabel(),  'arriveWorkshop']
         ];
         lines.push('Time Entries');
         dlTimeLabels.forEach(function(pair) {
             const v = (document.getElementById(pair[1]) || {}).value || '—';
             lines.push('• ' + pair[0] + ': ' + v);
         });
+        // Travel Details — bridging the inputs to the outputs so payroll can
+        // see what the km / TT hours were based on.
+        const manualH = (document.getElementById('manualHours')   || {}).value || '0';
+        const manualM = (document.getElementById('manualMinutes') || {}).value || '0';
+        if (parseInt(manualH,10) > 0 || parseInt(manualM,10) > 0) {
+            lines.push('');
+            lines.push('Travel (Morning leg)');
+            lines.push('• Travel time: ' + parseInt(manualH,10) + ' hr ' + parseInt(manualM,10) + ' min');
+        }
+        // Per-leg route summary — present when the Google Maps tool has
+        // fetched leg data. Gives payroll the raw route numbers for audit.
+        if (lastLegs && lastLegs.morning && lastLegs.morning.km != null) {
+            lines.push('');
+            lines.push('Route Summary (Google Maps)');
+            const fmtLeg = function(label, leg) {
+                if (!leg || leg.km == null) return null;
+                const mins = Math.round(leg.minutes);
+                const h = Math.floor(mins / 60), mm = mins % 60;
+                const timeStr = (h > 0 ? h + 'h ' : '') + mm + 'm';
+                return '• ' + label + ': ' + Math.round(leg.km) + ' km / ' + timeStr;
+            };
+            const ml = fmtLeg('Morning leg (origin → Dest)', lastLegs.morning);
+            if (ml) lines.push(ml);
+            (lastLegs.betweenLegs || []).forEach(function(leg, i) {
+                const bl = fmtLeg('Between-site leg ' + (i + 1) + ' → ' + (i + 2), leg);
+                if (bl) lines.push(bl);
+            });
+            const rl = fmtLeg('Return leg (last site → home)', lastLegs.returnLeg);
+            if (rl) lines.push(rl);
+        }
         lines.push('');
         // Gather inputs
         let dayTypeMap = { Weekday: 'Weekday', Weekend: 'Weekend', PH: 'Public Holiday' };
@@ -1492,10 +1574,14 @@
             fields: ['place_id', 'name', 'formatted_address', 'geometry'],
             types: []  // all place types (addresses + establishments + POIs)
         });
-        // When user picks from the dropdown, remember the place.
+        // When user picks from the dropdown, remember the place AND schedule
+        // an auto-calculate. Blur doesn't always fire after a dropdown pick
+        // (focus can stay on the input), so we can't rely on the onblur
+        // handler alone to trigger a recalc.
         autocomplete.addListener('place_changed', function() {
             const p = autocomplete.getPlace();
             setterFn((p && p.place_id) ? p : null);
+            if (typeof scheduleAutoCalculate === 'function') scheduleAutoCalculate();
         });
         // Any real keystroke invalidates the stored place — they might be
         // editing to search for something else. (Widget-driven input
@@ -1531,22 +1617,33 @@
         // just the tiny checkbox box. If an allowance is currently ticked
         // when it becomes disabled, we auto-untick it so it can't show up in
         // the summary.
-        const setRow = function(cb, isDisabled) {
+        const setRow = function(cb, isDisabled, tooltip) {
             if (!cb) return;
             if (isDisabled && cb.checked) cb.checked = false;
             cb.disabled = isDisabled;
             const row = cb.closest ? cb.closest('.allow-item') : null;
-            if (row) row.classList.toggle('disabled', isDisabled);
+            if (row) {
+                row.classList.toggle('disabled', isDisabled);
+                row.title = isDisabled ? (tooltip || '') : '';
+            }
         };
         const hasCompanyCar = !!flags.Co;
-        setRow(tk1Cb, hasCompanyCar);
-        setRow(tk2Cb, hasCompanyCar);
-        setRow(ccCb,  !hasCompanyCar);
+        const ownVehTip = 'Disabled \u2014 Company Car is active. Cl 64.3.b: own-vehicle km allowances not payable when company transport is provided.';
+        const noCarTip  = 'Disabled \u2014 Company Car is not active. Select Company Car at the top of the form to enable.';
+        setRow(tk1Cb, hasCompanyCar,  ownVehTip);
+        setRow(tk2Cb, hasCompanyCar,  ownVehTip);
+        setRow(ccCb,  !hasCompanyCar, noCarTip);
         if (returnSec) {
             const wasHidden = returnSec.classList.contains('hidden');
             returnSec.classList.toggle('hidden', !(tk1Ticked || tk2Ticked));
             if (wasHidden && (tk1Ticked || tk2Ticked)) {
                 if (!flags.ReturnOffice && flags.Office) setReturnOffice(flags.Office);
+                // Brief flash to draw the eye to the newly-revealed section,
+                // since the user ticked an allowance elsewhere (Extra Allowances
+                // panel) and the Return section can be below the fold.
+                returnSec.classList.remove('section-flash');
+                void returnSec.offsetWidth;  // restart animation
+                returnSec.classList.add('section-flash');
             }
         }
         // Add Site button — visible only when TK2 is ticked AND there's room
@@ -1637,6 +1734,7 @@
         const tk2Cb = document.getElementById('allow_tk2');
         const tk2Ticked = !!(tk2Cb && tk2Cb.checked);
         if (tk2Ticked && activeExtraSiteCount() > 0) { _bgReturnInFlight = false; return; }
+        setCalcInFlight(true);
         distanceMatrixLeg(destSpec, returnDest, matrixOptions, 'return leg (auto)')
             .then(function(leg) {
                 lastLegs.returnLeg = leg;
@@ -1646,8 +1744,8 @@
                 });
                 if (typeof calculate === 'function') calculate();
             })
-            .catch(function() { /* silent — user can always press Calculate manually */ })
-            .then(function() { _bgReturnInFlight = false; });
+            .catch(function() { /* silent — errors surface on explicit recalc */ })
+            .then(function() { _bgReturnInFlight = false; setCalcInFlight(false); });
     }
     // Fire between-site legs + return leg in the background when TK2 is
     // ticked and sites are filled post-Calculate. Requires every visible
@@ -1676,6 +1774,7 @@
         const returnOriginSpec = extras[extras.length - 1];
         const activeSites = [destSpec].concat(extras);
         _bgTk2InFlight = true;
+        setCalcInFlight(true);
         const matrixOptions = {
             travelMode: google.maps.TravelMode.DRIVING,
             drivingOptions: { departureTime: new Date(), trafficModel: 'bestguess' }
@@ -1695,14 +1794,26 @@
                 });
                 if (typeof calculate === 'function') calculate();
             } catch (e) { /* silent */ }
-            finally { _bgTk2InFlight = false; }
+            finally { _bgTk2InFlight = false; setCalcInFlight(false); }
         })();
     }
-    // Kept as a no-op stub for any legacy callers. There's no Calculate
-    // button to disable any more — Maps-not-loaded cases are handled
-    // silently by calculateRouteTime (auto-fires fall through without
-    // error; manual Travel Hrs/Mins entry still works).
-    function syncMapsButtonState() { /* intentionally empty */ }
+    // Check Maps API availability at page load and show/hide the banner.
+    // Called from window.onload and also after a small retry to catch
+    // late-loading scripts.
+    function syncMapsButtonState() {
+        const banner = document.getElementById('mapsUnavailableBanner');
+        if (!banner) return;
+        const mapsLoaded = !!(window.google && window.google.maps && window.google.maps.places);
+        banner.classList.toggle('hidden', mapsLoaded);
+    }
+    // Show/hide the inline "Calculating..." indicator during a fetch.
+    // Count-based so overlapping calls don't flicker it off prematurely.
+    let _inFlightCount = 0;
+    function setCalcInFlight(on) {
+        _inFlightCount = Math.max(0, _inFlightCount + (on ? 1 : -1));
+        const status = document.getElementById('calcStatus');
+        if (status) status.classList.toggle('hidden', _inFlightCount === 0);
+    }
     // 30-min Travel Boundary (Cl 64.1). Used to compute TK1 outside-boundary km
     // via the ratio method — km × (totalMin − BOUNDARY) ÷ totalMin when trip > 30 min.
     const TRAVEL_BOUNDARY_MIN = 30;
@@ -1822,6 +1933,7 @@
             travelMode: google.maps.TravelMode.DRIVING,
             drivingOptions: { departureTime: new Date(), trafficModel: 'bestguess' }
         };
+        setCalcInFlight(true);
         try {
             // 1. Morning leg (always)
             const morningLeg = await distanceMatrixLeg(originSpec, destinationSpec, matrixOptions, 'morning leg');
@@ -1853,6 +1965,8 @@
             // explicit (non-silent) failures clear Travel Hrs/Mins.
             if (!silent) clearTravelFields();
             warn(err.message + ' Enter Travel Hrs/Mins and km fields manually.');
+        } finally {
+            setCalcInFlight(false);
         }
     }
     // Pre-fill km allowance fields based on the legs we just fetched.
@@ -1921,6 +2035,8 @@
             })(i);
         }
         syncMapsButtonState();
+        // Re-check after a brief delay in case the Maps script loaded late.
+        setTimeout(syncMapsButtonState, 1500);
         syncAllowanceBoundUI();
     };
 </script>
