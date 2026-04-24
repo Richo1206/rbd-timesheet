@@ -178,7 +178,7 @@
                 <div id="btnReturnCustom" class="toggle-btn" onclick="setReturnOffice('Custom')">Custom</div>
             </div>
             <div id="customReturnWrap" class="hidden" style="margin-bottom: 8px;">
-                <input type="text" id="customReturn" placeholder="Enter return address (home, accommodation, other workshop)">
+                <input type="text" id="customReturn" placeholder="Enter return address (home, accommodation, other workshop)" onblur="returnDestChanged()">
             </div>
             <!--
               "Returning from" is only shown when TK2 is also active (multi-site
@@ -188,7 +188,7 @@
             -->
             <div id="returnFromWrap" class="hidden">
                 <label>Returning from:</label>
-                <input type="text" id="returnFrom" placeholder="Last site of the day" style="margin-bottom: 4px;">
+                <input type="text" id="returnFrom" placeholder="Last site of the day" style="margin-bottom: 4px;" onblur="returnFromChanged()">
             </div>
         </div>
     </div>
@@ -447,11 +447,44 @@
     // scoped to the return leg (used when the TK1 allowance is ticked so
     // we can feed an asymmetric return into the km auto-fill).
     function setReturnOffice(code) {
+        const prev = flags.ReturnOffice;
         flags.ReturnOffice = code;
         document.getElementById('btnReturnDev').classList.toggle('active', code === 'Dev');
         document.getElementById('btnReturnHob').classList.toggle('active', code === 'Hob');
         document.getElementById('btnReturnCustom').classList.toggle('active', code === 'Custom');
         document.getElementById('customReturnWrap').classList.toggle('hidden', code !== 'Custom');
+        // If the return destination actually changed (not just the initial
+        // default being applied), invalidate the cached return leg so TK1
+        // re-computes against the NEW destination. The sync at the end
+        // triggers the background refetch.
+        if (prev && prev !== code) {
+            invalidateReturnLeg();
+        }
+        if (typeof syncAllowanceBoundUI === 'function') syncAllowanceBoundUI();
+    }
+    // Invalidate the cached return leg + clear TK1 km so the background
+    // refetch (fired from syncAllowanceBoundUI) can write a fresh value
+    // under the onlyIfEmpty guard.
+    function invalidateReturnLeg() {
+        if (typeof lastLegs !== 'undefined') lastLegs.returnLeg = null;
+        const tk1Input = document.getElementById('km_tk1');
+        if (tk1Input) tk1Input.value = '';
+    }
+    // Called from the customReturn input — text change means the return
+    // destination has changed, so invalidate and refetch.
+    function returnDestChanged() {
+        invalidateReturnLeg();
+        if (typeof syncAllowanceBoundUI === 'function') syncAllowanceBoundUI();
+    }
+    // Called from the returnFrom input (TK2 case) — "Returning from" is the
+    // return-leg origin. Editing it invalidates the return leg (and TK1 km)
+    // but NOT the between-site chain (which still ends at the last extra
+    // site, independently of the returnFrom field).
+    function returnFromChanged() {
+        if (typeof lastLegs !== 'undefined') lastLegs.returnLeg = null;
+        const tk1Input = document.getElementById('km_tk1');
+        if (tk1Input) tk1Input.value = '';
+        if (typeof syncAllowanceBoundUI === 'function') syncAllowanceBoundUI();
     }
     // --- TK2 multi-site helpers -------------------------------------------
     // Count of extra site slots (2..5) currently visible. Site 1 is always
@@ -1494,15 +1527,19 @@
             });
         }
         // If the user ticked TK1 / TK2 AFTER an earlier successful Calculate
-        // press, the return leg (and between-site legs) weren't fetched at
-        // that time. Fire them silently in the background so the km fields
+        // press — OR changed a Return-related field so the cached leg is
+        // stale — fire the silent background refetch so the km fields
         // populate without requiring a second Calculate press.
         if (lastLegs && lastLegs.morning) {
-            if (tk1Ticked && !lastLegs.returnLeg) {
-                backgroundFetchReturnLeg();
-            }
-            if (tk2Ticked && activeExtraSiteCount() > 0 && (lastLegs.betweenLegs || []).length === 0) {
+            const tk2Active = tk2Ticked && activeExtraSiteCount() > 0;
+            const needReturn  = tk1Ticked && !lastLegs.returnLeg;
+            const needBetween = tk2Active && (lastLegs.betweenLegs || []).length === 0;
+            if (tk2Active && (needReturn || needBetween)) {
+                // TK2 helper re-fetches between-legs + return leg in one chain.
                 backgroundFetchTk2Legs();
+            } else if (needReturn) {
+                // TK1-only path: just the return leg.
+                backgroundFetchReturnLeg();
             }
         }
     }
@@ -1597,6 +1634,13 @@
         if (extras.length === 0) return;  // nothing to do
         const returnDest = currentReturnDestSpec();
         if (!returnDest) return;
+        // Return origin = the "Returning from" input (user-editable; auto-
+        // populates to the last site). Matches calculateRouteTime behaviour
+        // so edits to the returnFrom field are respected here too.
+        const rfText = ((document.getElementById('returnFrom') || {}).value || '').trim();
+        if (!rfText) return;
+        const returnOriginSpec = (selectedPlaces.returnFrom && selectedPlaces.returnFrom.place_id)
+            ? { placeId: selectedPlaces.returnFrom.place_id } : rfText;
         const activeSites = [destSpec].concat(extras);
         _bgTk2InFlight = true;
         const matrixOptions = {
@@ -1610,7 +1654,7 @@
                     const leg = await distanceMatrixLeg(activeSites[i], activeSites[i + 1], matrixOptions, 'between-site (auto)');
                     between.push(leg);
                 }
-                const returnLeg = await distanceMatrixLeg(activeSites[activeSites.length - 1], returnDest, matrixOptions, 'return leg (auto)');
+                const returnLeg = await distanceMatrixLeg(returnOriginSpec, returnDest, matrixOptions, 'return leg (auto)');
                 lastLegs.betweenLegs = between;
                 lastLegs.returnLeg   = returnLeg;
                 applyKmAutofill(lastLegs.morning, returnLeg, {
