@@ -121,10 +121,10 @@
             <div id="btnOfficeCustom" class="toggle-btn" onclick="setOffice('Custom')">Custom</div>
         </div>
         <div id="customOriginWrap" class="hidden" style="margin-bottom: 8px;">
-            <input type="text" id="customOrigin" placeholder="Enter start address">
+            <input type="text" id="customOrigin" placeholder="Enter start address" onblur="morningOriginChanged()">
         </div>
         <label>Dest:</label>
-        <input type="text" id="destination" placeholder="Site address" style="margin-bottom: 12px;">
+        <input type="text" id="destination" placeholder="Site address" style="margin-bottom: 12px;" onblur="destinationChanged()">
         <button class="maps-btn" onclick="checkRoute()">Verify Route (opens Google Maps)</button>
         <button id="btnCalculateRoute" class="maps-btn" onclick="calculateRouteTime()">Calculate time to destination</button>
         <!--
@@ -437,11 +437,20 @@
         document.getElementById(id).classList.toggle('open');
     }
     function setOffice(code) {
+        const prev = flags.Office;
         flags.Office = code;
         document.getElementById('btnOfficeDev').classList.toggle('active', code === 'Dev');
         document.getElementById('btnOfficeHob').classList.toggle('active', code === 'Hob');
         document.getElementById('btnOfficeCustom').classList.toggle('active', code === 'Custom');
         document.getElementById('customOriginWrap').classList.toggle('hidden', code !== 'Custom');
+        // Morning origin changed — invalidate all cached legs so the auto-
+        // calculate re-fetches with the new origin.
+        if (prev && prev !== code) {
+            lastLegs.morning = null;
+            lastLegs.returnLeg = null;
+            lastLegs.betweenLegs = [];
+            scheduleAutoCalculate();
+        }
     }
     // Return section — identical UI to the morning Office toggle, but
     // scoped to the return leg (used when the TK1 allowance is ticked so
@@ -459,6 +468,7 @@
         // triggers the background refetch.
         if (prev && prev !== code) {
             invalidateReturnLeg();
+            scheduleAutoCalculate();
         }
         if (typeof syncAllowanceBoundUI === 'function') syncAllowanceBoundUI();
     }
@@ -475,6 +485,27 @@
     function returnDestChanged() {
         invalidateReturnLeg();
         if (typeof syncAllowanceBoundUI === 'function') syncAllowanceBoundUI();
+        scheduleAutoCalculate();
+    }
+    // Morning Destination field change — invalidate every cached leg (morning,
+    // between-sites, return all depend on this text) and schedule a full
+    // refetch. For TK1-only cases the return origin is the morning Dest, so
+    // returnLeg must re-fetch too.
+    function destinationChanged() {
+        lastLegs.morning = null;
+        lastLegs.returnLeg = null;
+        lastLegs.betweenLegs = [];
+        // When TK2 is active, returnFrom might still be auto-populated —
+        // keep it in sync with the new destination if needed.
+        autoPopulateReturnFrom();
+        scheduleAutoCalculate();
+    }
+    // Custom morning origin field change — invalidate morning + return legs.
+    function morningOriginChanged() {
+        lastLegs.morning = null;
+        lastLegs.returnLeg = null;
+        lastLegs.betweenLegs = [];
+        scheduleAutoCalculate();
     }
     // Called from the returnFrom input (TK2 case) — "Returning from" is the
     // return-leg origin. Editing it invalidates the return leg (and TK1 km)
@@ -485,6 +516,51 @@
         const tk1Input = document.getElementById('km_tk1');
         if (tk1Input) tk1Input.value = '';
         if (typeof syncAllowanceBoundUI === 'function') syncAllowanceBoundUI();
+        scheduleAutoCalculate();
+    }
+    // Track the last value we wrote into "Returning from" automatically.
+    // If the user subsequently edits the field, its value no longer matches
+    // this — that's our signal to stop auto-overwriting.
+    let _lastAutoReturnFromValue = '';
+    function autoPopulateReturnFrom() {
+        const rf = document.getElementById('returnFrom');
+        if (!rf) return;
+        // Compute what the "last site" is right now.
+        let lastText = '';
+        const extras = activeExtraSiteCount();
+        if (extras > 0) {
+            const lastSiteIdx = extras + 1;   // 2..5
+            const lastInput = document.getElementById('site' + lastSiteIdx);
+            if (lastInput) lastText = lastInput.value.trim();
+        }
+        if (!lastText) {
+            const dest = document.getElementById('destination');
+            lastText = dest ? dest.value.trim() : '';
+        }
+        // If the current value differs from the last auto-populated value,
+        // the user has typed something — leave it alone.
+        if (rf.value && rf.value !== _lastAutoReturnFromValue) return;
+        if (lastText && rf.value !== lastText) {
+            rf.value = lastText;
+            selectedPlaces.returnFrom = null;  // reset place_id (text changed)
+        }
+        _lastAutoReturnFromValue = lastText;
+    }
+    // ----------------------------------------------------------------
+    // AUTOMATIC CALCULATE — debounced so rapid field changes don't spam
+    // the Google API. Fires ~400ms after the user stops interacting.
+    // Silent mode skips alerts when prerequisites aren't met, so partial
+    // states (e.g. typing mid-address) don't pop dialogs.
+    // ----------------------------------------------------------------
+    let _autoCalcTimer = null;
+    function scheduleAutoCalculate(delay) {
+        if (_autoCalcTimer) clearTimeout(_autoCalcTimer);
+        _autoCalcTimer = setTimeout(function() {
+            _autoCalcTimer = null;
+            if (typeof calculateRouteTime === 'function') {
+                calculateRouteTime({ silent: true });
+            }
+        }, (typeof delay === 'number') ? delay : 400);
     }
     // --- TK2 multi-site helpers -------------------------------------------
     // Count of extra site slots (2..5) currently visible. Site 1 is always
@@ -506,6 +582,7 @@
                 w.classList.remove('hidden');
                 const input = document.getElementById('site' + i);
                 if (input) input.focus();
+                autoPopulateReturnFrom();
                 syncAllowanceBoundUI();
                 return;
             }
@@ -520,18 +597,26 @@
         if (w) w.classList.add('hidden');
         if (input) input.value = '';
         if (selectedPlaces['site' + n]) selectedPlaces['site' + n] = null;
-        // Invalidate cached between-site data so we re-fetch on next trigger.
+        // Invalidate cached between-site data + return leg (last site moved).
         lastLegs.betweenLegs = [];
+        lastLegs.returnLeg = null;
         const tk2Input = document.getElementById('km_tk2');
         if (tk2Input) tk2Input.value = '';
+        const tk1Input = document.getElementById('km_tk1');
+        if (tk1Input) tk1Input.value = '';
+        autoPopulateReturnFrom();
         syncAllowanceBoundUI();
+        scheduleAutoCalculate();
     }
     // Fires when a site input loses focus (user finished typing). Kicks the
-    // background fetch so TK2 km populates without requiring Calculate again.
+    // auto-calculate so TK2 km populates without requiring Calculate again.
     function siteInputChanged() {
-        // Invalidate cached between-site data — input text may have changed.
+        // Invalidate cached between-site + return data — input text changed.
         lastLegs.betweenLegs = [];
+        lastLegs.returnLeg = null;
+        autoPopulateReturnFrom();
         syncAllowanceBoundUI();
+        scheduleAutoCalculate();
     }
     function checkRoute() {
         if (!flags.Office) {
@@ -1485,31 +1570,12 @@
                 if (!flags.ReturnOffice && flags.Office) setReturnOffice(flags.Office);
             }
         }
-        // "Returning from" input only needed when TK2 is active (last site can
-        // differ from the morning destination). For TK1-only we reuse the
+        // "Returning from" input only needed when TK2 is active (last site
+        // can differ from the morning destination). For TK1-only we reuse the
         // morning Dest as the return origin automatically.
         if (returnFromWrap) {
             returnFromWrap.classList.toggle('hidden', !tk2Ticked);
-            if (tk2Ticked) {
-                // Auto-populate with the last active site (site N if extras
-                // are visible, otherwise morning Dest).
-                const rf = document.getElementById('returnFrom');
-                if (rf) {
-                    const extras = activeExtraSiteCount();
-                    let lastText = '';
-                    if (extras > 0) {
-                        const lastSiteIdx = extras + 1;   // 2..5
-                        const lastInput = document.getElementById('site' + lastSiteIdx);
-                        if (lastInput) lastText = lastInput.value.trim();
-                    }
-                    if (!lastText) {
-                        const dest = document.getElementById('destination');
-                        lastText = dest ? dest.value.trim() : '';
-                    }
-                    // Only seed if the user hasn't already typed something.
-                    if (!rf.value && lastText) rf.value = lastText;
-                }
-            }
+            if (tk2Ticked) autoPopulateReturnFrom();
         }
         // Add Site button — visible only when TK2 is ticked AND there's room
         // for another slot.
@@ -1722,29 +1788,31 @@
         if (place && place.place_id) return { placeId: place.place_id };
         return text;
     }
-    async function calculateRouteTime() {
+    async function calculateRouteTime(options) {
+        const silent = !!(options && options.silent);
+        const warn = function(msg) { if (!silent) alert(msg); };
         const btn = document.getElementById('btnCalculateRoute');
         // Gate: API must be loaded.
         if (!window.google || !window.google.maps) {
-            alert('Google Maps API not loaded \u2014 check the API key in the page head, or your network connection.');
+            warn('Google Maps API not loaded \u2014 check the API key in the page head, or your network connection.');
             return;
         }
         // Gate: start location selected.
         if (!flags.Office) {
-            alert('Please select a start location (Devonport, Hobart, or Custom).');
+            warn('Please select a start location (Devonport, Hobart, or Custom).');
             return;
         }
         // --- MORNING ORIGIN / DESTINATION ---
         let originSpec;
         if (flags.Office === 'Custom') {
             const customText = document.getElementById('customOrigin').value.trim();
-            if (!customText) { alert('Please enter a custom start address.'); return; }
+            if (!customText) { warn('Please enter a custom start address.'); return; }
             originSpec = specFromInputAndPlace(customText, selectedPlaces.customOrigin);
         } else {
             originSpec = OFFICES[flags.Office];
         }
         const destText = document.getElementById('destination').value.trim();
-        if (!destText) { alert('Please enter a destination (site address).'); return; }
+        if (!destText) { warn('Please enter a destination (site address).'); return; }
         const destinationSpec = specFromInputAndPlace(destText, selectedPlaces.destination);
         // --- TK2 EXTRA SITES (2..5) ---
         const tk2Cb = document.getElementById('allow_tk2');
@@ -1755,7 +1823,7 @@
                 const w = document.getElementById('siteWrap' + i);
                 if (!w || w.classList.contains('hidden')) continue;
                 const txt = document.getElementById('site' + i).value.trim();
-                if (!txt) { alert('Site ' + i + ' is empty \u2014 enter an address or remove the row.'); return; }
+                if (!txt) { warn('Site ' + i + ' is empty \u2014 enter an address or remove the row.'); return; }
                 extraSiteSpecs.push(specFromInputAndPlace(txt, selectedPlaces['site' + i]));
             }
         }
@@ -1773,15 +1841,15 @@
             if (tk2Ticked && extraSiteSpecs.length > 0) {
                 // User-visible "Returning from" — may have been edited.
                 const rfText = document.getElementById('returnFrom').value.trim();
-                if (!rfText) { alert('Return section: please enter the last site of the day.'); return; }
+                if (!rfText) { warn('Return section: please enter the last site of the day.'); return; }
                 returnOriginSpec = specFromInputAndPlace(rfText, selectedPlaces.returnFrom);
             } else {
                 returnOriginSpec = destinationSpec;
             }
-            if (!flags.ReturnOffice) { alert('Return section: please select where you are returning to.'); return; }
+            if (!flags.ReturnOffice) { warn('Return section: please select where you are returning to.'); return; }
             if (flags.ReturnOffice === 'Custom') {
                 const crText = document.getElementById('customReturn').value.trim();
-                if (!crText) { alert('Return section: please enter a custom return address.'); return; }
+                if (!crText) { warn('Return section: please enter a custom return address.'); return; }
                 returnDestSpec = specFromInputAndPlace(crText, selectedPlaces.customReturn);
             } else {
                 returnDestSpec = OFFICES[flags.ReturnOffice];
@@ -1829,8 +1897,10 @@
             applyKmAutofill(morningLeg, returnLeg, { betweenLegs: betweenLegs });
             if (typeof calculate === 'function') calculate();
         } catch (err) {
-            clearTravelFields();
-            alert(err.message + ' Try again or enter Travel Hrs/Mins and km fields manually.');
+            // Only blow away Travel Hrs/Mins on explicit (non-silent) calls.
+            // Silent auto-fires leave existing manual entries alone.
+            if (!silent) clearTravelFields();
+            warn(err.message + ' Try again or enter Travel Hrs/Mins and km fields manually.');
         } finally {
             restoreBtn();
         }
