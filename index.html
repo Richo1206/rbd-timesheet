@@ -1275,6 +1275,10 @@
     // cleared on a real keystroke in its field, so we never send a stale
     // place_id for a different text value.
     let selectedPlaces = { destination: null, customOrigin: null, returnFrom: null, customReturn: null };
+    // Cached legs from the most recent successful "Calculate time to destination"
+    // press. Lets us auto-fill km fields when the user ticks Km's (CC) or TK1
+    // AFTER the Google tool has already been run.
+    let lastLegs = { morning: null, returnLeg: null };
     function initAutocomplete(inputId, setterFn) {
         if (!window.google || !google.maps || !google.maps.places) return;
         const input = document.getElementById(inputId);
@@ -1317,6 +1321,12 @@
             }
         }
         if (ccNote) ccNote.classList.toggle('hidden', !(ccCb && ccCb.checked));
+        // If the Google tool has already been run, opportunistically pre-fill
+        // km fields for any allowance that was just ticked. onlyIfEmpty means
+        // we never overwrite a km value the user has typed manually.
+        if (lastLegs && lastLegs.morning) {
+            applyKmAutofill(lastLegs.morning, lastLegs.returnLeg, { onlyIfEmpty: true });
+        }
     }
     // Disable the Calculate button if Maps failed to load (offline, key
     // revoked, referrer mismatch at load time, etc). Manual entry still
@@ -1446,6 +1456,10 @@
                 document.getElementById('manualHours').value   = Math.floor(totalMinutes / 60);
                 document.getElementById('manualMinutes').value = totalMinutes % 60;
                 if (typeof syncArriveTime === 'function') syncArriveTime();
+                // Cache morning leg so syncAllowanceBoundUI can opportunistically
+                // fill km fields when the user ticks an allowance later.
+                lastLegs.morning = morningLeg;
+                lastLegs.returnLeg = null;
                 // If no return leg needed → finish up here.
                 if (!returnVisible) {
                     applyKmAutofill(morningLeg, null);
@@ -1473,6 +1487,7 @@
                             alert('No route found for the return leg. TK1 km not auto-filled — enter manually.');
                             return;
                         }
+                        lastLegs.returnLeg = returnLeg;
                         applyKmAutofill(morningLeg, returnLeg);
                         if (typeof calculate === 'function') calculate();
                     }
@@ -1483,22 +1498,36 @@
     // Pre-fill km allowance fields based on the legs we just fetched.
     //   • Km's (Company Car) — morning km × 1 (per the inline note).
     //   • TK1 — outside-boundary km (ratio method), morning + return.
-    function applyKmAutofill(morningLeg, returnLeg) {
+    //            Only fills when BOTH legs are known so we never show an
+    //            incomplete one-leg-only figure.
+    //
+    // `options.onlyIfEmpty = true` makes the fill non-destructive — we won't
+    // overwrite a value the user has already typed or edited. This is what
+    // we want when the user ticks an allowance AFTER the tool has run; the
+    // direct "Calculate" flow passes `onlyIfEmpty = false` to always apply.
+    function applyKmAutofill(morningLeg, returnLeg, options) {
+        const onlyIfEmpty = !!(options && options.onlyIfEmpty);
+        const setIf = function(input, value) {
+            if (!input) return;
+            if (onlyIfEmpty && input.value && String(input.value).trim() !== '') return;
+            input.value = value;
+        };
         // Km's (Company Car) — morning leg only, always ×1.
         const ccCb = document.getElementById('allow_kmCompanyCar');
         const ccInput = document.getElementById('km_kmCompanyCar');
         if (ccCb && ccCb.checked && ccInput && morningLeg && morningLeg.km != null) {
-            ccInput.value = Math.round(morningLeg.km);
+            setIf(ccInput, Math.round(morningLeg.km));
         }
-        // TK1 — morning + return outside-boundary km. If return leg is missing
-        // (user hasn't ticked TK1 or return call failed) we only auto-fill
-        // from the morning leg as a starting point.
+        // TK1 — requires both legs so the ratio-method total is accurate.
+        // If user ticks TK1 after running the tool with only a morning call,
+        // we'll leave TK1 empty here; pressing Calculate again (once the
+        // Return section is filled) will complete the auto-fill.
         const tk1Cb = document.getElementById('allow_tk1');
         const tk1Input = document.getElementById('km_tk1');
-        if (tk1Cb && tk1Cb.checked && tk1Input) {
+        if (tk1Cb && tk1Cb.checked && tk1Input && morningLeg && returnLeg) {
             const morningOB = outsideBoundaryKm(morningLeg);
-            const returnOB  = returnLeg ? outsideBoundaryKm(returnLeg) : 0;
-            tk1Input.value = Math.round(morningOB + returnOB);
+            const returnOB  = outsideBoundaryKm(returnLeg);
+            setIf(tk1Input, Math.round(morningOB + returnOB));
         }
     }
     window.onload = function() {
