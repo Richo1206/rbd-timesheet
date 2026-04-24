@@ -66,8 +66,8 @@
             .sub { font-size: 9px; margin-bottom: 3px; }
             .section-header { font-size: 10px; margin: 6px 0 2px; padding-bottom: 2px; }
             #results { padding: 6px 8px; margin-top: 2px; }
-            #results h3 { margin: 6px 0 2px; font-size: 12px; }
-            .code-row { padding: 2px 0; font-size: 12px; }
+            #results h3 { margin: 6px 0 2px !important; font-size: 12px !important; }
+            .code-row { padding: 2px 0 !important; font-size: 12px !important; }
             .notes { font-size: 9px; padding-top: 4px; margin-top: 4px; }
             .footer-note { font-size: 8px; margin-top: 6px; }
             /* Keep Extra Allowances and the print-only blocks together
@@ -135,7 +135,7 @@
             </div>
         </div>
     </div>
-    <div class="section-header"><span>Time Entries</span><button class="info-btn no-print" onclick="toggleInfo('infoTime')">i</button></div>
+    <div class="section-header no-print"><span>Time Entries</span><button class="info-btn no-print" onclick="toggleInfo('infoTime')">i</button></div>
     <div id="infoTime" class="info-panel no-print">
         <strong>How to fill this in:</strong>
         <ul>
@@ -869,7 +869,7 @@
         let projApplicable = projDay || projDate || '';
         let html = '';
         if (projName || projApplicable) {
-            html += '<div style="margin-bottom: 10px; padding-bottom: 8px; border-bottom: 2px solid #004a99;">';
+            html += '<div style="margin-bottom: 4px; padding-bottom: 2px; border-bottom: 2px solid #004a99;">';
             if (projName) html += '<div style="font-weight:bold; font-size:14px; color:#004a99;">' + projName + '</div>';
             if (projApplicable) html += '<div style="font-size:12px; color:#555;">Timesheet summary applicable for: <strong>' + projApplicable + '</strong></div>';
             html += '</div>';
@@ -884,11 +884,11 @@
             ['Left Site',           'leaveSite'],
             ['Arrived at Workshop/Accom', 'arriveWorkshop']
         ];
-        html += '<div class="print-only" style="margin-bottom: 10px; padding: 8px 12px; background: #f8fafc; border-left: 5px solid #004a99; border-radius: 6px;">';
-        html += '<div style="font-weight: 700; color: #004a99; font-size: 13px; margin-bottom: 4px;">Time Entries</div>';
+        html += '<div class="print-only" style="margin-bottom: 6px; padding: 4px 8px; background: #f8fafc; border-left: 5px solid #004a99; border-radius: 6px;">';
+        html += '<div style="font-weight: 700; color: #004a99; font-size: 12px; margin-bottom: 2px;">Time Entries</div>';
         timeLabels.forEach(function(pair) {
             const v = (document.getElementById(pair[1]) || {}).value || '\u2014';
-            html += '<div class="code-row" style="padding: 4px 0; font-size: 13px;"><span>' + pair[0] + '</span><span>' + v + '</span></div>';
+            html += '<div class="code-row" style="padding: 2px 0; font-size: 12px;"><span>' + pair[0] + '</span><span>' + v + '</span></div>';
         });
         html += '</div>';
         // Print-only Settings Selected block. Mirrors the on-screen toggle
@@ -897,15 +897,15 @@
         // 3-column invisible table so items align vertically across rows
         // (a flex layout stretches to fill the row and misaligns when
         // different rows have different item counts).
-        const stgCellStyle = 'padding: 3px 8px 3px 0; vertical-align: top; width: 33%;';
+        const stgCellStyle = 'padding: 2px 8px 2px 0; vertical-align: top; width: 33%;';
         const stgCell = function(label, on) {
             if (label === null) return '<td style="' + stgCellStyle + '"></td>';
             return '<td style="' + stgCellStyle + '">' +
                 (on ? '\u2611' : '\u2610') + ' ' + label + '</td>';
         };
-        html += '<div class="print-only" style="margin-bottom: 10px; padding: 8px 12px; background: #f8fafc; border-left: 5px solid #004a99; border-radius: 6px;">';
-        html += '<div style="font-weight: 700; color: #004a99; font-size: 13px; margin-bottom: 6px;">Settings Selected</div>';
-        html += '<table style="width: 100%; font-size: 13px; border-collapse: collapse; table-layout: fixed;"><tbody>';
+        html += '<div class="print-only" style="margin-bottom: 6px; padding: 4px 8px; background: #f8fafc; border-left: 5px solid #004a99; border-radius: 6px;">';
+        html += '<div style="font-weight: 700; color: #004a99; font-size: 12px; margin-bottom: 2px;">Settings Selected</div>';
+        html += '<table style="width: 100%; font-size: 12px; border-collapse: collapse; table-layout: fixed;"><tbody>';
         // Day type — 3 items, 1 per cell
         html += '<tr>';
         html += stgCell('Weekday',        flags.Day === 'Weekday');
@@ -942,7 +942,7 @@
         }
         html += '</tbody></table>';
         // Start / Finish — always shown, on its own line below the grid
-        html += '<div style="margin-top: 6px; font-size: 13px;">';
+        html += '<div style="margin-top: 3px; font-size: 12px;">';
         html += '<span style="margin-right: 20px;">Start: <strong>' + (flags.Start === 'Work' ? 'Workshop' : 'Site') + '</strong></span>';
         html += '<span>Finish: <strong>' + (flags.Fin === 'Work' ? 'Workshop' : 'Site') + '</strong></span>';
         html += '</div>';
