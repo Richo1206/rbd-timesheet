@@ -55,17 +55,21 @@
         @media print { .no-print, .toggle-btn, input, label, .day-toggle-section, .route-box, .info-btn, .info-panel, .allow-panel { display: none !important; } .card { box-shadow: none; border: none; } .card::before { display: none; } }
     </style>
     <!--
-      Google Maps JavaScript API — required for the "Calculate time to destination"
-      button. The key below is the GitHub Test key (restricted by HTTP referrer to
-      https://richo1206.github.io/rbd-timesheet/*). For the production deployment
-      at rbdelectrical.com.au/timesheet, swap this for the Production key which is
-      restricted to that domain. Any new key must:
-        (a) have BOTH "Maps JavaScript API" and "Distance Matrix API" enabled;
-        (b) be restricted by HTTP referrer to the exact deployment domain(s);
-        (c) have a monthly budget alert configured in GCP billing.
-      If the key is missing, invalid, or the call fails, the button alerts and
-      falls back to manual Travel Hrs/Mins entry — the rest of the calculator
-      still works.
+      Google Maps JavaScript API — required for the "Calculate time to
+      destination" button and Places Autocomplete on the destination field.
+      The key below is the GitHub Test key (restricted by HTTP referrer to
+      https://richo1206.github.io/rbd-timesheet/*). For the production
+      deployment at rbdelectrical.com.au/timesheet, swap this for the
+      Production key which is restricted to that domain. Any key must have
+      all THREE Google APIs enabled and included in the key's restrictions:
+        (a) Maps JavaScript API
+        (b) Distance Matrix API
+        (c) Places API     ← needed for the destination autocomplete
+      Plus: HTTP referrer restriction to the exact deployment domain(s),
+      and a monthly budget alert in GCP billing.
+      If the key fails or Maps doesn't load, the Calculate button greys out
+      and the user falls back to manual Travel Hrs/Mins entry — the rest
+      of the calculator still works.
     -->
     <script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyCJJtYddJaE3tYzw7CvjlvZRPTpb4vD2eo&libraries=places"></script>
 </head>
@@ -79,10 +83,10 @@
         <strong>How to use:</strong> This tool helps you verify your travel time using Google Maps.
         <ul>
             <li>Select your <strong>start location</strong> — Devonport Office, Hobart Office, or enter a Custom address (e.g. accommodation).</li>
-            <li>Enter the <strong>destination</strong> (site address).</li>
-            <li>Tap <strong>Calculate time to destination</strong> to auto-fill the Travel Hrs/Mins fields using Google Distance Matrix (includes current traffic conditions).</li>
+            <li>Start typing the <strong>destination</strong> (site name or address) and pick from the Google Autocomplete dropdown — this gives the most reliable lookup. If the place you need isn't listed, type a street address or town + state instead.</li>
+            <li>Tap <strong>Calculate time to destination</strong> to auto-fill Travel Hrs/Mins using Google Distance Matrix, including current traffic.</li>
             <li>Or tap <strong>Verify Route</strong> to open Google Maps in a new tab and check the route visually — useful for sanity-checking the auto-filled time.</li>
-            <li>The calculator uses the Travel Hrs/Mins to auto-set your "Arrived on Site" time based on when you left.</li>
+            <li>The calculator uses Travel Hrs/Mins to auto-set your "Arrived on Site" time based on when you left.</li>
         </ul>
     </div>
     <div class="route-box no-print">
@@ -1106,18 +1110,61 @@
     }
     // ------------------------------------------------------------------
     // GOOGLE MAPS — Auto-fill Travel Hrs/Mins from Distance Matrix
-    // Uses duration_in_traffic (best-guess live traffic) so the estimate
-    // reflects conditions at the time the user hits the button. Falls
-    // back to the non-traffic duration if traffic data isn't returned.
-    // Requires a Google Maps JS API key loaded in <head> with Maps JS
-    // and Distance Matrix APIs enabled and HTTP-referrer restrictions
-    // configured in Google Cloud Console.
+    //
+    //   Destination field uses Places Autocomplete (biased to Australia)
+    //   so users pick a real indexed place rather than typing free-form
+    //   text that Google may not geocode. When a place is selected we
+    //   remember its place_id and pass that to Distance Matrix — the
+    //   most reliable form of route lookup Google offers.
+    //
+    //   If the user types without selecting from the dropdown (or Places
+    //   Autocomplete isn't available for any reason), we fall back to
+    //   sending the raw text to Distance Matrix — the same behaviour as
+    //   before Autocomplete was added.
+    //
+    //   Requires API key loaded in <head> with the following enabled:
+    //   Maps JavaScript API, Distance Matrix API, Places API. Referrer
+    //   restrictions must match the deployment domain.
     // ------------------------------------------------------------------
+    // Last place selected from the Autocomplete dropdown. Cleared on any
+    // real keystroke so we never send a stale place_id for a different
+    // text value.
+    let selectedPlace = null;
+    function initDestinationAutocomplete() {
+        if (!window.google || !google.maps || !google.maps.places) return;
+        const input = document.getElementById('destination');
+        if (!input) return;
+        const autocomplete = new google.maps.places.Autocomplete(input, {
+            componentRestrictions: { country: 'au' },  // Bias to Australia
+            fields: ['place_id', 'name', 'formatted_address', 'geometry'],
+            types: []  // all place types (addresses + establishments + POIs)
+        });
+        // When user picks from the dropdown, remember the place.
+        autocomplete.addListener('place_changed', function() {
+            const p = autocomplete.getPlace();
+            selectedPlace = (p && p.place_id) ? p : null;
+        });
+        // Any real keystroke invalidates the stored place — they might be
+        // editing to search for something else. (Widget-driven input
+        // events don't fire keydown, so this only catches user typing.)
+        input.addEventListener('keydown', function() { selectedPlace = null; });
+    }
+    // Disable the Calculate button if Maps failed to load (offline, key
+    // revoked, referrer mismatch at load time, etc). Manual entry still
+    // works — this just removes false affordance.
+    function syncMapsButtonState() {
+        const btn = document.getElementById('btnCalculateRoute');
+        if (!btn) return;
+        const mapsLoaded = !!(window.google && window.google.maps);
+        btn.disabled = !mapsLoaded;
+        btn.title = mapsLoaded ? '' : 'Google Maps not available — enter Travel Hrs/Mins manually.';
+        if (!mapsLoaded) btn.style.opacity = '0.5';
+    }
     function calculateRouteTime() {
         const btn = document.getElementById('btnCalculateRoute');
         // Gate: API must be loaded.
         if (!window.google || !window.google.maps) {
-            alert('Google Maps API not loaded — check the API key in the page head, or your network connection.');
+            alert('Google Maps API not loaded \u2014 check the API key in the page head, or your network connection.');
             return;
         }
         // Gate: start location selected.
@@ -1133,18 +1180,31 @@
         } else {
             origin = OFFICES[flags.Office];
         }
-        // Destination required.
-        const destination = document.getElementById('destination').value.trim();
-        if (!destination) { alert('Please enter a destination (site address).'); return; }
+        // Destination — prefer the Autocomplete-selected place_id for
+        // reliability; fall back to the raw input text if the user typed
+        // without selecting a dropdown result.
+        const destText = document.getElementById('destination').value.trim();
+        if (!destText) { alert('Please enter a destination (site address).'); return; }
+        const destinationSpec = (selectedPlace && selectedPlace.place_id)
+            ? { placeId: selectedPlace.place_id }
+            : destText;
         // Loading state — prevent double-clicks, show feedback.
         const originalLabel = btn.textContent;
         btn.textContent = 'Calculating\u2026';
         btn.disabled = true;
         const restoreBtn = () => { btn.textContent = originalLabel; btn.disabled = false; };
+        // Clear manualHours/Minutes so the user never sees stale numbers
+        // next to an error alert from a subsequent failed call.
+        const clearTravelFields = () => {
+            document.getElementById('manualHours').value = '';
+            document.getElementById('manualMinutes').value = '';
+            if (typeof syncArriveTime === 'function') syncArriveTime();
+            if (typeof calculate === 'function') calculate();
+        };
         const service = new google.maps.DistanceMatrixService();
         service.getDistanceMatrix({
             origins: [origin],
-            destinations: [destination],
+            destinations: [destinationSpec],
             travelMode: google.maps.TravelMode.DRIVING,
             // drivingOptions is what enables duration_in_traffic on the response.
             drivingOptions: {
@@ -1154,19 +1214,22 @@
         }, function(response, status) {
             restoreBtn();
             if (status !== 'OK') {
+                clearTravelFields();
                 alert('Google Maps error: ' + status + '. Try again, or enter Travel Hrs/Mins manually.');
                 return;
             }
             const element = response && response.rows && response.rows[0] && response.rows[0].elements && response.rows[0].elements[0];
             if (!element || element.status !== 'OK') {
-                alert('No route found between the start and destination addresses. Check the spelling, or enter Travel Hrs/Mins manually.');
+                clearTravelFields();
+                alert('No route found. Try picking a destination from the Autocomplete dropdown as you type, or enter a more specific address (street + town + state). Or enter Travel Hrs/Mins manually.');
                 return;
             }
-            // Prefer duration_in_traffic (live-traffic estimate) but fall back
-            // to plain duration if the advanced value isn't returned (happens
-            // occasionally on rural routes or when billing isn't enabled).
+            // Prefer duration_in_traffic (live-traffic estimate) but fall
+            // back to plain duration if the advanced value isn't returned
+            // (happens on rural routes or when billing lags).
             const durationObj = element.duration_in_traffic || element.duration;
             if (!durationObj || typeof durationObj.value !== 'number') {
+                clearTravelFields();
                 alert('Google Maps returned a route but no travel-time value. Enter Travel Hrs/Mins manually.');
                 return;
             }
@@ -1180,7 +1243,12 @@
             if (typeof calculate === 'function') calculate();
         });
     }
-    window.onload = function() { buildAllowancePanel(); calculate(); };
+    window.onload = function() {
+        buildAllowancePanel();
+        calculate();
+        initDestinationAutocomplete();
+        syncMapsButtonState();
+    };
 </script>
 </body>
 </html>
