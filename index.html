@@ -1991,6 +1991,21 @@
         // Km's (Company Car) — morning leg only, always ×1.
         const ccCb = document.getElementById('allow_kmCompanyCar');
         const ccInput = document.getElementById('km_kmCompanyCar');
+        // REVENUE-PROTECTION REMINDER: when Company Car is on AND the driver
+        // covered more than 30 km on the morning leg, auto-tick the Kms (CC)
+        // allowance so the claim isn't missed. Only fires when the row is in
+        // a "pristine" state (not ticked AND km input empty) — respects a
+        // prior manual untick by the user. Short trips (<= 30 km) are left
+        // alone: the worker can still tick manually for small site runs.
+        if (flags.Co && morningLeg && morningLeg.km != null && morningLeg.km > 30 &&
+            ccCb && !ccCb.checked && ccInput &&
+            (!ccInput.value || String(ccInput.value).trim() === '')) {
+            ccCb.checked = true;
+            // Re-sync so the row styling and inline note update. Safe from
+            // infinite recursion because the auto-tick guard (cb.checked)
+            // is now false on the inner call.
+            if (typeof syncAllowanceBoundUI === 'function') syncAllowanceBoundUI();
+        }
         if (ccCb && ccCb.checked && ccInput && morningLeg && morningLeg.km != null) {
             setIf(ccInput, Math.round(morningLeg.km));
         }
