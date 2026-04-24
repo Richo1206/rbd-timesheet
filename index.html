@@ -54,6 +54,20 @@
         .allow-input:focus { border-color: #004a99; box-shadow: 0 0 0 2px rgba(0,74,153,0.1); }
         @media print { .no-print, .toggle-btn, input, label, .day-toggle-section, .route-box, .info-btn, .info-panel, .allow-panel { display: none !important; } .card { box-shadow: none; border: none; } .card::before { display: none; } }
     </style>
+    <!--
+      Google Maps JavaScript API — required for the "Calculate time to destination"
+      button. The key below is the GitHub Test key (restricted by HTTP referrer to
+      https://richo1206.github.io/rbd-timesheet/*). For the production deployment
+      at rbdelectrical.com.au/timesheet, swap this for the Production key which is
+      restricted to that domain. Any new key must:
+        (a) have BOTH "Maps JavaScript API" and "Distance Matrix API" enabled;
+        (b) be restricted by HTTP referrer to the exact deployment domain(s);
+        (c) have a monthly budget alert configured in GCP billing.
+      If the key is missing, invalid, or the call fails, the button alerts and
+      falls back to manual Travel Hrs/Mins entry — the rest of the calculator
+      still works.
+    -->
+    <script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyCJJtYddJaE3tYzw7CvjlvZRPTpb4vD2eo&libraries=places"></script>
 </head>
 <body>
 <div class="card">
@@ -66,8 +80,9 @@
         <ul>
             <li>Select your <strong>start location</strong> — Devonport Office, Hobart Office, or enter a Custom address (e.g. accommodation).</li>
             <li>Enter the <strong>destination</strong> (site address).</li>
-            <li>Tap <strong>Verify Route</strong> to open Google Maps and check the travel time.</li>
-            <li>Enter the travel time from Google Maps into the <strong>Travel Hrs/Mins</strong> fields — this will auto-calculate your "Arrived on Site" time based on when you left.</li>
+            <li>Tap <strong>Calculate time to destination</strong> to auto-fill the Travel Hrs/Mins fields using Google Distance Matrix (includes current traffic conditions).</li>
+            <li>Or tap <strong>Verify Route</strong> to open Google Maps in a new tab and check the route visually — useful for sanity-checking the auto-filled time.</li>
+            <li>The calculator uses the Travel Hrs/Mins to auto-set your "Arrived on Site" time based on when you left.</li>
         </ul>
     </div>
     <div class="route-box no-print">
@@ -82,7 +97,8 @@
         </div>
         <label>Dest:</label>
         <input type="text" id="destination" placeholder="Site address" style="margin-bottom: 12px;">
-        <button class="maps-btn" onclick="checkRoute()">Verify Route (Google Maps)</button>
+        <button class="maps-btn" onclick="checkRoute()">Verify Route (opens Google Maps)</button>
+        <button id="btnCalculateRoute" class="maps-btn" onclick="calculateRouteTime()">Calculate time to destination</button>
         <div class="input-grid">
             <div>
                 <label>Travel Hrs:</label>
@@ -1087,6 +1103,82 @@
         a.click();
         document.body.removeChild(a);
         URL.revokeObjectURL(url);
+    }
+    // ------------------------------------------------------------------
+    // GOOGLE MAPS — Auto-fill Travel Hrs/Mins from Distance Matrix
+    // Uses duration_in_traffic (best-guess live traffic) so the estimate
+    // reflects conditions at the time the user hits the button. Falls
+    // back to the non-traffic duration if traffic data isn't returned.
+    // Requires a Google Maps JS API key loaded in <head> with Maps JS
+    // and Distance Matrix APIs enabled and HTTP-referrer restrictions
+    // configured in Google Cloud Console.
+    // ------------------------------------------------------------------
+    function calculateRouteTime() {
+        const btn = document.getElementById('btnCalculateRoute');
+        // Gate: API must be loaded.
+        if (!window.google || !window.google.maps) {
+            alert('Google Maps API not loaded — check the API key in the page head, or your network connection.');
+            return;
+        }
+        // Gate: start location selected.
+        if (!flags.Office) {
+            alert('Please select a start location (Devonport, Hobart, or Custom).');
+            return;
+        }
+        // Origin resolution — same logic as checkRoute() for consistency.
+        let origin;
+        if (flags.Office === 'Custom') {
+            origin = document.getElementById('customOrigin').value.trim();
+            if (!origin) { alert('Please enter a custom start address.'); return; }
+        } else {
+            origin = OFFICES[flags.Office];
+        }
+        // Destination required.
+        const destination = document.getElementById('destination').value.trim();
+        if (!destination) { alert('Please enter a destination (site address).'); return; }
+        // Loading state — prevent double-clicks, show feedback.
+        const originalLabel = btn.textContent;
+        btn.textContent = 'Calculating\u2026';
+        btn.disabled = true;
+        const restoreBtn = () => { btn.textContent = originalLabel; btn.disabled = false; };
+        const service = new google.maps.DistanceMatrixService();
+        service.getDistanceMatrix({
+            origins: [origin],
+            destinations: [destination],
+            travelMode: google.maps.TravelMode.DRIVING,
+            // drivingOptions is what enables duration_in_traffic on the response.
+            drivingOptions: {
+                departureTime: new Date(),    // "now" — uses current traffic
+                trafficModel: 'bestguess'
+            }
+        }, function(response, status) {
+            restoreBtn();
+            if (status !== 'OK') {
+                alert('Google Maps error: ' + status + '. Try again, or enter Travel Hrs/Mins manually.');
+                return;
+            }
+            const element = response && response.rows && response.rows[0] && response.rows[0].elements && response.rows[0].elements[0];
+            if (!element || element.status !== 'OK') {
+                alert('No route found between the start and destination addresses. Check the spelling, or enter Travel Hrs/Mins manually.');
+                return;
+            }
+            // Prefer duration_in_traffic (live-traffic estimate) but fall back
+            // to plain duration if the advanced value isn't returned (happens
+            // occasionally on rural routes or when billing isn't enabled).
+            const durationObj = element.duration_in_traffic || element.duration;
+            if (!durationObj || typeof durationObj.value !== 'number') {
+                alert('Google Maps returned a route but no travel-time value. Enter Travel Hrs/Mins manually.');
+                return;
+            }
+            const totalMinutes = Math.round(durationObj.value / 60);
+            const hours = Math.floor(totalMinutes / 60);
+            const mins  = totalMinutes % 60;
+            document.getElementById('manualHours').value = hours;
+            document.getElementById('manualMinutes').value = mins;
+            // Trigger the existing pipeline: updates Arrive time, then recalculates.
+            if (typeof syncArriveTime === 'function') syncArriveTime();
+            if (typeof calculate === 'function') calculate();
+        });
     }
     window.onload = function() { buildAllowancePanel(); calculate(); };
 </script>
