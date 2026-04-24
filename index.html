@@ -282,7 +282,7 @@
                 <li><strong>TH</strong> — Time and a Half. The first 2 hours of weekday overtime (Cl 62.2.a.i).</li>
                 <li><strong>DT</strong> — Double Time. Weekday overtime beyond the first 2 hours, or all work hours on weekends/public holidays.</li>
                 <li><strong>TT (Morning)</strong> — Travel Time (single rate). Paid travel from workshop/accom to site, outside the 30-min Travel Boundary, during ordinary hours (6am–6pm).</li>
-                <li><strong>TT+ (Morning)</strong> — Travel Time (time and a half). Morning travel outside the boundary that falls before 6am, or all travel on weekends/PH.</li>
+                <li><strong>TT+ (Morning)</strong> — Travel Time (time and a half). All morning travel outside the boundary on weekends, public holidays, or RDO days (Cl 64.3.c.iii). On weekdays morning travel is TT (single rate) only, regardless of time of day — per Cl 64.3.d the TT+ weekday rate is for the return journey only.</li>
                 <li><strong>TT (Return)</strong> — Return travel at single rate, when total work + travel hasn't exceeded 8 hours.</li>
                 <li><strong>TT+ (Return)</strong> — Return travel at time and a half, when total work + travel exceeds 8 hours, or on weekends/PH.</li>
                 <li><strong>TAT</strong> — Travel Time Allowance. A flat daily unit (25% of hourly rate) when your day starts at a worksite, not the workshop.</li>
@@ -831,18 +831,29 @@
             results["TT+ (Morning)"] = roundTo15(morningTTPlus) / 60;
             // Return transit net of 30-min boundary deduction (non-Inc-1 only)
             let returnTransitNet = Math.max(0, returnTransitPayable - 30);
+            // Cl 64.3.c.ii / 64.5.a.ii — return leg is TT+ when the day's
+            // total "work + outside-boundary travel" already exceeds 8h at
+            // the moment the return journey begins. The pre-return accrual is:
+            //
+            //   non-Inc-1: netWorkMins + max(0, morningTravelTotal − 30)
+            //              (morning travel minus its 30-min boundary)
+            //
+            //   Inc-1:     netWorkMins + morningTravelTotal
+            //              (no boundary under Inc-1 — accommodation IS the centre)
+            //
+            // We use minutes of elapsed time here, not the rounded pay codes —
+            // rounding and NT-capping can hide outside-boundary time and push
+            // marginal shifts onto the wrong side of the 8h threshold.
+            let accruedAtReturn = netWorkMins + (inc1Return
+                ? morningTravelTotal
+                : Math.max(0, morningTravelTotal - 30));
             if (inc1Return) {
-                // Cl 64.5.a.ii — return is TT+ if total work + travel > 8h
-                // when return begins; otherwise TT. No boundary deduction.
-                let elapsedBeforeReturn = diffMins(tLeftBase, tLeaveSite);
-                if (elapsedBeforeReturn > 480) {
+                if (accruedAtReturn > 480) {
                     results["TT+ (Return)"] = roundTo15(returnTransitPayable) / 60;
                 } else {
                     results["TT (Return)"] = roundTo15(returnTransitPayable) / 60;
                 }
-            } else if (results.NT + results.TH + results.DT > 8.0) {
-                // Non-Inc-1: return travel is TT+ if work+travel outside
-                // boundary EXCEEDS 8 hours (Cl 64.3.c.ii "exceeds 8-hours").
+            } else if (accruedAtReturn > 480) {
                 results["TT+ (Return)"] = roundTo15(returnTransitNet) / 60;
             } else {
                 results["TT (Return)"] = roundTo15(returnTransitNet) / 60;
