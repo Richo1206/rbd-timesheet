@@ -134,6 +134,26 @@
                 <input type="number" id="manualMinutes" placeholder="Example: 30" oninput="syncArriveTime()">
             </div>
         </div>
+        <!--
+          Return section — only visible when the TK1 (Outside Boundary) allowance
+          is ticked. Mirrors the morning section so the user can specify an
+          asymmetric return leg (e.g. returning to accommodation instead of office).
+          When visible, the "Calculate time to destination" button makes a second
+          API call for the return leg and feeds both into the TK1 km auto-fill.
+        -->
+        <div id="returnSection" class="hidden" style="margin-top: 12px; padding-top: 12px; border-top: 2px dashed #004a99;">
+            <label>Returning to:</label>
+            <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 6px; margin-bottom: 8px;">
+                <div id="btnReturnDev"    class="toggle-btn" onclick="setReturnOffice('Dev')">Devonport Office</div>
+                <div id="btnReturnHob"    class="toggle-btn" onclick="setReturnOffice('Hob')">Hobart Office</div>
+                <div id="btnReturnCustom" class="toggle-btn" onclick="setReturnOffice('Custom')">Custom</div>
+            </div>
+            <div id="customReturnWrap" class="hidden" style="margin-bottom: 8px;">
+                <input type="text" id="customReturn" placeholder="Enter return address (home, accommodation, other workshop)">
+            </div>
+            <label>Returning from:</label>
+            <input type="text" id="returnFrom" placeholder="Site address (auto-filled from morning destination)" style="margin-bottom: 4px;">
+        </div>
     </div>
     <div class="section-header no-print"><span>Time Entries</span><button class="info-btn no-print" onclick="toggleInfo('infoTime')">i</button></div>
     <div id="infoTime" class="info-panel no-print">
@@ -291,7 +311,8 @@
         Notified24h: false,  // Sat/Sun/RDO/PH: 24h+ notice reduces min to 2h (Cl 62.3.b)
         RDO: false,          // overlay: working a scheduled RDO (Cl 62.3.a) — DT + 4h/2h min
         Callout: false,      // overlay: Cl 63.a recall to site — bundled work+travel at OT, 4h min
-        Office: null         // 'Dev' or 'Hob' — must be selected before verifying route
+        Office: null,        // 'Dev' | 'Hob' | 'Custom' — morning origin
+        ReturnOffice: null   // 'Dev' | 'Hob' | 'Custom' — return destination (only when TK1 selected)
     };
     const OFFICES = {
         Dev: '3 Bay Drive, Quoiba, TAS 7310',
@@ -353,7 +374,9 @@
                 }
             }
             html += '<div class="allow-item">';
-            html += '<label><input type="checkbox" id="allow_' + a.id + '" onchange="calculate()"> ' + a.name + '</label>';
+            // onchange also syncs allowance-bound UI (Return section visibility,
+            // Km's CC inline note) so those react the moment the box is ticked.
+            html += '<label><input type="checkbox" id="allow_' + a.id + '" onchange="syncAllowanceBoundUI(); calculate();"> ' + a.name + '</label>';
             if (a.unit === 'km') {
                 html += '<input type="number" class="allow-input" id="km_' + a.id + '" placeholder="km" oninput="calculate()">';
             } else if (a.unit === 'custom_hr') {
@@ -364,6 +387,11 @@
                 html += '<span class="allow-rate">$' + a.rate.toFixed(2) + '/' + unitLabel + '</span>';
             }
             html += '</div>';
+            // Inline hint under Km's (Company Car) — only visible when that
+            // allowance is ticked. Flags that the auto-fill is morning-leg only.
+            if (a.id === 'kmCompanyCar') {
+                html += '<div id="ccKmNote" class="hidden" style="font-size: 10px; color: #888; font-style: italic; margin: -4px 0 6px; padding: 0 4px;">Auto-calculation for morning trip only \u2014 add return km manually if applicable.</div>';
+            }
         });
         panel.innerHTML = html;
     }
@@ -377,6 +405,16 @@
         document.getElementById('btnOfficeHob').classList.toggle('active', code === 'Hob');
         document.getElementById('btnOfficeCustom').classList.toggle('active', code === 'Custom');
         document.getElementById('customOriginWrap').classList.toggle('hidden', code !== 'Custom');
+    }
+    // Return section — identical UI to the morning Office toggle, but
+    // scoped to the return leg (used when the TK1 allowance is ticked so
+    // we can feed an asymmetric return into the km auto-fill).
+    function setReturnOffice(code) {
+        flags.ReturnOffice = code;
+        document.getElementById('btnReturnDev').classList.toggle('active', code === 'Dev');
+        document.getElementById('btnReturnHob').classList.toggle('active', code === 'Hob');
+        document.getElementById('btnReturnCustom').classList.toggle('active', code === 'Custom');
+        document.getElementById('customReturnWrap').classList.toggle('hidden', code !== 'Custom');
     }
     function checkRoute() {
         if (!flags.Office) {
@@ -1236,7 +1274,7 @@
     // Last place selected from each Autocomplete dropdown. Each entry is
     // cleared on a real keystroke in its field, so we never send a stale
     // place_id for a different text value.
-    let selectedPlaces = { destination: null, customOrigin: null };
+    let selectedPlaces = { destination: null, customOrigin: null, returnFrom: null, customReturn: null };
     function initAutocomplete(inputId, setterFn) {
         if (!window.google || !google.maps || !google.maps.places) return;
         const input = document.getElementById(inputId);
@@ -1256,6 +1294,30 @@
         // events don't fire keydown, so this only catches user typing.)
         input.addEventListener('keydown', function() { setterFn(null); });
     }
+    // Show/hide UI pieces that depend on which Extra Allowances are ticked:
+    //   • Return section appears when TK1 is ticked.
+    //   • Km's (Company Car) inline note appears when that allowance is ticked.
+    // Called on pageload and whenever an allowance checkbox toggles.
+    function syncAllowanceBoundUI() {
+        const tk1Cb      = document.getElementById('allow_tk1');
+        const ccCb       = document.getElementById('allow_kmCompanyCar');
+        const returnSec  = document.getElementById('returnSection');
+        const ccNote     = document.getElementById('ccKmNote');
+        if (returnSec) {
+            const wasHidden = returnSec.classList.contains('hidden');
+            returnSec.classList.toggle('hidden', !(tk1Cb && tk1Cb.checked));
+            // Auto-populate "Returning from" with morning Dest when user
+            // first reveals the section AND the return field is empty.
+            if (wasHidden && tk1Cb && tk1Cb.checked) {
+                const rf = document.getElementById('returnFrom');
+                const dest = document.getElementById('destination');
+                if (rf && !rf.value && dest && dest.value) rf.value = dest.value;
+                // Default return office to match the morning office.
+                if (!flags.ReturnOffice && flags.Office) setReturnOffice(flags.Office);
+            }
+        }
+        if (ccNote) ccNote.classList.toggle('hidden', !(ccCb && ccCb.checked));
+    }
     // Disable the Calculate button if Maps failed to load (offline, key
     // revoked, referrer mismatch at load time, etc). Manual entry still
     // works — this just removes false affordance.
@@ -1266,6 +1328,27 @@
         btn.disabled = !mapsLoaded;
         btn.title = mapsLoaded ? '' : 'Google Maps not available — enter Travel Hrs/Mins manually.';
         if (!mapsLoaded) btn.style.opacity = '0.5';
+    }
+    // 30-min Travel Boundary (Cl 64.1). Used to compute TK1 outside-boundary km
+    // via the ratio method — km × (totalMin − BOUNDARY) ÷ totalMin when trip > 30 min.
+    const TRAVEL_BOUNDARY_MIN = 30;
+    // Pull distance (meters) and duration (seconds) from a DistanceMatrix
+    // response element. Returns null if the element is missing or errored.
+    function readLeg(element) {
+        if (!element || element.status !== 'OK') return null;
+        const durObj = element.duration_in_traffic || element.duration;
+        const distObj = element.distance;
+        if (!durObj || typeof durObj.value !== 'number') return null;
+        return {
+            minutes: durObj.value / 60,
+            km:      distObj && typeof distObj.value === 'number' ? distObj.value / 1000 : null
+        };
+    }
+    // Outside-boundary km via the ratio method (Cl 64.3.c — km outside the
+    // 30-min Travel Boundary). Returns 0 for trips within the boundary.
+    function outsideBoundaryKm(leg) {
+        if (!leg || leg.km == null || leg.minutes <= TRAVEL_BOUNDARY_MIN) return 0;
+        return leg.km * (leg.minutes - TRAVEL_BOUNDARY_MIN) / leg.minutes;
     }
     function calculateRouteTime() {
         const btn = document.getElementById('btnCalculateRoute');
@@ -1279,7 +1362,8 @@
             alert('Please select a start location (Devonport, Hobart, or Custom).');
             return;
         }
-        // Origin resolution — office addresses are plain strings; Custom
+        // --- MORNING LEG ---
+        // Origin resolution: office addresses are plain strings; Custom
         // uses the Autocomplete-selected place_id when available (most
         // reliable) and falls back to raw text otherwise.
         let originSpec;
@@ -1293,20 +1377,41 @@
             originSpec = OFFICES[flags.Office];
         }
         // Destination — same pattern: prefer the Autocomplete-selected
-        // place_id for reliability; fall back to the raw input text if
-        // the user typed without selecting a dropdown result.
+        // place_id for reliability; fall back to the raw input text.
         const destText = document.getElementById('destination').value.trim();
         if (!destText) { alert('Please enter a destination (site address).'); return; }
         const destinationSpec = (selectedPlaces.destination && selectedPlaces.destination.place_id)
             ? { placeId: selectedPlaces.destination.place_id }
             : destText;
+        // --- RETURN LEG (optional — only when Return section is visible) ---
+        const tk1Ticked = !!(document.getElementById('allow_tk1') && document.getElementById('allow_tk1').checked);
+        const returnSec = document.getElementById('returnSection');
+        const returnVisible = tk1Ticked && returnSec && !returnSec.classList.contains('hidden');
+        let returnOriginSpec = null, returnDestSpec = null;
+        if (returnVisible) {
+            // Return starts at the site we left (returnFrom input).
+            const rfText = document.getElementById('returnFrom').value.trim();
+            if (!rfText) { alert('Return section: please enter the site address you are returning from.'); return; }
+            returnOriginSpec = (selectedPlaces.returnFrom && selectedPlaces.returnFrom.place_id)
+                ? { placeId: selectedPlaces.returnFrom.place_id }
+                : rfText;
+            // Return destination: office or custom.
+            if (!flags.ReturnOffice) { alert('Return section: please select where you are returning to.'); return; }
+            if (flags.ReturnOffice === 'Custom') {
+                const crText = document.getElementById('customReturn').value.trim();
+                if (!crText) { alert('Return section: please enter a custom return address.'); return; }
+                returnDestSpec = (selectedPlaces.customReturn && selectedPlaces.customReturn.place_id)
+                    ? { placeId: selectedPlaces.customReturn.place_id }
+                    : crText;
+            } else {
+                returnDestSpec = OFFICES[flags.ReturnOffice];
+            }
+        }
         // Loading state — prevent double-clicks, show feedback.
         const originalLabel = btn.textContent;
         btn.textContent = 'Calculating\u2026';
         btn.disabled = true;
         const restoreBtn = () => { btn.textContent = originalLabel; btn.disabled = false; };
-        // Clear manualHours/Minutes so the user never sees stale numbers
-        // next to an error alert from a subsequent failed call.
         const clearTravelFields = () => {
             document.getElementById('manualHours').value = '';
             document.getElementById('manualMinutes').value = '';
@@ -1314,56 +1419,101 @@
             if (typeof calculate === 'function') calculate();
         };
         const service = new google.maps.DistanceMatrixService();
-        service.getDistanceMatrix({
-            origins: [originSpec],
-            destinations: [destinationSpec],
+        const matrixOptions = {
             travelMode: google.maps.TravelMode.DRIVING,
-            // drivingOptions is what enables duration_in_traffic on the response.
-            drivingOptions: {
-                departureTime: new Date(),    // "now" — uses current traffic
-                trafficModel: 'bestguess'
+            drivingOptions: { departureTime: new Date(), trafficModel: 'bestguess' }
+        };
+        // Morning call first, then (if needed) the return call. We chain
+        // rather than batch so an error in one produces a specific message.
+        service.getDistanceMatrix(
+            Object.assign({ origins: [originSpec], destinations: [destinationSpec] }, matrixOptions),
+            function(response, status) {
+                if (status !== 'OK') {
+                    restoreBtn();
+                    clearTravelFields();
+                    alert('Google Maps error (morning leg): ' + status + '. Try again, or enter Travel Hrs/Mins manually.');
+                    return;
+                }
+                const morningLeg = readLeg(response && response.rows && response.rows[0] && response.rows[0].elements && response.rows[0].elements[0]);
+                if (!morningLeg) {
+                    restoreBtn();
+                    clearTravelFields();
+                    alert('No route found for the morning leg. Try picking the destination from the Autocomplete dropdown, or enter a more specific address. Or enter Travel Hrs/Mins manually.');
+                    return;
+                }
+                // Fill Travel Hrs/Mins + syncArriveTime based on morning leg.
+                const totalMinutes = Math.round(morningLeg.minutes);
+                document.getElementById('manualHours').value   = Math.floor(totalMinutes / 60);
+                document.getElementById('manualMinutes').value = totalMinutes % 60;
+                if (typeof syncArriveTime === 'function') syncArriveTime();
+                // If no return leg needed → finish up here.
+                if (!returnVisible) {
+                    applyKmAutofill(morningLeg, null);
+                    restoreBtn();
+                    if (typeof calculate === 'function') calculate();
+                    return;
+                }
+                // Return leg call.
+                service.getDistanceMatrix(
+                    Object.assign({ origins: [returnOriginSpec], destinations: [returnDestSpec] }, matrixOptions),
+                    function(retResp, retStatus) {
+                        restoreBtn();
+                        if (retStatus !== 'OK') {
+                            // Morning filled, but return failed — keep morning data,
+                            // surface the return-specific error.
+                            applyKmAutofill(morningLeg, null);
+                            if (typeof calculate === 'function') calculate();
+                            alert('Morning leg calculated successfully, but the return-leg Google Maps call failed: ' + retStatus + '. Enter the TK1 return km manually.');
+                            return;
+                        }
+                        const returnLeg = readLeg(retResp && retResp.rows && retResp.rows[0] && retResp.rows[0].elements && retResp.rows[0].elements[0]);
+                        if (!returnLeg) {
+                            applyKmAutofill(morningLeg, null);
+                            if (typeof calculate === 'function') calculate();
+                            alert('No route found for the return leg. TK1 km not auto-filled — enter manually.');
+                            return;
+                        }
+                        applyKmAutofill(morningLeg, returnLeg);
+                        if (typeof calculate === 'function') calculate();
+                    }
+                );
             }
-        }, function(response, status) {
-            restoreBtn();
-            if (status !== 'OK') {
-                clearTravelFields();
-                alert('Google Maps error: ' + status + '. Try again, or enter Travel Hrs/Mins manually.');
-                return;
-            }
-            const element = response && response.rows && response.rows[0] && response.rows[0].elements && response.rows[0].elements[0];
-            if (!element || element.status !== 'OK') {
-                clearTravelFields();
-                alert('No route found. Try picking a destination from the Autocomplete dropdown as you type, or enter a more specific address (street + town + state). Or enter Travel Hrs/Mins manually.');
-                return;
-            }
-            // Prefer duration_in_traffic (live-traffic estimate) but fall
-            // back to plain duration if the advanced value isn't returned
-            // (happens on rural routes or when billing lags).
-            const durationObj = element.duration_in_traffic || element.duration;
-            if (!durationObj || typeof durationObj.value !== 'number') {
-                clearTravelFields();
-                alert('Google Maps returned a route but no travel-time value. Enter Travel Hrs/Mins manually.');
-                return;
-            }
-            const totalMinutes = Math.round(durationObj.value / 60);
-            const hours = Math.floor(totalMinutes / 60);
-            const mins  = totalMinutes % 60;
-            document.getElementById('manualHours').value = hours;
-            document.getElementById('manualMinutes').value = mins;
-            // Trigger the existing pipeline: updates Arrive time, then recalculates.
-            if (typeof syncArriveTime === 'function') syncArriveTime();
-            if (typeof calculate === 'function') calculate();
-        });
+        );
+    }
+    // Pre-fill km allowance fields based on the legs we just fetched.
+    //   • Km's (Company Car) — morning km × 1 (per the inline note).
+    //   • TK1 — outside-boundary km (ratio method), morning + return.
+    function applyKmAutofill(morningLeg, returnLeg) {
+        // Km's (Company Car) — morning leg only, always ×1.
+        const ccCb = document.getElementById('allow_kmCompanyCar');
+        const ccInput = document.getElementById('km_kmCompanyCar');
+        if (ccCb && ccCb.checked && ccInput && morningLeg && morningLeg.km != null) {
+            ccInput.value = Math.round(morningLeg.km);
+        }
+        // TK1 — morning + return outside-boundary km. If return leg is missing
+        // (user hasn't ticked TK1 or return call failed) we only auto-fill
+        // from the morning leg as a starting point.
+        const tk1Cb = document.getElementById('allow_tk1');
+        const tk1Input = document.getElementById('km_tk1');
+        if (tk1Cb && tk1Cb.checked && tk1Input) {
+            const morningOB = outsideBoundaryKm(morningLeg);
+            const returnOB  = returnLeg ? outsideBoundaryKm(returnLeg) : 0;
+            tk1Input.value = Math.round(morningOB + returnOB);
+        }
     }
     window.onload = function() {
         buildAllowancePanel();
         calculate();
-        // Wire Places Autocomplete to both place inputs. The custom-origin
-        // wrapper is hidden at load, but Autocomplete attaches to the DOM
-        // node and works fine once the wrapper becomes visible.
-        initAutocomplete('destination', function(p) { selectedPlaces.destination = p; });
+        // Wire Places Autocomplete to all place inputs. The custom-origin,
+        // return-from, and custom-return wrappers are hidden at load, but
+        // Autocomplete attaches to the DOM node and works fine once the
+        // wrapper becomes visible.
+        initAutocomplete('destination',  function(p) { selectedPlaces.destination  = p; });
         initAutocomplete('customOrigin', function(p) { selectedPlaces.customOrigin = p; });
+        initAutocomplete('returnFrom',   function(p) { selectedPlaces.returnFrom   = p; });
+        initAutocomplete('customReturn', function(p) { selectedPlaces.customReturn = p; });
         syncMapsButtonState();
+        syncAllowanceBoundUI();
     };
 </script>
 </body>
