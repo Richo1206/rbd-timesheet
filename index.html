@@ -45,7 +45,10 @@
         .allow-panel.open { display: block; }
         .allow-group-title { font-size: 10px; font-weight: 800; color: #003366; text-transform: uppercase; margin: 14px 0 6px; letter-spacing: 0.8px; padding-bottom: 4px; border-bottom: 1px solid #e8eef5; }
         .allow-group-title:first-child { margin-top: 0; }
-        .allow-item { display: flex; align-items: center; padding: 9px 0; border-bottom: 1px solid #eef2f6; font-size: 13px; }
+        .allow-item { display: flex; align-items: center; padding: 9px 0; border-bottom: 1px solid #eef2f6; font-size: 13px; transition: opacity 0.15s; }
+        .allow-item.disabled { opacity: 0.4; }
+        .allow-item.disabled label, .allow-item.disabled .allow-input, .allow-item.disabled input { cursor: not-allowed !important; }
+        .allow-item.disabled .allow-input { background: #f0f0f0; }
         .allow-item:last-child { border-bottom: none; }
         .allow-item label { display: flex; align-items: center; gap: 8px; margin: 0; font-weight: 400; flex: 1; cursor: pointer; font-size: 12px; line-height: 1.3; color: #334155; }
         .allow-item input[type="checkbox"] { width: 20px; height: 20px; accent-color: #004a99; cursor: pointer; flex-shrink: 0; }
@@ -426,11 +429,6 @@
             if (a.id === 'kmCompanyCar') {
                 html += '<div id="ccKmNote" class="hidden" style="font-size: 10px; color: #888; font-style: italic; margin: -4px 0 6px; padding: 0 4px;">Auto-calculation for morning trip only \u2014 add return km manually if applicable.</div>';
             }
-            // Inline hint under TK1 — EA Cl 64.3.b excludes TK1 when Company
-            // transport is provided/used. Shown whenever TK1 is ticked.
-            if (a.id === 'tk1') {
-                html += '<div id="tk1Note" class="hidden" style="font-size: 10px; color: #888; font-style: italic; margin: -4px 0 6px; padding: 0 4px;">Cl 64.3.b \u2014 TK1 is not paid when company transport is provided/used.</div>';
-            }
         });
         panel.innerHTML = html;
     }
@@ -580,6 +578,8 @@
         if (id === 'RDO') syncNoticeRow();
         // Keep the "Other" header indicator in sync with its contents.
         if (['UnnotifiedOT', 'RDO', 'Callout'].indexOf(id) !== -1) syncOtherHeader();
+        // Company Car flag gates the km allowances — refresh the mutex.
+        if (id === 'Co') syncAllowanceBoundUI();
         calculate();
     }
     function toggleOther() {
@@ -1390,13 +1390,32 @@
         const tk1Ticked = !!(tk1Cb && tk1Cb.checked);
         const tk2Ticked = !!(tk2Cb && tk2Cb.checked);
         const ccTicked  = !!(ccCb && ccCb.checked);
-        // Mutex between Kms (CC) and the own-vehicle km allowances (TK1 + TK2).
-        // EA Cl 64.3.b excludes TK1 when company transport is used, and TK2 is
-        // by definition own-vehicle between-sites. So ticking CC disables both
-        // TK1 and TK2; ticking either TK1 or TK2 disables CC.
-        if (tk1Cb) tk1Cb.disabled = ccTicked;
-        if (tk2Cb) tk2Cb.disabled = ccTicked;
-        if (ccCb)  ccCb.disabled  = tk1Ticked || tk2Ticked;
+        // km-allowance gating driven by the top-of-form Company Car flag
+        // (flags.Co). EA Cl 64.3.b excludes TK1 (own-vehicle outside-boundary)
+        // when company transport is provided/used. TK2 is by definition own-
+        // vehicle between-sites, so it's also excluded. Conversely, the Kms
+        // (Company Car) allowance only makes sense WHEN a company car is on
+        // issue.
+        //
+        //   Company Car flag = ON  → disable TK1 + TK2 allowances
+        //   Company Car flag = OFF → disable Kms (Company Car) allowance
+        //
+        // We also toggle a `.disabled` class on the parent `.allow-item` row
+        // so the whole row (label + km input + rate) visibly greys out, not
+        // just the tiny checkbox box. If an allowance is currently ticked
+        // when it becomes disabled, we auto-untick it so it can't show up in
+        // the summary.
+        const setRow = function(cb, isDisabled) {
+            if (!cb) return;
+            if (isDisabled && cb.checked) cb.checked = false;
+            cb.disabled = isDisabled;
+            const row = cb.closest ? cb.closest('.allow-item') : null;
+            if (row) row.classList.toggle('disabled', isDisabled);
+        };
+        const hasCompanyCar = !!flags.Co;
+        setRow(tk1Cb, hasCompanyCar);
+        setRow(tk2Cb, hasCompanyCar);
+        setRow(ccCb,  !hasCompanyCar);
         if (returnSec) {
             const wasHidden = returnSec.classList.contains('hidden');
             returnSec.classList.toggle('hidden', !(tk1Ticked || tk2Ticked));
@@ -1437,8 +1456,6 @@
             addSiteBtn.classList.toggle('hidden', !(tk2Ticked && roomForMore));
         }
         if (ccNote) ccNote.classList.toggle('hidden', !ccTicked);
-        const tk1Note = document.getElementById('tk1Note');
-        if (tk1Note) tk1Note.classList.toggle('hidden', !tk1Ticked);
         // Opportunistic km auto-fill when user toggles an allowance after
         // the tool has already run. Never overwrites manually typed values.
         if (lastLegs && lastLegs.morning) {
