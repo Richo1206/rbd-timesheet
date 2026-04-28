@@ -116,8 +116,9 @@
             <li>Select your <strong>start location</strong> — Devonport Office, Hobart Office, or Custom. If Custom, start typing the address or place name and pick from the Google Autocomplete dropdown (accommodation, other RBD office, meeting point, etc.).</li>
             <li>Start typing the <strong>destination</strong> (site name or address) and pick from the Google Autocomplete dropdown. If the place you need isn't listed, type a street address or town + state instead.</li>
             <li>Tap <strong>Verify Route</strong> to open Google Maps in a new tab and visually sanity-check the route Google is using.</li>
-            <li>The calculator uses Travel Hrs/Mins (from the morning leg) to auto-set your "Arrived on Site" time based on when you left.</li>
-            <li><strong>TK1 / TK2:</strong> tick these in Extra Allowances and the km fields populate automatically using Google's distances. A "Return" section appears where you select where you're going back to (e.g. accommodation, different office). The return origin is always the last site in your chain — no need to type it in. For TK2 multi-site days, click <em>Add another site</em> to chain up to 5 sites (Dest → Site 2 → Site 3 → …).</li>
+            <li>The calculator uses Travel Hrs/Mins (from the morning leg) to auto-set your "Arrived on Site" time. The return leg drives "Arrived at Workshop/Accom" the same way: it auto-fills based on when you left site plus the return travel time.</li>
+            <li><strong>Return section</strong> is always visible — pick where you're heading back to (Devonport, Hobart, or a Custom address like accommodation). The return origin is automatically the last site in your chain.</li>
+            <li><strong>TK1 / TK2 / Kms (Company Car):</strong> tick these in Extra Allowances and the km fields populate automatically using Google's distances. Kms (CC) uses morning + return for the full day's km when both legs are fetched. For TK2 multi-site days, click <em>Add another site</em> to chain up to 5 sites (Dest → Site 2 → Site 3 → …).</li>
             <li>Manual overrides are always preserved — if you type your own Travel Hrs/Mins or km values, auto-fires won't clobber them.</li>
         </ul>
     </div>
@@ -189,13 +190,15 @@
             <span>Calculating travel time &amp; distance&hellip;</span>
         </div>
         <!--
-          Return section — visible whenever TK1 or TK2 is ticked. Lets the
-          user specify where they're going back to (e.g. accommodation,
-          different office). When visible, the auto-calculator fires a
-          return-leg Distance Matrix query in addition to the morning leg,
-          feeding both into the TK1 km auto-fill.
+          Return section — always visible. Lets the user specify where they're
+          going back to (e.g. accommodation, different office). The auto-calc
+          fires a return-leg Distance Matrix query alongside the morning leg
+          and feeds the result into:
+            • "Arrived at Workshop/Accom" time (= leaveSite + return time)
+            • Kms (Company Car) km (= morning + return, when ticked)
+            • TK1 outside-boundary km (when ticked)
         -->
-        <div id="returnSection" class="hidden" style="margin-top: 12px; padding-top: 12px; border-top: 2px dashed #004a99;">
+        <div id="returnSection" style="margin-top: 12px; padding-top: 12px; border-top: 2px dashed #004a99;">
             <label>Returning to:</label>
             <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 6px; margin-bottom: 8px;">
                 <div id="btnReturnDev"    class="toggle-btn" onclick="setReturnOffice('Dev')">Devonport Office</div>
@@ -260,7 +263,7 @@
         </div>
         <div id="leaveSiteWrap">
             <label>Left Site:</label>
-            <input type="time" id="leaveSite" value="15:30" oninput="calculate()">
+            <input type="time" id="leaveSite" value="15:30" oninput="syncArriveWorkshopTime(); calculate();">
         </div>
         <div id="arriveWorkshopWrap">
             <label id="finishLabel">Arrived at Workshop/Accom:</label>
@@ -433,7 +436,7 @@
         html += '<ul>';
         html += '<li><strong>TK1 ($0.57/km, Cl 64.3.a)</strong> \u2014 own-vehicle km travelled outside the 30-min Travel Boundary. Ratio-method: km \u00D7 (mins outside boundary) / (total mins). Not paid when company transport is used (Cl 64.3.b).</li>';
         html += '<li><strong>TK2 ($1.05/km, Cl 64.4)</strong> \u2014 own-vehicle km travelled between worksites during the workday. Not applicable when company transport is used.</li>';
-        html += '<li><strong>Kms (Company Car) ($0.75/km)</strong> \u2014 km driven when you\'re responsible for a company vehicle. Internal operational allowance \u2014 tick only when relevant.</li>';
+        html += '<li><strong>Kms (Company Car) ($0.75/km)</strong> \u2014 km driven when you\'re responsible for a company vehicle. Internal operational allowance. When ticked AND a Google Maps return leg has been fetched, auto-fills with the morning + return km (full day round trip).</li>';
         html += '<li><strong>Mutex:</strong> TK1 + TK2 (own vehicle) and Kms Company Car (company vehicle) are mutually exclusive. Ticking the top-of-form Company Car button disables TK1 and TK2; unticking it disables Kms Company Car.</li>';
         html += '</ul>';
         html += '<strong>Google Maps auto-fill:</strong>';
@@ -441,7 +444,7 @@
         html += '<li>With any of TK1/TK2/Kms CC ticked (as applicable), the km field auto-populates when you use the Google Maps Travel Tool above.</li>';
         html += '<li><strong>TK1</strong> pulls the outside-boundary km for both the morning and return legs. A "Return" section in the Travel Tool appears so you can specify where you\'re going back to (e.g. accommodation, other office).</li>';
         html += '<li><strong>TK2</strong> pulls the sum of between-site km. Click "Add another site" to chain multiple sites (up to 5 total). The return leg automatically starts from your last added site.</li>';
-        html += '<li><strong>Kms (Company Car)</strong> pulls the morning leg only \u2014 the Google tool doesn\'t know your full day\'s path. Add return km manually if the return is symmetrical with the morning trip.</li>';
+        html += '<li><strong>Kms (Company Car)</strong> pulls the morning leg + the return leg (full round trip) \u2014 the Return section is always visible so the return distance is known by default. Adjust manually if your day was asymmetric (e.g. multiple stops Google didn\'t see).</li>';
         html += '<li>Auto-filled values can always be overwritten manually. Once you type a km value it won\'t be clobbered by a later auto-calculate.</li>';
         html += '</ul>';
         html += '<strong>Note:</strong> TAT, Fares, and Meal Allowance (Overtime) are already auto-calculated by the timesheet above \u2014 they are not duplicated here.';
@@ -475,7 +478,7 @@
             // Inline hint under Km's (Company Car) — only visible when that
             // allowance is ticked. Flags that the auto-fill is morning-leg only.
             if (a.id === 'kmCompanyCar') {
-                html += '<div id="ccKmNote" class="hidden" style="font-size: 10px; color: #888; font-style: italic; margin: -4px 0 6px; padding: 0 4px;">Auto-calculation for morning trip only \u2014 add return km manually if applicable.</div>';
+                html += '<div id="ccKmNote" class="hidden" style="font-size: 10px; color: #888; font-style: italic; margin: -4px 0 6px; padding: 0 4px;">Auto-calculation: morning leg + return leg from Google Maps. Adjust manually if your day was asymmetric.</div>';
             }
         });
         panel.innerHTML = html;
@@ -1633,18 +1636,11 @@
         setRow(tk1Cb, hasCompanyCar,  ownVehTip);
         setRow(tk2Cb, hasCompanyCar,  ownVehTip);
         setRow(ccCb,  !hasCompanyCar, noCarTip);
-        if (returnSec) {
-            const wasHidden = returnSec.classList.contains('hidden');
-            returnSec.classList.toggle('hidden', !(tk1Ticked || tk2Ticked));
-            if (wasHidden && (tk1Ticked || tk2Ticked)) {
-                if (!flags.ReturnOffice && flags.Office) setReturnOffice(flags.Office);
-                // Brief flash to draw the eye to the newly-revealed section,
-                // since the user ticked an allowance elsewhere (Extra Allowances
-                // panel) and the Return section can be below the fold.
-                returnSec.classList.remove('section-flash');
-                void returnSec.offsetWidth;  // restart animation
-                returnSec.classList.add('section-flash');
-            }
+        // Return section is always visible; just make sure ReturnOffice has
+        // a default that mirrors the morning office. (User can still pick
+        // Hobart/Custom for asymmetric trips.)
+        if (returnSec && !flags.ReturnOffice && flags.Office) {
+            setReturnOffice(flags.Office);
         }
         // Add Site button — visible only when TK2 is ticked AND there's room
         // for another slot.
@@ -1738,6 +1734,10 @@
         distanceMatrixLeg(destSpec, returnDest, matrixOptions, 'return leg (auto)')
             .then(function(leg) {
                 lastLegs.returnLeg = leg;
+                if (leg && leg.minutes != null) {
+                    _lastReturnMinutes = leg.minutes;
+                    syncArriveWorkshopTime();
+                }
                 applyKmAutofill(lastLegs.morning, leg, {
                     onlyIfEmpty: true,
                     betweenLegs: lastLegs.betweenLegs || []
@@ -1789,6 +1789,10 @@
                 const returnLeg = await distanceMatrixLeg(returnOriginSpec, returnDest, matrixOptions, 'return leg (auto)');
                 lastLegs.betweenLegs = between;
                 lastLegs.returnLeg   = returnLeg;
+                if (returnLeg && returnLeg.minutes != null) {
+                    _lastReturnMinutes = returnLeg.minutes;
+                    syncArriveWorkshopTime();
+                }
                 applyKmAutofill(lastLegs.morning, returnLeg, {
                     onlyIfEmpty: true, betweenLegs: between
                 });
@@ -1834,6 +1838,29 @@
     function outsideBoundaryKm(leg) {
         if (!leg || leg.km == null || leg.minutes <= TRAVEL_BOUNDARY_MIN) return 0;
         return leg.km * (leg.minutes - TRAVEL_BOUNDARY_MIN) / leg.minutes;
+    }
+    // Cached return-leg minutes from the most recent successful fetch — used
+    // by syncArriveWorkshopTime to compute Arrived at Workshop/Accom from
+    // Left Site + return travel duration.
+    let _lastReturnMinutes = null;
+    let _lastAutoArriveWorkshop = '';
+    function syncArriveWorkshopTime() {
+        if (_lastReturnMinutes == null) return;
+        const leaveSiteEl = document.getElementById('leaveSite');
+        const arriveEl    = document.getElementById('arriveWorkshop');
+        if (!leaveSiteEl || !arriveEl) return;
+        const leaveStr = leaveSiteEl.value;
+        if (!leaveStr) return;
+        // Don't overwrite a user-edited value — only refresh when the field
+        // is empty or matches the last value we auto-set.
+        if (arriveEl.value && arriveEl.value !== _lastAutoArriveWorkshop) return;
+        const leaveMins = timeToMin(leaveStr);
+        const total = (leaveMins + Math.round(_lastReturnMinutes)) % 1440;
+        const hh = String(Math.floor(total / 60)).padStart(2, '0');
+        const mm = String(total % 60).padStart(2, '0');
+        const newVal = hh + ':' + mm;
+        arriveEl.value = newVal;
+        _lastAutoArriveWorkshop = newVal;
     }
     // Promise-wrapper for a single Distance Matrix query (one origin, one
     // destination). Resolves to a leg object ({minutes, km}) or rejects
@@ -1901,11 +1928,13 @@
         // All sites, starting with morning destination. activeSites[N-1] is
         // the last site of the day.
         const activeSites = [destinationSpec].concat(extraSiteSpecs);
-        // --- RETURN LEG (optional — only when Return section is visible) ---
+        // --- RETURN LEG ---
+        // Return section is always visible now, so we always fetch the
+        // return leg whenever the user has a return office configured.
+        // Drives: arriveWorkshop time, Kms (CC) round-trip km, TK1 km.
         const tk1Cb = document.getElementById('allow_tk1');
         const tk1Ticked = !!(tk1Cb && tk1Cb.checked);
-        const returnSec = document.getElementById('returnSection');
-        const returnVisible = (tk1Ticked || tk2Ticked) && returnSec && !returnSec.classList.contains('hidden');
+        const returnVisible = !!flags.ReturnOffice;
         let returnOriginSpec = null, returnDestSpec = null;
         if (returnVisible) {
             // Return origin is always the last active site in the chain:
@@ -1958,6 +1987,11 @@
             lastLegs.morning     = morningLeg;
             lastLegs.returnLeg   = returnLeg;
             lastLegs.betweenLegs = betweenLegs;
+            // Cache return-leg duration and refresh "Arrived at Workshop/Accom".
+            if (returnLeg && returnLeg.minutes != null) {
+                _lastReturnMinutes = returnLeg.minutes;
+                syncArriveWorkshopTime();
+            }
             applyKmAutofill(morningLeg, returnLeg, { betweenLegs: betweenLegs });
             if (typeof calculate === 'function') calculate();
         } catch (err) {
@@ -1988,26 +2022,26 @@
             if (onlyIfEmpty && input.value && String(input.value).trim() !== '') return;
             input.value = value;
         };
-        // Km's (Company Car) — morning leg only, always ×1.
+        // Km's (Company Car) — morning + return km (full round trip) when
+        // both legs are known; falls back to morning-only if return wasn't
+        // fetched yet.
         const ccCb = document.getElementById('allow_kmCompanyCar');
         const ccInput = document.getElementById('km_kmCompanyCar');
-        // REVENUE-PROTECTION REMINDER: when Company Car is on AND the driver
-        // covered more than 30 km on the morning leg, auto-tick the Kms (CC)
-        // allowance so the claim isn't missed. Only fires when the row is in
-        // a "pristine" state (not ticked AND km input empty) — respects a
-        // prior manual untick by the user. Short trips (<= 30 km) are left
-        // alone: the worker can still tick manually for small site runs.
-        if (flags.Co && morningLeg && morningLeg.km != null && morningLeg.km > 30 &&
+        // Total km the driver covered today, given what we know.
+        const ccTotalKm = (morningLeg && morningLeg.km != null ? morningLeg.km : 0) +
+                          (returnLeg  && returnLeg.km  != null ? returnLeg.km  : 0);
+        // REVENUE-PROTECTION REMINDER: when Company Car is on AND total
+        // distance > 30 km, auto-tick the Kms (CC) allowance so the claim
+        // isn't missed. Only fires when the row is "pristine" (not ticked
+        // AND km input empty) — respects a prior manual untick.
+        if (flags.Co && ccTotalKm > 30 &&
             ccCb && !ccCb.checked && ccInput &&
             (!ccInput.value || String(ccInput.value).trim() === '')) {
             ccCb.checked = true;
-            // Re-sync so the row styling and inline note update. Safe from
-            // infinite recursion because the auto-tick guard (cb.checked)
-            // is now false on the inner call.
             if (typeof syncAllowanceBoundUI === 'function') syncAllowanceBoundUI();
         }
-        if (ccCb && ccCb.checked && ccInput && morningLeg && morningLeg.km != null) {
-            setIf(ccInput, Math.round(morningLeg.km));
+        if (ccCb && ccCb.checked && ccInput && ccTotalKm > 0) {
+            setIf(ccInput, Math.round(ccTotalKm));
         }
         // TK1 — requires both legs so the ratio-method total is accurate.
         // If user ticks TK1 after running the tool with only a morning call,
