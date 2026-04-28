@@ -19,8 +19,8 @@
         label { display: block; font-weight: 600; margin-bottom: 5px; font-size: 12px; color: #4a5568; }
         input[type="time"], input[type="text"], input[type="number"] { width: 100%; padding: 12px; border: 1.5px solid #d2dce6; border-radius: 10px; font-size: 16px; background: #f8fafc; appearance: none; transition: border-color 0.2s, box-shadow 0.2s; }
         input:focus { border-color: #004a99; outline: none; background: #fff; box-shadow: 0 0 0 3px rgba(0,74,153,0.1); }
-        .route-box { background: linear-gradient(135deg, #f8fafc, #f0f5fa); padding: 14px; border-radius: 12px; border: 1.5px solid #d2dce6; margin-bottom: 20px; }
-        .maps-btn { width: 100%; padding: 14px; background: linear-gradient(135deg, #004a99, #0058b3); color: white; border: none; border-radius: 10px; font-weight: 700; cursor: pointer; margin-bottom: 12px; font-size: 14px; transition: transform 0.1s, box-shadow 0.2s; box-shadow: 0 2px 8px rgba(0,74,153,0.25); }
+        .route-box { background: linear-gradient(135deg, #f8fafc, #f0f5fa); padding: 12px; border-radius: 12px; border: 1.5px solid #d2dce6; margin-bottom: 18px; }
+        .maps-btn { width: 100%; padding: 11px; background: linear-gradient(135deg, #004a99, #0058b3); color: white; border: none; border-radius: 10px; font-weight: 700; cursor: pointer; margin-bottom: 10px; font-size: 13px; transition: transform 0.1s, box-shadow 0.2s; box-shadow: 0 2px 8px rgba(0,74,153,0.25); }
         .maps-btn:active { transform: scale(0.98); }
         .toggle-section { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 15px; }
         .day-toggle-section { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 6px; margin-bottom: 15px; border-top: 1.5px solid #e8eef5; padding-top: 15px; }
@@ -198,7 +198,12 @@
             • Kms (Company Car) km (= morning + return, when ticked)
             • TK1 outside-boundary km (when ticked)
         -->
-        <div id="returnSection" style="margin-top: 12px; padding-top: 12px; border-top: 2px dashed #004a99;">
+        <div id="returnSection" style="margin-top: 14px;">
+            <div style="display: flex; align-items: center; gap: 10px; margin: 0 0 10px;">
+                <span style="flex: 1; height: 1px; background: linear-gradient(to right, transparent, #b0c4de);"></span>
+                <span style="font-size: 10px; font-weight: 700; color: #6b7c8d; text-transform: uppercase; letter-spacing: 1.2px;">Return Trip</span>
+                <span style="flex: 1; height: 1px; background: linear-gradient(to left, transparent, #b0c4de);"></span>
+            </div>
             <label>Returning to:</label>
             <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 6px; margin-bottom: 8px;">
                 <div id="btnReturnDev"    class="toggle-btn" onclick="setReturnOffice('Dev')">Devonport Office</div>
