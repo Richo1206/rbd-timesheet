@@ -217,6 +217,17 @@
               Maps call fires automatically as fields change, so there's
               no Calculate button — auto-calc covers it.
             -->
+            <button class="maps-btn" onclick="checkReturnRoute()">Verify Return Route (opens Google Maps)</button>
+            <div class="input-grid">
+                <div>
+                    <label>Return Hrs:</label>
+                    <input type="number" id="returnHours" placeholder="Example: 1" oninput="syncArriveWorkshopTime()">
+                </div>
+                <div>
+                    <label>Return Mins:</label>
+                    <input type="number" id="returnMinutes" placeholder="Example: 30" oninput="syncArriveWorkshopTime()">
+                </div>
+            </div>
         </div>
     </div>
     <div class="section-header no-print"><span>Time Entries</span><button class="info-btn no-print" onclick="toggleInfo('infoTime')">i</button></div>
@@ -476,7 +487,7 @@
             }
             html += '</div>';
             // Inline hint under Km's (Company Car) — only visible when that
-            // allowance is ticked. Flags that the auto-fill is morning-leg only.
+            // allowance is ticked. Explains the morning + return auto-fill.
             if (a.id === 'kmCompanyCar') {
                 html += '<div id="ccKmNote" class="hidden" style="font-size: 10px; color: #888; font-style: italic; margin: -4px 0 6px; padding: 0 4px;">Auto-calculation: morning leg + return leg from Google Maps. Adjust manually if your day was asymmetric.</div>';
             }
@@ -504,9 +515,12 @@
         document.getElementById('btnOfficeHob').classList.toggle('active', code === 'Hob');
         document.getElementById('btnOfficeCustom').classList.toggle('active', code === 'Custom');
         document.getElementById('customOriginWrap').classList.toggle('hidden', code !== 'Custom');
-        // Morning origin changed — invalidate all cached legs so the auto-
-        // calculate re-fetches with the new origin.
-        if (prev && prev !== code) {
+        // Default the return office to match the morning office on first set.
+        // The user can still pick a different return office afterward.
+        if (!flags.ReturnOffice) setReturnOffice(code);
+        // Whenever the office actually changed (including the first selection
+        // from null), invalidate cached legs and trigger an auto-recalculate.
+        if (prev !== code) {
             lastLegs.morning = null;
             lastLegs.returnLeg = null;
             lastLegs.betweenLegs = [];
@@ -523,11 +537,10 @@
         document.getElementById('btnReturnHob').classList.toggle('active', code === 'Hob');
         document.getElementById('btnReturnCustom').classList.toggle('active', code === 'Custom');
         document.getElementById('customReturnWrap').classList.toggle('hidden', code !== 'Custom');
-        // If the return destination actually changed (not just the initial
-        // default being applied), invalidate the cached return leg so TK1
-        // re-computes against the NEW destination. The sync at the end
-        // triggers the background refetch.
-        if (prev && prev !== code) {
+        // Whenever the return destination actually changed (including the
+        // first selection from null), invalidate the cached return leg so
+        // it re-fetches against the NEW destination.
+        if (prev !== code) {
             invalidateReturnLeg();
             scheduleAutoCalculate();
         }
@@ -1735,7 +1748,9 @@
             .then(function(leg) {
                 lastLegs.returnLeg = leg;
                 if (leg && leg.minutes != null) {
-                    _lastReturnMinutes = leg.minutes;
+                    const totalMin = Math.round(leg.minutes);
+                    document.getElementById('returnHours').value   = Math.floor(totalMin / 60);
+                    document.getElementById('returnMinutes').value = totalMin % 60;
                     syncArriveWorkshopTime();
                 }
                 applyKmAutofill(lastLegs.morning, leg, {
@@ -1790,7 +1805,9 @@
                 lastLegs.betweenLegs = between;
                 lastLegs.returnLeg   = returnLeg;
                 if (returnLeg && returnLeg.minutes != null) {
-                    _lastReturnMinutes = returnLeg.minutes;
+                    const _totalMin = Math.round(returnLeg.minutes);
+                    document.getElementById('returnHours').value   = Math.floor(_totalMin / 60);
+                    document.getElementById('returnMinutes').value = _totalMin % 60;
                     syncArriveWorkshopTime();
                 }
                 applyKmAutofill(lastLegs.morning, returnLeg, {
@@ -1839,28 +1856,66 @@
         if (!leg || leg.km == null || leg.minutes <= TRAVEL_BOUNDARY_MIN) return 0;
         return leg.km * (leg.minutes - TRAVEL_BOUNDARY_MIN) / leg.minutes;
     }
-    // Cached return-leg minutes from the most recent successful fetch — used
-    // by syncArriveWorkshopTime to compute Arrived at Workshop/Accom from
-    // Left Site + return travel duration.
-    let _lastReturnMinutes = null;
-    let _lastAutoArriveWorkshop = '';
+    // Computes Arrived at Workshop/Accom from Left Site + Return Hrs/Mins.
+    // Mirrors syncArriveTime() for the morning side. Reads the user-visible
+    // Return Hrs/Mins inputs (which are auto-populated when a return leg is
+    // fetched, but the user can also edit them manually).
     function syncArriveWorkshopTime() {
-        if (_lastReturnMinutes == null) return;
-        const leaveSiteEl = document.getElementById('leaveSite');
-        const arriveEl    = document.getElementById('arriveWorkshop');
-        if (!leaveSiteEl || !arriveEl) return;
-        const leaveStr = leaveSiteEl.value;
-        if (!leaveStr) return;
-        // Don't overwrite a user-edited value — only refresh when the field
-        // is empty or matches the last value we auto-set.
-        if (arriveEl.value && arriveEl.value !== _lastAutoArriveWorkshop) return;
-        const leaveMins = timeToMin(leaveStr);
-        const total = (leaveMins + Math.round(_lastReturnMinutes)) % 1440;
-        const hh = String(Math.floor(total / 60)).padStart(2, '0');
-        const mm = String(total % 60).padStart(2, '0');
-        const newVal = hh + ':' + mm;
-        arriveEl.value = newVal;
-        _lastAutoArriveWorkshop = newVal;
+        const hInput = document.getElementById('returnHours').value;
+        const mInput = document.getElementById('returnMinutes').value;
+        if (hInput !== "" || mInput !== "") {
+            const h = parseInt(hInput) || 0;
+            const m = parseInt(mInput) || 0;
+            const leaveMins = timeToMin(document.getElementById('leaveSite').value);
+            document.getElementById('arriveWorkshop').value = minToTime(leaveMins + (h * 60) + m);
+        }
+        calculate();
+    }
+    // Verify Return Route — opens Google Maps with directions from the
+    // last site of the day to the return office. Mirrors checkRoute() for
+    // the morning leg.
+    function checkReturnRoute() {
+        if (!flags.ReturnOffice) {
+            alert('Please select a return location (Devonport, Hobart, or Custom).');
+            return;
+        }
+        let returnDest;
+        if (flags.ReturnOffice === 'Custom') {
+            returnDest = document.getElementById('customReturn').value.trim();
+            if (!returnDest) { alert('Please enter a custom return address.'); return; }
+        } else {
+            returnDest = OFFICES[flags.ReturnOffice];
+        }
+        // Return origin = last site in the chain.
+        let originText = '';
+        const tk2Cb = document.getElementById('allow_tk2');
+        if (tk2Cb && tk2Cb.checked) {
+            for (let i = 5; i >= 2; i--) {
+                const w = document.getElementById('siteWrap' + i);
+                const s = document.getElementById('site' + i);
+                if (w && !w.classList.contains('hidden') && s && s.value.trim()) {
+                    originText = s.value.trim(); break;
+                }
+            }
+        }
+        if (!originText) {
+            originText = document.getElementById('destination').value.trim();
+        }
+        if (!originText) {
+            alert('Please enter a destination (site address) before verifying the return route.');
+            return;
+        }
+        const start = encodeURIComponent(originText);
+        const end = encodeURIComponent(returnDest);
+        const url = 'https://www.google.com/maps/dir/' + start + '/' + end;
+        if (window.navigator.standalone) {
+            location.href = url;
+        } else {
+            const a = document.createElement('a');
+            a.href = url; a.target = '_blank'; a.rel = 'noopener';
+            a.style.display = 'none';
+            document.body.appendChild(a); a.click(); document.body.removeChild(a);
+        }
     }
     // Promise-wrapper for a single Distance Matrix query (one origin, one
     // destination). Resolves to a leg object ({minutes, km}) or rejects
@@ -1987,9 +2042,12 @@
             lastLegs.morning     = morningLeg;
             lastLegs.returnLeg   = returnLeg;
             lastLegs.betweenLegs = betweenLegs;
-            // Cache return-leg duration and refresh "Arrived at Workshop/Accom".
+            // Populate Return Hrs/Mins from the fetched return leg, then
+            // refresh "Arrived at Workshop/Accom" via syncArriveWorkshopTime.
             if (returnLeg && returnLeg.minutes != null) {
-                _lastReturnMinutes = returnLeg.minutes;
+                const _totalMin = Math.round(returnLeg.minutes);
+                document.getElementById('returnHours').value   = Math.floor(_totalMin / 60);
+                document.getElementById('returnMinutes').value = _totalMin % 60;
                 syncArriveWorkshopTime();
             }
             applyKmAutofill(morningLeg, returnLeg, { betweenLegs: betweenLegs });
