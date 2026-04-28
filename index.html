@@ -2088,11 +2088,11 @@
         // Total km the driver covered today, given what we know.
         const ccTotalKm = (morningLeg && morningLeg.km != null ? morningLeg.km : 0) +
                           (returnLeg  && returnLeg.km  != null ? returnLeg.km  : 0);
-        // REVENUE-PROTECTION REMINDER: when Company Car is on AND total
-        // distance > 30 km, auto-tick the Kms (CC) allowance so the claim
-        // isn't missed. Only fires when the row is "pristine" (not ticked
-        // AND km input empty) — respects a prior manual untick.
-        if (flags.Co && ccTotalKm > 30 &&
+        // REVENUE-PROTECTION REMINDER: when Company Car is on AND any km
+        // were travelled today, auto-tick the Kms (CC) allowance so the
+        // claim isn't missed. Only fires when the row is "pristine" (not
+        // ticked AND km input empty) — respects a prior manual untick.
+        if (flags.Co && ccTotalKm > 0 &&
             ccCb && !ccCb.checked && ccInput &&
             (!ccInput.value || String(ccInput.value).trim() === '')) {
             ccCb.checked = true;
