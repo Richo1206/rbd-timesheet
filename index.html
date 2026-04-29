@@ -139,15 +139,15 @@
     <div id="infoMaps" class="info-panel no-print">
         <strong>How it works:</strong>
         <ul>
-            <li><strong>Fully automatic.</strong> Every field in this section triggers a background Google Maps lookup as soon as you tab away — no button to press. Travel Hrs/Mins, Return Hrs/Mins, and any ticked km allowances (TK1, TK2, Kms Company Car) fill themselves in a second or two.</li>
-            <li>Select your <strong>start location</strong> — Devonport Office, Hobart Office, or Custom. If Custom, start typing the address or place name and pick from the Google Autocomplete dropdown (accommodation, other RBD office, meeting point, etc.). The dropdown is biased to Tasmania, so TAS results appear at the top.</li>
+            <li><strong>Fully automatic.</strong> Every field in this section triggers a background Google Maps lookup as soon as you tab away: no button to press. Travel Hrs/Mins, Return Hrs/Mins, and any ticked km allowances (TK1, TK2, Kms Company Car) fill themselves in a second or two.</li>
+            <li>Select your <strong>start location</strong>: Devonport Office, Hobart Office, or Custom. If Custom, start typing the address or place name and pick from the Google Autocomplete dropdown (accommodation, other RBD office, meeting point, etc.). The dropdown is biased to Tasmania, so TAS results appear at the top.</li>
             <li>Start typing the <strong>destination</strong> (site name or address) and pick from the Google Autocomplete dropdown. If the place you need isn't listed, type a street address or town + state instead.</li>
             <li>Tap <strong>Verify Route</strong> to open Google Maps in a new tab and visually sanity-check the route Google is using.</li>
             <li>Travel Hrs/Mins (morning leg) auto-set your "Arrived on Site" time. Return Hrs/Mins (return leg) auto-set your "Arrived at Workshop/Accom" time the same way (Left Site + Return time).</li>
-            <li><strong>Return section</strong> is always visible — pick where you're heading back to (Devonport, Hobart, or a Custom address like accommodation). The return origin is automatically the last site in your chain. The Return section mirrors the morning section: same Verify Route button + Return Hrs/Mins inputs.</li>
+            <li><strong>Return section</strong> is always visible: pick where you're heading back to (Devonport, Hobart, or a Custom address like accommodation). The return origin is automatically the last site in your chain. The Return section mirrors the morning section: same Verify Route button + Return Hrs/Mins inputs.</li>
             <li><strong>TK1 / TK2 / Kms (Company Car):</strong> tick these in Extra Allowances and the km fields populate automatically using Google's distances. Kms (CC) uses morning + return for the full day's km when both legs are fetched, and auto-ticks itself on <em>any</em> travelled km when Company Car is on. For TK2 multi-site days, click <em>Add another site</em> to chain up to 5 sites (Dest → Site 2 → Site 3 → …).</li>
-            <li>Manual overrides are always preserved — if you type your own Travel Hrs/Mins, Return Hrs/Mins, or km values, auto-fires won't clobber them.</li>
-            <li><strong>Travel Boundary Tool</strong> (button at the top of this section) — opens a separate 30-min drive-time map. Useful when you need to check whether a site is inside or outside the EA's Travel Boundary (Cl 64.1.a). Pick a Centre of Employment (Devonport, Hobart, or a Custom address) and the tool plots the reachable area as a polygon on Google Maps.</li>
+            <li>Manual overrides are always preserved: if you type your own Travel Hrs/Mins, Return Hrs/Mins, or km values, auto-fires won't clobber them.</li>
+            <li><strong>Travel Boundary Tool</strong> (button at the top of this section): opens a separate 30-min drive-time map. Useful when you need to check whether a site is inside or outside the EA's Travel Boundary (Cl 64.1.a). Pick a Centre of Employment (Devonport, Hobart, or a Custom address) and the tool plots the reachable area as a polygon on Google Maps.</li>
         </ul>
     </div>
     <div class="route-box no-print">
@@ -157,7 +157,7 @@
           the user informed so they fall back to manual Travel Hrs/Mins.
         -->
         <div id="mapsUnavailableBanner" class="hidden" style="background: #fff7d6; border: 1px solid #e0c24a; padding: 8px 10px; margin-bottom: 10px; border-radius: 6px; font-size: 12px; color: #6b5800;">
-            <strong>Google Maps unavailable.</strong> Auto-fill is off — enter Travel Hrs/Mins and km values manually.
+            <strong>Google Maps unavailable.</strong> Auto-fill is off: enter Travel Hrs/Mins and km values manually.
         </div>
         <label>Centre of Employment / Custom Location:</label>
         <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 6px; margin-bottom: 8px;">
@@ -175,7 +175,7 @@
           TK2 multi-site UI. The "Add another site" button appears when the
           TK2 allowance is ticked. Up to 4 extra sites (Site 2..5); Site 1 is
           the main Destination field above. Each extra slot is pre-rendered
-          hidden so Autocomplete can be initialised once at page load — when
+          hidden so Autocomplete can be initialised once at page load: when
           the slot becomes visible Autocomplete just works.
         -->
         <button id="btnAddSite" class="maps-btn hidden" onclick="addNextSite()" style="background:#004a99; margin-top: 6px; font-size: 13px; padding: 10px;">+ Add another site</button>
@@ -208,7 +208,7 @@
             </div>
         </div>
         <!--
-          Auto-calc status — brief "Calculating…" text that appears while a
+          Auto-calc status: brief "Calculating…" text that appears while a
           background Distance Matrix fetch is in flight. Gives the user
           visible feedback that something is happening after they blur a
           field or pick an Autocomplete result.
@@ -218,7 +218,7 @@
             <span>Calculating travel time &amp; distance&hellip;</span>
         </div>
         <!--
-          Return section — always visible. Lets the user specify where they're
+          Return section: always visible. Lets the user specify where they're
           going back to (e.g. accommodation, different office). The auto-calc
           fires a return-leg Distance Matrix query alongside the morning leg
           and feeds the result into:
@@ -245,10 +245,10 @@
               Return origin is derived automatically from the chain:
                 • TK1 only (no extras)    → morning Destination
                 • TK2 with extras        → the last added site (Site 2–5)
-              No user input needed for the return origin — it always
+              No user input needed for the return origin: it always
               follows the last site in the chain. Likewise, every Google
               Maps call fires automatically as fields change, so there's
-              no Calculate button — auto-calc covers it.
+              no Calculate button: auto-calc covers it.
             -->
             <button class="maps-btn" onclick="checkReturnRoute()">Verify Return Route (opens Google Maps)</button>
             <div class="input-grid">
@@ -267,28 +267,28 @@
     <div id="infoTime" class="info-panel no-print">
         <strong>How to fill this in:</strong>
         <ul>
-            <li><strong>Left Workshop/Accom</strong> — the time you left the workshop or accommodation.</li>
-            <li><strong>Arrived on Site</strong> — the time you arrived at the job site. Auto-fills from "Left Workshop/Accom" + the morning Travel Hrs/Mins (set by the Google Maps Travel Tool above). Type over it to override.</li>
-            <li><strong>Left Site</strong> — the time you left the job site at the end of the day.</li>
-            <li><strong>Arrived at Workshop/Accom</strong> — the time you got back to workshop or accommodation. Auto-fills from "Left Site" + the Return Hrs/Mins. Type over it to override.</li>
+            <li><strong>Left Workshop/Accom</strong>: the time you left the workshop or accommodation.</li>
+            <li><strong>Arrived on Site</strong>: the time you arrived at the job site. Auto-fills from "Left Workshop/Accom" + the morning Travel Hrs/Mins (set by the Google Maps Travel Tool above). Type over it to override.</li>
+            <li><strong>Left Site</strong>: the time you left the job site at the end of the day.</li>
+            <li><strong>Arrived at Workshop/Accom</strong>: the time you got back to workshop or accommodation. Auto-fills from "Left Site" + the Return Hrs/Mins. Type over it to override.</li>
         </ul>
         <strong>Toggle buttons:</strong>
         <ul>
-            <li><strong>Start Workshop / Start Site</strong> — select where your working day commenced (Cl 53.a). Select <strong>Start Workshop</strong> if you were directed by your supervisor or project manager to carry out work-related tasks at your centre of employment before travelling to site. Select <strong>Start Site</strong> if you travelled directly to the worksite from home, your centre of employment (without carrying out work-related tasks), or an arranged meeting point.</li>
-            <li><strong>Finish Workshop / Finish Site</strong> — select where your working day ended. Select <strong>Finish Workshop</strong> if you were directed by your supervisor or project manager to return to your centre of employment to carry out work-related tasks (e.g. unloading a trailer, preparing for a job the following day). Select <strong>Finish Site</strong> if your working day ended at the worksite and you travelled home or to accommodation.</li>
-            <li><strong>Weekday / Weekend / Pub Holiday</strong> — select the day type. Weekday pays NT then OT. Weekend/PH pays double time for all work hours with a 4-hour minimum (Cl 62.3.a), or 2-hour minimum if you were notified 24h+ in advance (Cl 62.3.b). PH also includes 8 hours NT (Public Holiday) entitlement — applicable only on a day you were rostered to work (s116 FW Act).</li>
-            <li><strong>Company Car</strong> — select if a company vehicle was provided or offered. If unselected, Fares Allowance (FTR) applies. Selecting Company Car also makes TK1 and TK2 own-vehicle km allowances ineligible (Cl 64.3.b — the $0.57/km is not paid when the employee travels in company transport). The calculator enforces this by disabling the TK1 and TK2 checkboxes while Company Car is on.</li>
-            <li><strong>Incidentals-1</strong> — select when staying at accommodation on a distant job (>20 min from urban area, employer pays for accom without meals). All accom-to-site travel is paid. TAT and Fares do not apply for accom↔site legs. First/Last Day tick preserves TAT/Fares for the standard workshop↔site leg (Cl 64.5.b).</li>
-            <li><strong>Other ▼</strong> — expands to reveal the less-common flags below (Unnotified OT, RDO, Callout).</li>
-            <li><strong>Unnotified OT</strong> — select if you were required to work 2+ hours overtime without being notified the previous day. Triggers the $15.50 meal allowance (any day — Cl 60.1.a).</li>
-            <li><strong>RDO</strong> — select when working a scheduled Rostered Day Off. Treats the day as a Saturday-equivalent penalty day (Cl 62.3.a): DT rate for all work hours, 4-hour minimum (or 2-hour with 24h+ notice).</li>
-            <li><strong>Callout</strong> — select when recalled to site after hours (Cl 63.a). All work + travel is bundled at the appropriate OT rate with a 4-hour minimum. TT/TT+/TAT/Fares are suppressed — travel is already at OT. Not modelled: Cl 63.e/f on-call-roster variants (3h / 2h mins) and the Cl 63.a.iii TK1 $0.57/km own-vehicle allowance; enter these manually via Extra Allowances.</li>
-            <li><strong>Scheduled (24h+ notice)</strong> — when working a weekend/PH/RDO that was planned 24h+ in advance, minimum drops from 4h to 2h (Cl 62.3.b).</li>
+            <li><strong>Start Workshop / Start Site</strong>: select where your working day commenced (Cl 53.a). Select <strong>Start Workshop</strong> if you were directed by your supervisor or project manager to carry out work-related tasks at your centre of employment before travelling to site. Select <strong>Start Site</strong> if you travelled directly to the worksite from home, your centre of employment (without carrying out work-related tasks), or an arranged meeting point.</li>
+            <li><strong>Finish Workshop / Finish Site</strong>: select where your working day ended. Select <strong>Finish Workshop</strong> if you were directed by your supervisor or project manager to return to your centre of employment to carry out work-related tasks (e.g. unloading a trailer, preparing for a job the following day). Select <strong>Finish Site</strong> if your working day ended at the worksite and you travelled home or to accommodation.</li>
+            <li><strong>Weekday / Weekend / Pub Holiday</strong>: select the day type. Weekday pays NT then OT. Weekend/PH pays double time for all work hours with a 4-hour minimum (Cl 62.3.a), or 2-hour minimum if you were notified 24h+ in advance (Cl 62.3.b). PH also includes 8 hours NT (Public Holiday) entitlement: applicable only on a day you were rostered to work (s116 FW Act).</li>
+            <li><strong>Company Car</strong>: select if a company vehicle was provided or offered. If unselected, Fares Allowance (FTR) applies. Selecting Company Car also makes TK1 and TK2 own-vehicle km allowances ineligible (Cl 64.3.b: the $0.57/km is not paid when the employee travels in company transport). The calculator enforces this by disabling the TK1 and TK2 checkboxes while Company Car is on.</li>
+            <li><strong>Incidentals-1</strong>: select when staying at accommodation on a distant job (>20 min from urban area, employer pays for accom without meals). All accom-to-site travel is paid. TAT and Fares do not apply for accom↔site legs. First/Last Day tick preserves TAT/Fares for the standard workshop↔site leg (Cl 64.5.b).</li>
+            <li><strong>Other ▼</strong>: expands to reveal the less-common flags below (Unnotified OT, RDO, Callout).</li>
+            <li><strong>Unnotified OT</strong>: select if you were required to work 2+ hours overtime without being notified the previous day. Triggers the $15.50 meal allowance (any day: Cl 60.1.a).</li>
+            <li><strong>RDO</strong>: select when working a scheduled Rostered Day Off. Treats the day as a Saturday-equivalent penalty day (Cl 62.3.a): DT rate for all work hours, 4-hour minimum (or 2-hour with 24h+ notice).</li>
+            <li><strong>Callout</strong>: select when recalled to site after hours (Cl 63.a). All work + travel is bundled at the appropriate OT rate with a 4-hour minimum. TT/TT+/TAT/Fares are suppressed: travel is already at OT. Not modelled: Cl 63.e/f on-call-roster variants (3h / 2h mins) and the Cl 63.a.iii TK1 $0.57/km own-vehicle allowance; enter these manually via Extra Allowances.</li>
+            <li><strong>Scheduled (24h+ notice)</strong>: when working a weekend/PH/RDO that was planned 24h+ in advance, minimum drops from 4h to 2h (Cl 62.3.b).</li>
         </ul>
         <strong>Key EA rules:</strong>
         <ul>
             <li>Ordinary hours are <strong>6am–6pm</strong> (Cl 55.a). Work outside this window is overtime regardless of total hours worked.</li>
-            <li><strong>Travel Boundary:</strong> the first 30 minutes of travel each way falls inside the 30-min Travel Boundary (Cl 64.1.a). It isn't paid as TT — instead it's compensated by the daily Fares Allowance (FTR, $14.61/day, Cl 64.1.b) when eligible. Under Inc-1 the boundary doesn't apply because accommodation becomes the centre of employment (Cl 64.5.a).</li>
+            <li><strong>Travel Boundary:</strong> the first 30 minutes of travel each way falls inside the 30-min Travel Boundary (Cl 64.1.a). It isn't paid as TT: instead it's compensated by the daily Fares Allowance (FTR, $14.61/day, Cl 64.1.b) when eligible. Under Inc-1 the boundary doesn't apply because accommodation becomes the centre of employment (Cl 64.5.a).</li>
             <li><strong>Weekday overtime:</strong> first 2 hours at time-and-a-half (TH), then double time (DT) (Cl 62.2.a.i).</li>
             <li><strong>Weekend / PH / RDO overtime:</strong> all hours at double time (Cl 62.2.a.ii/iii) with a 4-hour minimum (Cl 62.3.a), or 2-hour minimum with 24h+ notice (Cl 62.3.b).</li>
             <li><strong>Meal break (Cl 60.a):</strong> 30-minute unpaid lunch for shifts of 5–12 hours. Shifts under 5 hours have no meal deduction. Shifts of 12+ hours get a paid meal break.</li>
@@ -336,7 +336,7 @@
         <div id="btnCallout" class="toggle-btn" onclick="toggle('Callout')">Callout</div>
     </div>
     <div id="notified24hRow" class="day-toggle-section hidden" style="border-top:none; padding-top:0; grid-template-columns: 1fr;">
-        <div id="btnNotified24h" class="toggle-btn" onclick="toggle('Notified24h')">Scheduled (24h+ notice) &mdash; 2h min</div>
+        <div id="btnNotified24h" class="toggle-btn" onclick="toggle('Notified24h')">Scheduled (24h+ notice, 2h min)</div>
     </div>
     <div id="inc1DayRow" class="day-toggle-section hidden" style="border-top:none; padding-top:0;">
         <div id="btnFirstDay" class="toggle-btn" onclick="toggleTripDay('FirstDay')">First Day</div>
@@ -350,31 +350,31 @@
         <div id="infoResults" class="info-panel no-print">
             <strong>Work codes:</strong>
             <ul>
-                <li><strong>NT</strong> — Normal Time. Your ordinary 8-hour day paid at the base rate (only applies on pure weekdays; weekend/PH/RDO days pay DT from minute one).</li>
-                <li><strong>NT (RDO, AL or LWOP)</strong> — Shortfall row. If you worked less than 8 hours on a pure weekday, the gap to 8 hours must be covered by a Rostered Day Off, Annual Leave, or Leave Without Pay (LWOP needs management approval). Doesn't fire on weekend/PH/RDO/Callout days — those have different minimums.</li>
-                <li><strong>NT (Public Holiday)</strong> — 8 hours paid automatically as your PH entitlement, in addition to DT for hours actually worked.</li>
-                <li><strong>TH</strong> — Time and a Half. The first 2 hours of weekday overtime (Cl 62.2.a.i). Also any weekday work that falls outside 6am–6pm gets counted toward TH/DT per Cl 55.a.</li>
-                <li><strong>DT</strong> — Double Time. Weekday overtime beyond the first 2 hours of TH (Cl 62.2.a.i), or all work hours on weekends, public holidays, or RDO days (Cl 62.2.a.ii/iii + 62.3.a).</li>
+                <li><strong>NT</strong>: Normal Time. Your ordinary 8-hour day paid at the base rate (only applies on pure weekdays; weekend/PH/RDO days pay DT from minute one).</li>
+                <li><strong>NT (RDO, AL or LWOP)</strong>: Shortfall row. If you worked less than 8 hours on a pure weekday, the gap to 8 hours must be covered by a Rostered Day Off, Annual Leave, or Leave Without Pay (LWOP needs management approval). Doesn't fire on weekend/PH/RDO/Callout days: those have different minimums.</li>
+                <li><strong>NT (Public Holiday)</strong>: 8 hours paid automatically as your PH entitlement, in addition to DT for hours actually worked.</li>
+                <li><strong>TH</strong>: Time and a Half. The first 2 hours of weekday overtime (Cl 62.2.a.i). Also any weekday work that falls outside 6am–6pm gets counted toward TH/DT per Cl 55.a.</li>
+                <li><strong>DT</strong>: Double Time. Weekday overtime beyond the first 2 hours of TH (Cl 62.2.a.i), or all work hours on weekends, public holidays, or RDO days (Cl 62.2.a.ii/iii + 62.3.a).</li>
             </ul>
             <strong>Travel codes:</strong>
             <ul>
-                <li><strong>TT (Morning)</strong> — Travel Time at single rate. Morning travel outside the 30-min boundary on a weekday (Cl 64.3.c.i). Paid regardless of time of day — travel rate is not affected by the 6am–6pm ordinary-hours window, which only applies to work.</li>
-                <li><strong>TT+ (Morning)</strong> — Travel Time at time-and-a-half. Applies to <em>all</em> morning travel outside the boundary on weekends, public holidays, or RDO days (Cl 64.3.c.iii). On weekdays morning travel is never TT+ — per Cl 64.3.d the weekday TT+ rate is return-only.</li>
-                <li><strong>TT (Return)</strong> — Return travel at single rate, when the day's work + outside-boundary travel hasn't exceeded 8 hours (Cl 64.3.c.i).</li>
-                <li><strong>TT+ (Return)</strong> — Return travel at time-and-a-half. Applies when the day's total work + outside-boundary travel exceeds 8 hours (Cl 64.3.c.ii), or always on weekends, public holidays, or RDO days (Cl 64.3.c.iii).</li>
+                <li><strong>TT (Morning)</strong>: Travel Time at single rate. Morning travel outside the 30-min boundary on a weekday (Cl 64.3.c.i). Paid regardless of time of day: travel rate is not affected by the 6am–6pm ordinary-hours window, which only applies to work.</li>
+                <li><strong>TT+ (Morning)</strong>: Travel Time at time-and-a-half. Applies to <em>all</em> morning travel outside the boundary on weekends, public holidays, or RDO days (Cl 64.3.c.iii). On weekdays morning travel is never TT+: per Cl 64.3.d the weekday TT+ rate is return-only.</li>
+                <li><strong>TT (Return)</strong>: Return travel at single rate, when the day's work + outside-boundary travel hasn't exceeded 8 hours (Cl 64.3.c.i).</li>
+                <li><strong>TT+ (Return)</strong>: Return travel at time-and-a-half. Applies when the day's total work + outside-boundary travel exceeds 8 hours (Cl 64.3.c.ii), or always on weekends, public holidays, or RDO days (Cl 64.3.c.iii).</li>
             </ul>
             <strong>Allowance codes:</strong>
             <ul>
-                <li><strong>TAT</strong> — Travel Time Allowance (Cl 64.2). A flat daily unit equal to 25% of your all-purpose hourly rate, payable when your working day commences at a worksite. Not payable under Inc-1 accom↔site travel or when the early-travel rule fires. One unit per day maximum.</li>
-                <li><strong>Fares (FTR)</strong> — Fares Allowance (Cl 64.1). $14.61/day when you travel in your own time/vehicle and no company transport was offered. Covers the 30-min Travel Boundary portion.</li>
-                <li><strong>Meal Allow ($15.50)</strong> — Meal Allowance for unnotified overtime of 2+ hours (Cl 60.1.a). Any day type. Rate increases to $16.41 from 01/07/2026 and $20.00 from 01/07/2027.</li>
+                <li><strong>TAT</strong>: Travel Time Allowance (Cl 64.2). A flat daily unit equal to 25% of your all-purpose hourly rate, payable when your working day commences at a worksite. Not payable under Inc-1 accom↔site travel or when the early-travel rule fires. One unit per day maximum.</li>
+                <li><strong>Fares (FTR)</strong>: Fares Allowance (Cl 64.1). $14.61/day when you travel in your own time/vehicle and no company transport was offered. Covers the 30-min Travel Boundary portion.</li>
+                <li><strong>Meal Allow ($15.50)</strong>: Meal Allowance for unnotified overtime of 2+ hours (Cl 60.1.a). Any day type. Rate increases to $16.41 from 01/07/2026 and $20.00 from 01/07/2027.</li>
             </ul>
             <strong>Interpretation notes:</strong>
             <ul>
-                <li><strong>Rounding</strong> — each component is rounded to 15 min (Cl 53.b: 7 min rounds down, 8 min rounds up). Rounding each component separately can differ from rounding totals only, by up to ±15 min.</li>
-                <li><strong>Public Holiday (8h NT)</strong> — auto-added when PH is selected. Under s116 FW Act, PH NT only applies if you were rostered to work that day; untick PH if it falls on a non-rostered day.</li>
-                <li><strong>Casual rates</strong> — the calculator uses full-time treatment. Casual PH pays at <strong>double time and a half</strong> (2.5× base, Cl 62.2.a.iv); not auto-calculated here. Apply the uplift manually if you're casual.</li>
-                <li><strong>Early-travel weekend/PH (Appendix Ex 23–25)</strong> — the 30-min TT+ and TAT-suppression rule for weekend/PH early starts isn't auto-detected (weekday only). If your weekend early-start fits Ex 22–25, manually reduce the forward TT+ to 30 min and untick TAT.</li>
+                <li><strong>Rounding</strong>: each component is rounded to 15 min (Cl 53.b: 7 min rounds down, 8 min rounds up). Rounding each component separately can differ from rounding totals only, by up to ±15 min.</li>
+                <li><strong>Public Holiday (8h NT)</strong>: auto-added when PH is selected. Under s116 FW Act, PH NT only applies if you were rostered to work that day; untick PH if it falls on a non-rostered day.</li>
+                <li><strong>Casual rates</strong>: the calculator uses full-time treatment. Casual PH pays at <strong>double time and a half</strong> (2.5× base, Cl 62.2.a.iv); not auto-calculated here. Apply the uplift manually if you're casual.</li>
+                <li><strong>Early-travel weekend/PH (Appendix Ex 23–25)</strong>: the 30-min TT+ and TAT-suppression rule for weekend/PH early starts isn't auto-detected (weekday only). If your weekend early-start fits Ex 22–25, manually reduce the forward TT+ to 30 min and untick TAT.</li>
             </ul>
         </div>
         <div id="calcOutput"></div>
@@ -387,7 +387,7 @@
         <input type="text" id="projectName" placeholder="Enter project name" style="margin-bottom: 10px;" oninput="calculate()">
         <label>Applicable Day:</label>
         <select id="projectDay" style="width:100%; padding:12px; border:1.5px solid #d2dce6; border-radius:10px; font-size:14px; background:#f8fafc; margin-bottom: 10px; appearance: auto; color:#334155;" onchange="if(this.value) document.getElementById('projectDate').value=''; calculate();">
-            <option value="">— Select —</option>
+            <option value="">Select</option>
             <option>Start of Week</option>
             <option>Mid Week</option>
             <option>End of Week</option>
@@ -1321,7 +1321,7 @@
         if (flags.Callout) {
             notes.push("Callout (Cl 63.a) \u2014 bundled work+travel at OT rate, 4h min, TT/TT+/TAT/Fares suppressed. On-call roster variants (Cl 63.e/f) and TK1 km allowance (Cl 63.a.iii) not auto-calculated.");
         }
-        if (results["NT (RDO, AL or LWOP)"] > 0.001) notes.push("Less than 8 hours NT worked — remaining hours must be covered by RDO, Annual Leave, or LWOP. Note: LWOP is only allowed if approved by management.");
+        if (results["NT (RDO, AL or LWOP)"] > 0.001) notes.push("Less than 8 hours NT worked. Remaining hours must be covered by RDO, Annual Leave, or LWOP. Note: LWOP is only allowed if approved by management.");
         if (notes.length) {
             html += `<div class="notes">${notes.join('<br>')}</div>`;
         }
@@ -1445,7 +1445,7 @@
         ];
         lines.push('Time Entries');
         dlTimeLabels.forEach(function(pair) {
-            const v = (document.getElementById(pair[1]) || {}).value || '—';
+            const v = (document.getElementById(pair[1]) || {}).value || '-';
             lines.push('• ' + pair[0] + ': ' + v);
         });
         // Travel Details — bridging the inputs to the outputs so payroll can
