@@ -1590,8 +1590,19 @@
         if (!window.google || !google.maps || !google.maps.places) return;
         const input = document.getElementById(inputId);
         if (!input) return;
+        // Tasmania bounding box — covers mainland TAS plus King Island,
+        // Flinders Island, Maria Island, Bruny etc. Used as a soft bias so
+        // TAS results float to the top of the dropdown, but mainland results
+        // still appear if the user types something specific (e.g. a Melbourne
+        // address). Country restriction stays AU as a hard outer fence.
+        const tasBounds = new google.maps.LatLngBounds(
+            new google.maps.LatLng(-43.80, 143.80),  // SW (off King Island)
+            new google.maps.LatLng(-39.20, 148.70)   // NE (past Flinders Is)
+        );
         const autocomplete = new google.maps.places.Autocomplete(input, {
-            componentRestrictions: { country: 'au' },  // Bias to Australia
+            componentRestrictions: { country: 'au' },  // Restrict to Australia
+            bounds: tasBounds,                          // Bias toward Tasmania
+            // strictBounds: false (default) — bias only, mainland still reachable
             fields: ['place_id', 'name', 'formatted_address', 'geometry'],
             types: []  // all place types (addresses + establishments + POIs)
         });
