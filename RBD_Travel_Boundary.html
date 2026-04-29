@@ -1,0 +1,718 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>RBD Travel Boundary Map</title>
+<link rel="icon" type="image/x-icon" href="favicon.ico">
+<link rel="apple-touch-icon" href="favicon.ico">
+<style>
+  /* =========================================================================
+     RBD Travel Boundary — design language matched to the RBD Timesheet
+     Calculator. All colours, typography, button styles, section headers,
+     toggle-btn states, and the gradient top border are drawn from the
+     calculator stylesheet so the two tools feel like one product.
+     ========================================================================= */
+  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  html, body { margin: 0; padding: 0; height: 100%; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    background: linear-gradient(135deg, #e8eef5 0%, #f0f4f8 50%, #e8eef5 100%);
+    line-height: 1.5;
+    color: #1a1a1a;
+    overflow: hidden;
+  }
+
+  /* Layout — 380px sidebar + flex map. On narrow viewports the sidebar
+     drops below the map. */
+  #app { display: flex; height: 100vh; }
+  #sidebar {
+    width: 380px;
+    min-width: 380px;
+    background: white;
+    box-shadow: 4px 0 24px rgba(0,40,100,0.10), 1px 0 3px rgba(0,0,0,0.06);
+    overflow-y: auto;
+    overflow-x: hidden;
+    position: relative;
+    padding: 20px;
+  }
+  #sidebar::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    height: 6px;
+    background: linear-gradient(90deg, #003366, #004a99, #0066cc);
+    z-index: 1;
+  }
+  #map { flex: 1; height: 100%; min-height: 320px; }
+  @media (max-width: 720px) {
+    #app { flex-direction: column; }
+    #sidebar { width: 100%; min-width: 0; max-height: 55vh; }
+    #map { height: 45vh; min-height: 280px; }
+  }
+
+  /* Back-to-calculator link — small, unobtrusive, top-left of sidebar */
+  .back-link {
+    display: inline-flex; align-items: center; gap: 4px;
+    font-size: 11px; font-weight: 700;
+    color: #004a99; text-decoration: none;
+    text-transform: uppercase; letter-spacing: 0.6px;
+    padding: 4px 0;
+    margin-top: 6px;
+  }
+  .back-link:hover { color: #003366; }
+  .back-link::before { content: '\2190'; font-size: 14px; line-height: 1; }
+
+  /* Headings — copied verbatim from the calculator */
+  h2 {
+    color: #003366;
+    margin: 4px 0 4px 0;
+    text-align: center;
+    font-size: 21px;
+    font-weight: 800;
+    letter-spacing: -0.3px;
+  }
+  .sub {
+    text-align: center;
+    font-size: 10px;
+    color: #8899aa;
+    margin-bottom: 14px;
+    letter-spacing: 0.3px;
+  }
+  .section-header {
+    font-size: 11px;
+    font-weight: 800;
+    color: #003366;
+    margin: 22px 0 10px;
+    text-transform: uppercase;
+    border-bottom: 2px solid #e8eef5;
+    padding-bottom: 6px;
+    letter-spacing: 1.2px;
+  }
+
+  /* Form controls — copied from the calculator stylesheet for consistency. */
+  label {
+    display: block;
+    font-weight: 600;
+    margin-bottom: 5px;
+    font-size: 12px;
+    color: #4a5568;
+  }
+  input[type="text"], input[type="number"] {
+    width: 100%;
+    padding: 12px;
+    border: 1.5px solid #d2dce6;
+    border-radius: 10px;
+    font-size: 15px;
+    background: #f8fafc;
+    appearance: none;
+    -webkit-appearance: none;
+    transition: border-color 0.2s, box-shadow 0.2s;
+    font-family: inherit;
+    color: #1a1a1a;
+  }
+  input:focus {
+    border-color: #004a99;
+    outline: none;
+    background-color: #fff;
+    box-shadow: 0 0 0 3px rgba(0,74,153,0.1);
+  }
+
+  /* Office selector — three buttons (Devonport / Hobart / Custom) using the
+     calculator's toggle-btn appearance with the yellow active state. */
+  .toggle-section {
+    display: grid;
+    gap: 6px;
+    margin-bottom: 12px;
+  }
+  .toggle-section.cols-2 { grid-template-columns: 1fr 1fr; }
+  .toggle-section.cols-3 { grid-template-columns: 1fr 1fr 1fr; }
+  .toggle-btn {
+    padding: 13px 4px;
+    border: 1.5px solid #b0c4de;
+    background: #f8fafc;
+    color: #3a4457;
+    cursor: pointer;
+    border-radius: 10px;
+    text-align: center;
+    font-weight: 700;
+    font-size: 12px;
+    transition: all 0.15s ease;
+    user-select: none;
+  }
+  .toggle-btn:hover { border-color: #004a99; }
+  .toggle-btn.active {
+    background: linear-gradient(135deg, #FFD600, #FFEA00);
+    color: #1a1a1a;
+    border-color: #e6c200;
+    box-shadow: 0 2px 8px rgba(255,214,0,0.35);
+  }
+
+  /* Custom-origin reveal — only shown when "Custom" is the active office. */
+  #customOriginRow { display: none; margin-bottom: 12px; }
+  #customOriginRow.show { display: block; }
+
+  /* Primary action buttons — match the calculator's maps-btn. */
+  .maps-btn {
+    width: 100%;
+    padding: 14px;
+    background: linear-gradient(135deg, #004a99, #0058b3);
+    color: white;
+    border: none;
+    border-radius: 10px;
+    font-weight: 700;
+    cursor: pointer;
+    margin-top: 8px;
+    font-size: 14px;
+    transition: transform 0.1s, box-shadow 0.2s, opacity 0.2s;
+    box-shadow: 0 2px 8px rgba(0,74,153,0.25);
+    font-family: inherit;
+    letter-spacing: 0.3px;
+  }
+  .maps-btn:active:not(:disabled) { transform: scale(0.98); }
+  .maps-btn:disabled {
+    background: linear-gradient(135deg, #8aa3c2, #9eb6d1);
+    cursor: not-allowed;
+    box-shadow: none;
+    opacity: 0.85;
+  }
+  .maps-btn.primary {
+    background: linear-gradient(135deg, #003366, #004a99);
+    box-shadow: 0 2px 10px rgba(0,74,153,0.3);
+    margin-top: 14px;
+    padding: 16px;
+    font-size: 15px;
+  }
+  .maps-btn.secondary {
+    background: white;
+    color: #004a99;
+    border: 1.5px solid #004a99;
+    box-shadow: none;
+    margin-top: 6px;
+  }
+  .maps-btn.secondary:disabled {
+    background: #f0f0f0;
+    color: #8aa3c2;
+    border-color: #b0c4de;
+  }
+
+  /* Status / results panel — styled like #results in the calculator. */
+  #status {
+    background: linear-gradient(135deg, #f8fafc, #f0f5fa);
+    padding: 14px;
+    border-radius: 14px;
+    border-left: 4px solid #004a99;
+    margin-top: 14px;
+    box-shadow: inset 0 1px 3px rgba(0,0,0,0.04);
+    font-size: 12px;
+    color: #334155;
+    min-height: 40px;
+    white-space: pre-wrap;
+    line-height: 1.55;
+  }
+  #status b { color: #003366; }
+
+  /* Progress spinner — replaces "spinning" status text with a visual cue. */
+  .spin {
+    display: inline-block; width: 12px; height: 12px;
+    border: 2px solid #c0d4ea; border-top-color: #004a99;
+    border-radius: 50%; vertical-align: middle; margin-right: 6px;
+    animation: spin 0.8s linear infinite;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  .help {
+    font-size: 11px;
+    color: #6b7c8d;
+    margin-top: 6px;
+    line-height: 1.5;
+  }
+
+  /* Legend — same gradient panel as the calculator's allow-panel. */
+  .legend {
+    margin-top: 16px;
+    padding: 12px 14px;
+    background: linear-gradient(135deg, #f8fafc, #f0f5fa);
+    border-radius: 12px;
+    border: 1.5px solid #d2dce6;
+    font-size: 12px;
+    color: #334155;
+  }
+  .legend .swatch {
+    display: inline-block;
+    width: 14px;
+    height: 14px;
+    border: 2px solid #004a99;
+    background: rgba(0, 74, 153, 0.15);
+    vertical-align: middle;
+    margin-right: 6px;
+    border-radius: 3px;
+  }
+  .legend .dot {
+    display: inline-block;
+    width: 10px;
+    height: 10px;
+    background: #d93025;
+    border: 2px solid #fff;
+    box-shadow: 0 0 0 1px #d93025;
+    border-radius: 50%;
+    vertical-align: middle;
+    margin-right: 6px;
+  }
+
+  /* Footer — same italic small grey as the calculator's footer-note. */
+  .footer-note {
+    font-size: 9px;
+    color: #8899aa;
+    text-align: center;
+    margin-top: 22px;
+    font-style: italic;
+    line-height: 1.6;
+  }
+
+  /* Polish the Google Places autocomplete dropdown */
+  .pac-container {
+    z-index: 10000;
+    font-family: inherit;
+    border-radius: 10px;
+    box-shadow: 0 4px 16px rgba(0,40,100,0.15);
+  }
+</style>
+</head>
+<body>
+<div id="app">
+  <div id="sidebar">
+    <a href="RBD_Timesheet_Calculator.html" class="back-link">Back to Calculator</a>
+    <h2>RBD Travel Boundary</h2>
+    <div class="sub">30-Minute Drive-Time Boundary &middot; EA 2025</div>
+
+    <div class="section-header">Centre of Employment</div>
+    <div class="toggle-section cols-3" id="officeGroup">
+      <div class="toggle-btn active" data-value="Dev">Devonport Office</div>
+      <div class="toggle-btn"        data-value="Hob">Hobart Office</div>
+      <div class="toggle-btn"        data-value="Custom">Custom</div>
+    </div>
+    <div id="customOriginRow">
+      <label>Custom origin</label>
+      <input type="text" id="origin" placeholder="Start typing an address or place…" autocomplete="off" disabled>
+      <div class="help">Pick a suggestion to confirm the location.</div>
+    </div>
+
+    <div class="section-header">Travel Time</div>
+    <label>Drive time (minutes)</label>
+    <input type="number" id="time" value="30" min="5" max="120" step="1">
+    <div class="help">EA Cl 64.3 boundary is 30 minutes from the centre of employment. Adjust to model other thresholds (e.g. 60 mins for distant works).</div>
+
+    <button id="generate" class="maps-btn primary" disabled>Generate Boundary</button>
+    <button id="clear"    class="maps-btn secondary" disabled>Clear Boundary</button>
+
+    <div class="section-header" style="margin-top:18px;">Status</div>
+    <div id="status">Loading map…</div>
+
+    <div class="legend">
+      <div><span class="swatch"></span>Reachable within selected drive time</div>
+      <div style="margin-top:6px;"><span class="dot"></span>Origin (centre of employment)</div>
+    </div>
+
+    <div class="footer-note">
+      RBD Electrical &mdash; Travel Boundary Tool<br>
+      Boundary is illustrative only. Actual entitlements per RBD Enterprise Agreement 2025.
+    </div>
+  </div>
+  <div id="map"></div>
+</div>
+
+<script>
+"use strict";
+
+// =========================================================================
+//  Google Maps API key.
+//  This file is the GitHub Test source — restrict the key by HTTP referrer
+//  in GCP to your GitHub Pages domain. The Production build swaps this
+//  string for the production key (see RBD_Travel_Boundary_Production.html).
+//
+//  Required APIs on the key:
+//    • Maps JavaScript API
+//    • Places API
+//    • Distance Matrix API
+//    • Geometry library (auto-loaded via &libraries=geometry)
+// =========================================================================
+const GOOGLE_MAPS_API_KEY = "AIzaSyAxs0Z3xxi-IdjT1b9PtYEVgVtwVWtZtQc";
+
+// Canonical RBD office addresses — kept in sync with the timesheet
+// calculator so both tools resolve to identical centre-of-employment points.
+const OFFICES = {
+  Dev: { label: "Devonport Office", address: "3 Bay Drive, Quoiba, TAS 7310" },
+  Hob: { label: "Hobart Office",    address: "6 Lampton Avenue, Derwent Park, TAS 7009" }
+};
+
+// Tasmania bounding box — used as a soft bias for the Custom autocomplete.
+// SW: south of King Island. NE: past Flinders Island. Mainland still
+// reachable via the AU country restriction; TAS just floats to the top.
+const TAS_BOUNDS_LITERAL = {
+  sw: { lat: -43.80, lng: 143.80 },
+  ne: { lat: -39.20, lng: 148.70 }
+};
+
+// Internal sample defaults — previously exposed in an "Advanced" panel
+// and now baked in. 24 bearings + 60 km max radius gives a smooth boundary
+// without burning excess Distance Matrix elements.
+const NUM_BEARINGS = 24;
+const MAX_RADIUS_KM = 60;
+
+// State
+let map = null;
+let originLatLng = null;
+let originLabel = "";
+let originAddress = "";
+let originMarker = null;
+let originInfoWindow = null;
+let boundaryPolygon = null;
+let mapsLoaded = false;
+let autocomplete = null;
+let activeOffice = "Dev";  // matches the default-active button above
+
+const $ = (id) => document.getElementById(id);
+
+// --- Office button group wiring --------------------------------------------
+function wireOfficeGroup() {
+  const group = $("officeGroup");
+  group.querySelectorAll(".toggle-btn").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      group.querySelectorAll(".toggle-btn").forEach((b) => b.classList.remove("active"));
+      btn.classList.add("active");
+      activeOffice = btn.dataset.value;
+      $("customOriginRow").classList.toggle("show", activeOffice === "Custom");
+      onOfficeChanged();
+    });
+  });
+}
+
+// Handle a fresh office selection — resolve to a lat/lng and re-centre.
+function onOfficeChanged() {
+  if (!mapsLoaded) return;
+  clearBoundary();
+  if (activeOffice === "Custom") {
+    // Don't move the marker yet — wait for the user to pick a place from
+    // the autocomplete dropdown.
+    setStatus("Pick a Custom origin from the dropdown to set the location.");
+    return;
+  }
+  const office = OFFICES[activeOffice];
+  setStatus(spinHTML("Looking up " + office.label + "…"));
+  resolveAddressToLatLng(office.address)
+    .then((latLng) => {
+      setOrigin(latLng, office.label, office.address);
+      setStatus(
+        "Origin set to: <b>" + escapeHtml(office.label) + "</b>\n" +
+        escapeHtml(office.address) + "\n\nClick <b>Generate Boundary</b>."
+      );
+    })
+    .catch((err) => {
+      setStatus("<b>Origin lookup failed</b>: " + escapeHtml(String(err)) +
+        "\nSwitch to <b>Custom</b> and type the address manually.");
+    });
+}
+
+// --- Generic helpers --------------------------------------------------------
+function setStatus(html) { $("status").innerHTML = html; }
+function spinHTML(msg) { return '<span class="spin"></span>' + msg; }
+function escapeHtml(s) {
+  return String(s).replace(/[&<>"']/g, (c) => ({
+    "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;"
+  }[c]));
+}
+
+// --- Auto-load Google Maps on page load ------------------------------------
+window.addEventListener("DOMContentLoaded", () => {
+  wireOfficeGroup();
+  $("generate").addEventListener("click", generateBoundary);
+  $("clear").addEventListener("click", clearBoundary);
+  loadGoogleMaps();
+});
+
+function loadGoogleMaps() {
+  if (mapsLoaded && window.google && window.google.maps) { initMap(); return; }
+  setStatus(spinHTML("Loading Google Maps…"));
+  window.__initRBDMap = initMap;
+  const s = document.createElement("script");
+  s.id = "gmaps-script";
+  s.src = "https://maps.googleapis.com/maps/api/js?key=" +
+    encodeURIComponent(GOOGLE_MAPS_API_KEY) +
+    "&libraries=geometry,places&callback=__initRBDMap&v=weekly";
+  s.async = true;
+  s.defer = true;
+  s.onerror = () => setStatus(
+    "<b>Failed to load Google Maps.</b>\nCheck the API key and that the " +
+    "Maps JavaScript API + Places API + Distance Matrix API are all enabled."
+  );
+  document.head.appendChild(s);
+}
+
+async function initMap() {
+  mapsLoaded = true;
+
+  map = new google.maps.Map($("map"), {
+    center: { lat: -41.18, lng: 146.36 }, // Devonport-ish until origin resolves
+    zoom: 11,
+    mapTypeControl: true,
+    streetViewControl: false,
+    fullscreenControl: true,
+  });
+
+  // Wire the Custom-origin Autocomplete with TAS bias + AU restriction.
+  const tasBounds = new google.maps.LatLngBounds(
+    new google.maps.LatLng(TAS_BOUNDS_LITERAL.sw.lat, TAS_BOUNDS_LITERAL.sw.lng),
+    new google.maps.LatLng(TAS_BOUNDS_LITERAL.ne.lat, TAS_BOUNDS_LITERAL.ne.lng)
+  );
+  $("origin").disabled = false;
+  $("origin").placeholder = "Start typing an address or place…";
+  autocomplete = new google.maps.places.Autocomplete($("origin"), {
+    componentRestrictions: { country: "au" },
+    bounds: tasBounds,
+    fields: ["geometry", "name", "formatted_address"],
+  });
+  autocomplete.addListener("place_changed", () => {
+    const place = autocomplete.getPlace();
+    if (!place || !place.geometry || !place.geometry.location) {
+      setStatus("Pick a suggestion from the dropdown to set the origin.");
+      return;
+    }
+    const label = place.name || place.formatted_address || "Custom origin";
+    const addr  = place.formatted_address || place.name || "";
+    setOrigin(place.geometry.location, label, addr);
+    clearBoundary();
+    setStatus("Origin set to: <b>" + escapeHtml(label) + "</b>\n" +
+      escapeHtml(addr) + "\n\nClick <b>Generate Boundary</b>.");
+  });
+
+  $("generate").disabled = false;
+  $("clear").disabled = false;
+
+  // Kick off the default Devonport lookup.
+  onOfficeChanged();
+}
+
+// Resolve a free-text address (one of the two known offices) to a LatLng
+// via Places findPlaceFromQuery — same approach as the original draft, but
+// now reusable for both Devonport and Hobart.
+function resolveAddressToLatLng(address) {
+  return new Promise((resolve, reject) => {
+    const placesService = new google.maps.places.PlacesService(map);
+    placesService.findPlaceFromQuery({
+      query: address,
+      fields: ["geometry", "name", "formatted_address"],
+    }, (res, status) => {
+      if (status === google.maps.places.PlacesServiceStatus.OK && res && res.length) {
+        resolve(res[0].geometry.location);
+      } else {
+        reject(status || "no result");
+      }
+    });
+  });
+}
+
+function setOrigin(latLng, label, address) {
+  originLatLng = latLng;
+  originLabel = label;
+  originAddress = address;
+
+  if (originMarker) originMarker.setMap(null);
+  originMarker = new google.maps.Marker({
+    position: originLatLng,
+    map,
+    title: label + " — " + address,
+    icon: {
+      path: google.maps.SymbolPath.CIRCLE,
+      scale: 9,
+      fillColor: "#d93025",
+      fillOpacity: 1,
+      strokeColor: "#fff",
+      strokeWeight: 2,
+    },
+  });
+  if (originInfoWindow) originInfoWindow.close();
+  originInfoWindow = new google.maps.InfoWindow({
+    content: '<div style="font-family:inherit;font-size:13px;color:#1a1a1a">' +
+      '<b style="color:#003366">' + escapeHtml(label) + '</b><br>' +
+      escapeHtml(address) + '</div>',
+  });
+  originInfoWindow.open(map, originMarker);
+  originMarker.addListener("click", () => originInfoWindow.open(map, originMarker));
+
+  map.setCenter(originLatLng);
+  if (map.getZoom() < 10) map.setZoom(11);
+}
+
+// --- Boundary generation ----------------------------------------------------
+// Departure time is fixed at "now + 1 minute" using BEST_GUESS traffic.
+// The Advanced toggles from the original draft are gone; if you want a
+// peak-hour boundary, switch your machine clock or re-introduce the
+// departure toggle here.
+function getDepartureTime() {
+  const d = new Date();
+  d.setMinutes(d.getMinutes() + 1);
+  return d;
+}
+
+function destinationPoint(origin, bearingDeg, distanceM) {
+  return google.maps.geometry.spherical.computeOffset(origin, distanceM, bearingDeg);
+}
+
+function clearBoundary() {
+  if (boundaryPolygon) { boundaryPolygon.setMap(null); boundaryPolygon = null; }
+}
+
+async function generateBoundary() {
+  if (!originLatLng) {
+    setStatus("No origin set. Pick a Centre of Employment above.");
+    return;
+  }
+  const targetMin = parseFloat($("time").value);
+  if (!(targetMin > 0)) { setStatus("Enter a valid drive time."); return; }
+  const targetSec = targetMin * 60;
+  const departureTime = getDepartureTime();
+
+  $("generate").disabled = true;
+  clearBoundary();
+
+  // Probing distances. 13 candidates per bearing produces a smooth
+  // bisection from origin out to MAX_RADIUS_KM.
+  const baseDistances = [2, 5, 8, 12, 17, 23, 30, 38, 47, 60, 75, 100, 130];
+  const distancesKm = baseDistances.filter((d) => d < MAX_RADIUS_KM);
+  if (distancesKm[distancesKm.length - 1] !== MAX_RADIUS_KM) distancesKm.push(MAX_RADIUS_KM);
+
+  const bearings = [];
+  for (let i = 0; i < NUM_BEARINGS; i++) bearings.push((360 / NUM_BEARINGS) * i);
+
+  const candidates = [];
+  for (let bi = 0; bi < bearings.length; bi++) {
+    for (const d of distancesKm) {
+      candidates.push({
+        bi, bearing: bearings[bi], distKm: d,
+        latLng: destinationPoint(originLatLng, bearings[bi], d * 1000),
+        duration: null,
+      });
+    }
+  }
+
+  setStatus(spinHTML(
+    "Querying " + candidates.length + " sample points\n" +
+    "(" + NUM_BEARINGS + " bearings × " + distancesKm.length + " distances)…"
+  ));
+
+  const dms = new google.maps.DistanceMatrixService();
+  const BATCH = 25;
+  let processed = 0;
+
+  for (let i = 0; i < candidates.length; i += BATCH) {
+    const batch = candidates.slice(i, i + BATCH);
+    try {
+      await new Promise((resolve, reject) => {
+        dms.getDistanceMatrix({
+          origins: [originLatLng],
+          destinations: batch.map((c) => c.latLng),
+          travelMode: google.maps.TravelMode.DRIVING,
+          drivingOptions: { departureTime, trafficModel: google.maps.TrafficModel.BEST_GUESS },
+        }, (response, status) => {
+          if (status !== "OK") return reject(status);
+          const row = response.rows[0].elements;
+          for (let k = 0; k < batch.length; k++) {
+            const el = row[k];
+            if (el.status === "OK") {
+              batch[k].duration = el.duration_in_traffic
+                ? el.duration_in_traffic.value
+                : el.duration.value;
+            } else {
+              batch[k].duration = null;
+            }
+          }
+          resolve();
+        });
+      });
+    } catch (err) {
+      setStatus("<b>Distance Matrix error:</b> " + escapeHtml(String(err)) +
+        ".\nCheck that the Distance Matrix API is enabled for this key.");
+      $("generate").disabled = false;
+      return;
+    }
+    processed += batch.length;
+    setStatus(spinHTML("Sampled " + processed + " / " + candidates.length + " points…"));
+    await new Promise((r) => setTimeout(r, 80));
+  }
+
+  // For each bearing, walk outward until duration crosses targetSec, then
+  // linearly interpolate the boundary distance.
+  const boundaryPoints = [];
+  let bearingsExceededRadius = 0;
+  for (let bi = 0; bi < bearings.length; bi++) {
+    const samples = candidates
+      .filter((c) => c.bi === bi && c.duration != null)
+      .sort((a, b) => a.distKm - b.distKm);
+    if (!samples.length) continue;
+
+    let prev = { distKm: 0, duration: 0 };
+    let boundaryDistKm = null;
+    for (const s of samples) {
+      if (s.duration >= targetSec) {
+        const span = s.duration - prev.duration;
+        const t = span > 0 ? (targetSec - prev.duration) / span : 0;
+        boundaryDistKm = prev.distKm + t * (s.distKm - prev.distKm);
+        break;
+      }
+      prev = s;
+    }
+    if (boundaryDistKm == null) {
+      boundaryDistKm = samples[samples.length - 1].distKm;
+      bearingsExceededRadius++;
+    }
+    boundaryPoints.push(destinationPoint(originLatLng, bearings[bi], boundaryDistKm * 1000));
+  }
+
+  if (boundaryPoints.length < 3) {
+    setStatus("Not enough valid samples to draw a polygon.\n" +
+      "Try a different origin or time.");
+    $("generate").disabled = false;
+    return;
+  }
+
+  boundaryPolygon = new google.maps.Polygon({
+    paths: boundaryPoints,
+    strokeColor: "#004a99",
+    strokeWeight: 2.5,
+    strokeOpacity: 0.95,
+    fillColor: "#004a99",
+    fillOpacity: 0.18,
+    map,
+    clickable: false,
+  });
+
+  const bounds = new google.maps.LatLngBounds();
+  boundaryPoints.forEach((p) => bounds.extend(p));
+  bounds.extend(originLatLng);
+  map.fitBounds(bounds, 40);
+
+  // Distance from origin to the farthest boundary point (km) — handy
+  // sanity-check stat for the timesheet team.
+  let maxKm = 0;
+  for (const p of boundaryPoints) {
+    const d = google.maps.geometry.spherical.computeDistanceBetween(originLatLng, p) / 1000;
+    if (d > maxKm) maxKm = d;
+  }
+
+  let msg =
+    "Boundary drawn from <b>" + escapeHtml(originLabel) + "</b>\n" +
+    "Drive time: <b>" + targetMin + " min</b>\n" +
+    "Farthest reach: <b>" + maxKm.toFixed(1) + " km</b>\n" +
+    "Sample bearings: " + boundaryPoints.length;
+  if (bearingsExceededRadius > 0) {
+    msg += "\n\n<b>Note:</b> " + bearingsExceededRadius +
+      " bearing(s) still reachable beyond " + MAX_RADIUS_KM + " km — " +
+      "boundary is clipped to the search radius.";
+  }
+  setStatus(msg);
+  $("generate").disabled = false;
+}
+</script>
+</body>
+</html>
