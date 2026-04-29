@@ -66,6 +66,12 @@
     }
     .disclaimer-note { margin-bottom: 8px; }
     .howto-note { margin-bottom: 12px; }
+    .info-toggle-btn {
+      padding: 9px 12px;
+      font-size: 11px;
+      letter-spacing: 0.4px;
+      margin: 0 0 6px;
+    }
     input[type="text"], input[type="number"] {
       padding: 10px 12px; font-size: 14px;
     }
@@ -318,6 +324,41 @@
   }
   .disclaimer-note strong { color: #003366; }
 
+  /* Information toggle button — collapses the verbose disclaimer and
+     "how it works" panels into a single dropdown so they don't take over
+     the viewport (especially on mobile, where the status panel was being
+     pushed below the fold after Generate). Styled like maps-btn.secondary
+     but slimmer so it doesn't compete with the primary action button. */
+  .info-toggle-btn {
+    width: 100%;
+    padding: 10px 14px;
+    background: white;
+    color: #004a99;
+    border: 1.5px solid #004a99;
+    border-radius: 10px;
+    font-weight: 700;
+    cursor: pointer;
+    font-size: 12px;
+    font-family: inherit;
+    letter-spacing: 0.5px;
+    text-transform: uppercase;
+    transition: background 0.15s;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin: -2px 0 6px;
+  }
+  .info-toggle-btn:hover, .info-toggle-btn.open { background: #f0f6fc; }
+  .info-toggle-btn .caret {
+    font-size: 9px;
+    color: #004a99;
+    transition: transform 0.2s;
+  }
+  .info-toggle-btn.open .caret { transform: rotate(180deg); }
+  #infoPanel { display: none; margin-bottom: 6px; }
+  #infoPanel.open { display: block; }
+  #infoPanel .disclaimer-note { margin-top: 0; }
+
   /* "How it works" note — same shape as the disclaimer but a soft
      blue tint so the two don't visually run together. */
   .howto-note {
@@ -366,23 +407,30 @@
     <h2>RBD Travel Boundary</h2>
     <div class="sub">30-Minute Drive-Time Boundary &middot; EA 2025</div>
 
-    <div class="disclaimer-note">
-      <strong>Visual guide only.</strong> Polygon shows approximate
-      free-flow driving distances from Google Maps. Actual travel
-      times vary with traffic, weather, and road conditions. Final
-      30-min Travel Boundary determinations are governed by the
-      RBD Enterprise Agreement 2025 (Cl 64.1).
-    </div>
+    <button type="button" id="infoToggle" class="info-toggle-btn"
+            aria-expanded="false" aria-controls="infoPanel">
+      <span>Information</span>
+      <span class="caret">&#9660;</span>
+    </button>
+    <div id="infoPanel">
+      <div class="disclaimer-note">
+        <strong>Visual guide only.</strong> Polygon shows approximate
+        free-flow driving distances from Google Maps. Actual travel
+        times vary with traffic, weather, and road conditions. Final
+        30-min Travel Boundary determinations are governed by the
+        RBD Enterprise Agreement 2025 (Cl 64.1).
+      </div>
 
-    <div class="howto-note">
-      <strong>How it works.</strong> Pick a Centre of Employment
-      (or type a Custom origin), set the drive time, and click
-      Generate Boundary. The tool samples driving times in 100
-      directions out from the origin and draws two shapes:
-      a <strong style="color:#003366;">solid blue polygon</strong>
-      (smoothed using a median + mean filter and curve-fitted
-      edges) and a <strong style="color:#d93025;">thin red
-      outline</strong> showing the raw, unsmoothed sample points.
+      <div class="howto-note">
+        <strong>How it works.</strong> Pick a Centre of Employment
+        (or type a Custom origin), set the drive time, and click
+        Generate Boundary. The tool samples driving times in 100
+        directions out from the origin and draws two shapes:
+        a <strong style="color:#003366;">solid blue polygon</strong>
+        (smoothed using a median + mean filter and curve-fitted
+        edges) and a <strong style="color:#d93025;">thin red
+        outline</strong> showing the raw, unsmoothed sample points.
+      </div>
     </div>
 
     <div class="section-header">Centre of Employment</div>
@@ -566,6 +614,19 @@ window.addEventListener("DOMContentLoaded", () => {
   wireOfficeGroup();
   $("generate").addEventListener("click", generateBoundary);
   $("clear").addEventListener("click", clearBoundary);
+  // Information dropdown — collapses the disclaimer + how-it-works into a
+  // togglable panel so they don't push the Generate / Status panels below
+  // the fold on small screens.
+  const infoBtn = $("infoToggle");
+  if (infoBtn) {
+    infoBtn.addEventListener("click", function() {
+      const panel = $("infoPanel");
+      const open = !panel.classList.contains("open");
+      panel.classList.toggle("open", open);
+      this.classList.toggle("open", open);
+      this.setAttribute("aria-expanded", open ? "true" : "false");
+    });
+  }
   loadGoogleMaps();
 });
 
