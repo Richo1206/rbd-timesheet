@@ -274,7 +274,7 @@
      page sub-line so users see it before they generate anything. Muted
      palette so it informs without alarming. */
   .disclaimer-note {
-    margin: -2px 0 14px;
+    margin: -2px 0 10px;
     padding: 9px 12px;
     background: #f8fafc;
     border-left: 3px solid #b0c4de;
@@ -284,6 +284,20 @@
     line-height: 1.55;
   }
   .disclaimer-note strong { color: #003366; }
+
+  /* "How it works" note — same shape as the disclaimer but a soft
+     blue tint so the two don't visually run together. */
+  .howto-note {
+    margin: 0 0 14px;
+    padding: 9px 12px;
+    background: linear-gradient(135deg, #f0f6fc, #e8f0fa);
+    border-left: 3px solid #004a99;
+    border-radius: 6px;
+    font-size: 11px;
+    color: #334155;
+    line-height: 1.55;
+  }
+  .howto-note strong { color: #003366; }
 
   /* Polish the Google Places autocomplete dropdown */
   .pac-container {
@@ -306,10 +320,18 @@
 
     <div class="disclaimer-note">
       <strong>Visual guide only.</strong> Polygon shows approximate
-      free-flow driving distances from Google Maps &mdash; actual
-      travel times vary with traffic, weather, and road conditions.
-      Final 30-min Travel Boundary determinations are governed by
-      the RBD Enterprise Agreement 2025 (Cl 64.1).
+      free-flow driving distances from Google Maps. Actual travel
+      times vary with traffic, weather, and road conditions. Final
+      30-min Travel Boundary determinations are governed by the
+      RBD Enterprise Agreement 2025 (Cl 64.1).
+    </div>
+
+    <div class="howto-note">
+      <strong>How it works.</strong> Pick a Centre of Employment
+      (or type a Custom origin), set the drive time, and click
+      Generate Boundary. The tool checks driving routes in 100
+      directions out from the origin and draws a polygon of the
+      area reachable within that time.
     </div>
 
     <div class="section-header">Centre of Employment</div>
@@ -327,7 +349,7 @@
     <div class="section-header">Travel Time</div>
     <label>Drive time (minutes)</label>
     <input type="number" id="time" value="30" min="5" max="120" step="1">
-    <div class="help">EA Cl 64.3 boundary is 30 minutes from the centre of employment. Adjust to model other thresholds (e.g. 60 mins for distant works).</div>
+    <div class="help">EA Cl 64.1 defines the Travel Boundary as 30 minutes from the centre of employment. Adjust to model other thresholds (e.g. 60 mins for distant works).</div>
 
     <button id="generate" class="maps-btn primary" disabled>Generate Boundary</button>
     <button id="clear"    class="maps-btn secondary" disabled>Clear Boundary</button>
@@ -341,7 +363,7 @@
     </div>
 
     <div class="footer-note">
-      RBD Electrical &mdash; Travel Boundary Tool<br>
+      RBD Electrical &middot; Travel Boundary Tool<br>
       Boundary is illustrative only. Actual entitlements per RBD Enterprise Agreement 2025.
     </div>
   </div>
@@ -567,7 +589,7 @@ function setOrigin(latLng, label, address) {
   originMarker = new google.maps.Marker({
     position: originLatLng,
     map,
-    title: label + " — " + address,
+    title: label + ": " + address,
     icon: {
       path: google.maps.SymbolPath.CIRCLE,
       scale: 9,
@@ -821,8 +843,8 @@ async function generateBoundary() {
     "Sample bearings: " + sampledPoints.length + " (smoothed)";
   if (bearingsExceededRadius > 0) {
     msg += "\n\n<b>Note:</b> " + bearingsExceededRadius +
-      " bearing(s) still reachable beyond " + MAX_RADIUS_KM + " km — " +
-      "boundary is clipped to the search radius.";
+      " bearing(s) still reachable beyond " + MAX_RADIUS_KM + " km. " +
+      "Boundary is clipped to the search radius.";
   }
   setStatus(msg);
   $("generate").disabled = false;
