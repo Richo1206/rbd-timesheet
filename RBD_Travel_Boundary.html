@@ -299,6 +299,79 @@
   }
   .howto-note strong { color: #003366; }
 
+  /* Advanced collapsible section — small expandable details block for
+     diagnostic toggles like "show raw polygon". Hidden by default so it
+     doesn't clutter the main UI. */
+  details.advanced {
+    margin: 14px 0 0;
+    padding: 10px 12px;
+    background: linear-gradient(135deg, #f8fafc, #f0f5fa);
+    border: 1.5px solid #d2dce6;
+    border-radius: 10px;
+  }
+  details.advanced summary {
+    cursor: pointer;
+    font-size: 11px;
+    font-weight: 800;
+    color: #003366;
+    text-transform: uppercase;
+    letter-spacing: 1.2px;
+    outline: none;
+    user-select: none;
+    list-style: none;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+  details.advanced summary::-webkit-details-marker { display: none; }
+  details.advanced summary::after {
+    content: '\25BC';
+    color: #004a99;
+    font-size: 9px;
+    transition: transform 0.2s;
+  }
+  details.advanced[open] summary::after { transform: rotate(180deg); }
+  details.advanced .check-row {
+    display: flex;
+    align-items: flex-start;
+    gap: 8px;
+    margin-top: 10px;
+    font-size: 12px;
+    color: #334155;
+    line-height: 1.45;
+  }
+  details.advanced .check-row input[type="checkbox"] {
+    width: 18px;
+    height: 18px;
+    accent-color: #004a99;
+    cursor: pointer;
+    flex-shrink: 0;
+    margin-top: 1px;
+  }
+  details.advanced .check-row label {
+    margin: 0;
+    font-weight: 400;
+    cursor: pointer;
+    font-size: 12px;
+    color: #334155;
+    line-height: 1.45;
+  }
+
+  /* Raw-polygon swatch in the legend — only shown when the debug
+     overlay is active. Thin red outline matches the on-map polygon. */
+  .legend .swatch-raw {
+    display: inline-block;
+    width: 14px;
+    height: 14px;
+    border: 1.5px dashed #d93025;
+    background: transparent;
+    vertical-align: middle;
+    margin-right: 6px;
+    border-radius: 3px;
+  }
+  #legendRawRow { display: none; }
+  #legendRawRow.show { display: block; margin-top: 6px; }
+
   /* Polish the Google Places autocomplete dropdown */
   .pac-container {
     z-index: 10000;
@@ -351,6 +424,14 @@
     <input type="number" id="time" value="30" min="5" max="120" step="1">
     <div class="help">EA Cl 64.1 defines the Travel Boundary as 30 minutes from the centre of employment. Adjust to model other thresholds (e.g. 60 mins for distant works).</div>
 
+    <details class="advanced">
+      <summary>Advanced</summary>
+      <div class="check-row">
+        <input type="checkbox" id="showRaw">
+        <label for="showRaw">Show raw (un-smoothed) polygon as a thin red outline. Useful for verifying the smoothing isn't hiding important detail.</label>
+      </div>
+    </details>
+
     <button id="generate" class="maps-btn primary" disabled>Generate Boundary</button>
     <button id="clear"    class="maps-btn secondary" disabled>Clear Boundary</button>
 
@@ -360,6 +441,7 @@
     <div class="legend">
       <div><span class="swatch"></span>Reachable within selected drive time</div>
       <div style="margin-top:6px;"><span class="dot"></span>Origin (centre of employment)</div>
+      <div id="legendRawRow"><span class="swatch-raw"></span>Raw polygon (no smoothing)</div>
     </div>
 
     <div class="footer-note">
@@ -444,6 +526,10 @@ let originAddress = "";
 let originMarker = null;
 let originInfoWindow = null;
 let boundaryPolygon = null;
+let rawPolygon = null;     // diagnostic overlay: un-smoothed polygon, drawn
+                           // as a thin red outline when the Advanced checkbox
+                           // is ticked. Lets the user spot-check whether the
+                           // smoothing is hiding important detail.
 let mapsLoaded = false;
 let autocomplete = null;
 let activeOffice = "Dev";  // matches the default-active button above
@@ -565,6 +651,21 @@ async function initMap() {
   $("generate").disabled = false;
   $("clear").disabled = false;
 
+  // Wire the "Show raw polygon" checkbox to toggle its legend row and
+  // clear any existing raw overlay when un-ticked. Re-running Generate
+  // is what actually re-draws the overlay when the box is ticked back on.
+  const rawCb = document.getElementById("showRaw");
+  if (rawCb) {
+    rawCb.addEventListener("change", () => {
+      document.getElementById("legendRawRow")
+        .classList.toggle("show", rawCb.checked);
+      if (!rawCb.checked && rawPolygon) {
+        rawPolygon.setMap(null);
+        rawPolygon = null;
+      }
+    });
+  }
+
   // Kick off the default Devonport lookup.
   onOfficeChanged();
 }
@@ -634,6 +735,7 @@ function destinationPoint(origin, bearingDeg, distanceM) {
 
 function clearBoundary() {
   if (boundaryPolygon) { boundaryPolygon.setMap(null); boundaryPolygon = null; }
+  if (rawPolygon)      { rawPolygon.setMap(null);      rawPolygon = null; }
 }
 
 async function generateBoundary() {
@@ -839,6 +941,34 @@ async function generateBoundary() {
     return;
   }
 
+  // ---- Optional raw-polygon overlay (Advanced > Show raw) ---------------
+  // Built directly from rawDistKm so the user can see exactly what the
+  // smoothing pipeline (median + mean + spline) is hiding. Drawn FIRST so
+  // the smoothed polygon renders on top of it.
+  const showRaw = document.getElementById("showRaw") &&
+                  document.getElementById("showRaw").checked;
+  if (showRaw) {
+    const rawPoints = [];
+    for (let bi = 0; bi < bearings.length; bi++) {
+      if (rawDistKm[bi] == null) continue;
+      rawPoints.push(destinationPoint(originLatLng, bearings[bi], rawDistKm[bi] * 1000));
+    }
+    if (rawPoints.length >= 3) {
+      rawPolygon = new google.maps.Polygon({
+        paths: rawPoints,
+        strokeColor: "#d93025",
+        strokeWeight: 1.2,
+        strokeOpacity: 0.9,
+        fillOpacity: 0,        // outline only, no fill
+        geodesic: true,
+        zIndex: 1,             // sits below the smoothed polygon
+        map,
+        clickable: false,
+      });
+    }
+    document.getElementById("legendRawRow").classList.add("show");
+  }
+
   boundaryPolygon = new google.maps.Polygon({
     paths: boundaryPoints,
     strokeColor: "#004a99",
@@ -847,6 +977,7 @@ async function generateBoundary() {
     fillColor: "#004a99",
     fillOpacity: 0.18,
     geodesic: true,        // curve edges along the earth's surface
+    zIndex: 2,             // draws on top of the optional raw overlay
     map,
     clickable: false,
   });
