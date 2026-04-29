@@ -124,24 +124,28 @@
     <h2>RBD Timesheet Calculator</h2>
     <div class="sub">EA 2025 &amp; Handbook Rev 8.0</div>
     <div class="sub no-print" style="margin-bottom: 8px; font-size: 10px; color: #999; font-style: italic;">For more information on each section, click the <span style="display:inline-flex; align-items:center; justify-content:center; width:16px; height:16px; border-radius:50%; border:1.5px solid #004a99; color:#004a99; font-size:10px; font-weight:bold; font-family:Georgia,serif; vertical-align:middle;">i</span> button to the right.</div>
-    <div class="section-header no-print">
+    <!--
+      3-column grid: title (left), Travel Boundary Tool button (centred),
+      info-btn (right). 1fr / auto / 1fr keeps the middle button at the
+      geometric centre regardless of left/right widths.
+    -->
+    <div class="section-header no-print" style="display: grid; grid-template-columns: 1fr auto 1fr; align-items: center; gap: 8px;">
         <span>Google Maps Travel Tool</span>
-        <span class="section-header-actions">
-            <a href="https://richo1206.github.io/rbd-timesheet/RBD_Travel_Boundary.html" target="_blank" rel="noopener" class="tool-link-btn" title="Open the 30-min Travel Boundary map in a new tab">Boundary Tool <span class="arrow">&#8599;</span></a>
-            <button class="info-btn" onclick="toggleInfo('infoMaps')">i</button>
-        </span>
+        <a href="https://richo1206.github.io/rbd-timesheet/RBD_Travel_Boundary.html" target="_blank" rel="noopener" class="tool-link-btn" title="Open the 30-min Travel Boundary map in a new tab">Travel Boundary Tool <span class="arrow">&#8599;</span></a>
+        <button class="info-btn" onclick="toggleInfo('infoMaps')" style="justify-self: end;">i</button>
     </div>
     <div id="infoMaps" class="info-panel no-print">
         <strong>How it works:</strong>
         <ul>
-            <li><strong>Fully automatic.</strong> Every field in this section triggers a background Google Maps lookup as soon as you tab away — no button to press. Travel Hrs/Mins and any ticked km allowances (TK1, TK2, Kms Company Car) fill themselves in a second or two.</li>
-            <li>Select your <strong>start location</strong> — Devonport Office, Hobart Office, or Custom. If Custom, start typing the address or place name and pick from the Google Autocomplete dropdown (accommodation, other RBD office, meeting point, etc.).</li>
+            <li><strong>Fully automatic.</strong> Every field in this section triggers a background Google Maps lookup as soon as you tab away — no button to press. Travel Hrs/Mins, Return Hrs/Mins, and any ticked km allowances (TK1, TK2, Kms Company Car) fill themselves in a second or two.</li>
+            <li>Select your <strong>start location</strong> — Devonport Office, Hobart Office, or Custom. If Custom, start typing the address or place name and pick from the Google Autocomplete dropdown (accommodation, other RBD office, meeting point, etc.). The dropdown is biased to Tasmania, so TAS results appear at the top.</li>
             <li>Start typing the <strong>destination</strong> (site name or address) and pick from the Google Autocomplete dropdown. If the place you need isn't listed, type a street address or town + state instead.</li>
             <li>Tap <strong>Verify Route</strong> to open Google Maps in a new tab and visually sanity-check the route Google is using.</li>
-            <li>The calculator uses Travel Hrs/Mins (from the morning leg) to auto-set your "Arrived on Site" time. The return leg drives "Arrived at Workshop/Accom" the same way: it auto-fills based on when you left site plus the return travel time.</li>
-            <li><strong>Return section</strong> is always visible — pick where you're heading back to (Devonport, Hobart, or a Custom address like accommodation). The return origin is automatically the last site in your chain.</li>
-            <li><strong>TK1 / TK2 / Kms (Company Car):</strong> tick these in Extra Allowances and the km fields populate automatically using Google's distances. Kms (CC) uses morning + return for the full day's km when both legs are fetched. For TK2 multi-site days, click <em>Add another site</em> to chain up to 5 sites (Dest → Site 2 → Site 3 → …).</li>
-            <li>Manual overrides are always preserved — if you type your own Travel Hrs/Mins or km values, auto-fires won't clobber them.</li>
+            <li>Travel Hrs/Mins (morning leg) auto-set your "Arrived on Site" time. Return Hrs/Mins (return leg) auto-set your "Arrived at Workshop/Accom" time the same way (Left Site + Return time).</li>
+            <li><strong>Return section</strong> is always visible — pick where you're heading back to (Devonport, Hobart, or a Custom address like accommodation). The return origin is automatically the last site in your chain. The Return section mirrors the morning section: same Verify Route button + Return Hrs/Mins inputs.</li>
+            <li><strong>TK1 / TK2 / Kms (Company Car):</strong> tick these in Extra Allowances and the km fields populate automatically using Google's distances. Kms (CC) uses morning + return for the full day's km when both legs are fetched, and auto-ticks itself on <em>any</em> travelled km when Company Car is on. For TK2 multi-site days, click <em>Add another site</em> to chain up to 5 sites (Dest → Site 2 → Site 3 → …).</li>
+            <li>Manual overrides are always preserved — if you type your own Travel Hrs/Mins, Return Hrs/Mins, or km values, auto-fires won't clobber them.</li>
+            <li><strong>Travel Boundary Tool</strong> (button at the top of this section) — opens a separate 30-min drive-time map. Useful when you need to check whether a site is inside or outside the EA's Travel Boundary (Cl 64.1.a). Pick a Centre of Employment (Devonport, Hobart, or a Custom address) and the tool plots the reachable area as a polygon on Google Maps.</li>
         </ul>
     </div>
     <div class="route-box no-print">
@@ -262,9 +266,9 @@
         <strong>How to fill this in:</strong>
         <ul>
             <li><strong>Left Workshop/Accom</strong> — the time you left the workshop or accommodation.</li>
-            <li><strong>Arrived on Site</strong> — the time you arrived at the job site.</li>
+            <li><strong>Arrived on Site</strong> — the time you arrived at the job site. Auto-fills from "Left Workshop/Accom" + the morning Travel Hrs/Mins (set by the Google Maps Travel Tool above). Type over it to override.</li>
             <li><strong>Left Site</strong> — the time you left the job site at the end of the day.</li>
-            <li><strong>Arrived at Workshop/Accom</strong> — the time you got back to workshop or accommodation.</li>
+            <li><strong>Arrived at Workshop/Accom</strong> — the time you got back to workshop or accommodation. Auto-fills from "Left Site" + the Return Hrs/Mins. Type over it to override.</li>
         </ul>
         <strong>Toggle buttons:</strong>
         <ul>
@@ -474,15 +478,15 @@
         html += '<ul>';
         html += '<li><strong>TK1 ($0.57/km, Cl 64.3.a)</strong> \u2014 own-vehicle km travelled outside the 30-min Travel Boundary. Ratio-method: km \u00D7 (mins outside boundary) / (total mins). Not paid when company transport is used (Cl 64.3.b).</li>';
         html += '<li><strong>TK2 ($1.05/km, Cl 64.4)</strong> \u2014 own-vehicle km travelled between worksites during the workday. Not applicable when company transport is used.</li>';
-        html += '<li><strong>Kms (Company Car) ($0.75/km)</strong> \u2014 km driven when you\'re responsible for a company vehicle. Internal operational allowance. When ticked AND a Google Maps return leg has been fetched, auto-fills with the morning + return km (full day round trip).</li>';
+        html += '<li><strong>Kms (Company Car) ($0.75/km)</strong> \u2014 km driven when you\'re responsible for a company vehicle. Internal operational allowance. When the Company Car button is on AND any km were travelled today, this allowance auto-ticks itself and the km field auto-fills with the morning + return km (full day round trip). No minimum threshold \u2014 any travelled km counts. Untick manually if you don\'t want to claim it.</li>';
         html += '<li><strong>Mutex:</strong> TK1 + TK2 (own vehicle) and Kms Company Car (company vehicle) are mutually exclusive. Ticking the top-of-form Company Car button disables TK1 and TK2; unticking it disables Kms Company Car.</li>';
         html += '</ul>';
         html += '<strong>Google Maps auto-fill:</strong>';
         html += '<ul>';
         html += '<li>With any of TK1/TK2/Kms CC ticked (as applicable), the km field auto-populates when you use the Google Maps Travel Tool above.</li>';
-        html += '<li><strong>TK1</strong> pulls the outside-boundary km for both the morning and return legs. A "Return" section in the Travel Tool appears so you can specify where you\'re going back to (e.g. accommodation, other office).</li>';
+        html += '<li><strong>TK1</strong> pulls the outside-boundary km for both the morning and return legs. The Return section in the Travel Tool is always visible so you can specify where you\'re going back to (e.g. accommodation, other office).</li>';
         html += '<li><strong>TK2</strong> pulls the sum of between-site km. Click "Add another site" to chain multiple sites (up to 5 total). The return leg automatically starts from your last added site.</li>';
-        html += '<li><strong>Kms (Company Car)</strong> pulls the morning leg + the return leg (full round trip) \u2014 the Return section is always visible so the return distance is known by default. Adjust manually if your day was asymmetric (e.g. multiple stops Google didn\'t see).</li>';
+        html += '<li><strong>Kms (Company Car)</strong> pulls the morning leg + the return leg (full round trip) \u2014 the Return section is always visible so the return distance is known by default. Tap <em>Verify Return Route</em> in the Travel Tool to sanity-check the return leg in Google Maps. Adjust manually if your day was asymmetric (e.g. multiple stops Google didn\'t see).</li>';
         html += '<li>Auto-filled values can always be overwritten manually. Once you type a km value it won\'t be clobbered by a later auto-calculate.</li>';
         html += '</ul>';
         html += '<strong>Note:</strong> TAT, Fares, and Meal Allowance (Overtime) are already auto-calculated by the timesheet above \u2014 they are not duplicated here.';
