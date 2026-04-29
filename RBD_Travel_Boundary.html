@@ -221,7 +221,28 @@
     margin-top: 14px;
     padding: 16px;
     font-size: 15px;
+    /* Position context for the progress-fill overlay below. */
+    position: relative;
+    overflow: hidden;
   }
+  /* Progress-fill overlay — translucent white pane that grows from the
+     left as the boundary generation progresses. CSS variable --progress
+     is updated by JS in the batch loop. Sits between the button
+     background and the text (::before paints before text). */
+  .maps-btn.primary::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; bottom: 0;
+    width: var(--progress, 0%);
+    background: linear-gradient(135deg, rgba(255,255,255,0.22),
+                                          rgba(255,255,255,0.08));
+    transition: width 0.25s ease-out;
+    pointer-events: none;
+  }
+  /* Text needs explicit positioning context so it paints above the
+     ::before overlay (otherwise both share z-auto and source order
+     decides — text would still win, but this is defensive). */
+  .maps-btn.primary > * { position: relative; }
   .maps-btn.secondary {
     background: white;
     color: #004a99;
@@ -450,7 +471,7 @@
     <input type="number" id="time" value="30" min="5" max="120" step="1">
     <div class="help">EA Cl 64.1 defines the Travel Boundary as 30 minutes from the centre of employment. Adjust to model other thresholds (e.g. 60 mins for distant works).</div>
 
-    <button id="generate" class="maps-btn primary" disabled>Generate Boundary</button>
+    <button id="generate" class="maps-btn primary" disabled><span id="generateLabel">Generate Boundary</span></button>
     <button id="clear"    class="maps-btn secondary" disabled>Clear Boundary</button>
 
     <div class="section-header" style="margin-top:18px;">Status</div>
@@ -755,6 +776,25 @@ function destinationPoint(origin, bearingDeg, distanceM) {
   return google.maps.geometry.spherical.computeOffset(origin, distanceM, bearingDeg);
 }
 
+// --- Generate Boundary button progress helpers ---------------------------
+// The button doubles as a progress bar: a translucent white overlay (the
+// .maps-btn.primary::before pseudo-element) grows from the left as
+// Distance Matrix batches complete, and the label updates live with the
+// percentage. Means mobile users can see progress without scrolling down
+// to find the Status panel.
+function setGenerateProgress(pct, label) {
+  const btn = document.getElementById("generate");
+  if (!btn) return;
+  btn.style.setProperty("--progress", pct + "%");
+  const lbl = document.getElementById("generateLabel");
+  if (lbl) lbl.textContent = label;
+}
+function resetGenerateButton() {
+  setGenerateProgress(0, "Generate Boundary");
+  const btn = document.getElementById("generate");
+  if (btn) btn.disabled = false;
+}
+
 // Draws the un-smoothed polygon as a thin red outline using the cached
 // per-bearing distances from the most recent generation. Idempotent —
 // removes any previous overlay before drawing the new one. Safe to call
@@ -800,6 +840,7 @@ async function generateBoundary() {
   const targetSec = targetMin * 60;
 
   $("generate").disabled = true;
+  setGenerateProgress(0, "Generating… 0%");
   clearBoundary();
 
   // Probing distances. 13 candidates per bearing produces a smooth
@@ -854,10 +895,12 @@ async function generateBoundary() {
     } catch (err) {
       setStatus("<b>Distance Matrix error:</b> " + escapeHtml(String(err)) +
         ".\nCheck that the Distance Matrix API is enabled for this key.");
-      $("generate").disabled = false;
+      resetGenerateButton();
       return;
     }
     processed += batch.length;
+    const pct = Math.round((processed / candidates.length) * 100);
+    setGenerateProgress(pct, "Generating… " + pct + "%");
     setStatus(spinHTML("Sampled " + processed + " / " + candidates.length + " points…"));
     await new Promise((r) => setTimeout(r, 80));
   }
@@ -989,7 +1032,7 @@ async function generateBoundary() {
   if (boundaryPoints.length < 3) {
     setStatus("Not enough valid samples to draw a polygon.\n" +
       "Try a different origin or time.");
-    $("generate").disabled = false;
+    resetGenerateButton();
     return;
   }
 
@@ -1045,7 +1088,7 @@ async function generateBoundary() {
       "Boundary is clipped to the search radius.";
   }
   setStatus(msg);
-  $("generate").disabled = false;
+  resetGenerateButton();
 }
 </script>
 </body>
