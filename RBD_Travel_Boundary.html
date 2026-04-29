@@ -363,10 +363,22 @@ const TAS_BOUNDS_LITERAL = {
 };
 
 // Internal sample defaults — previously exposed in an "Advanced" panel
-// and now baked in. 24 bearings + 60 km max radius gives a smooth boundary
-// without burning excess Distance Matrix elements.
-const NUM_BEARINGS = 24;
+// and now baked in. 36 bearings (every 10°) + 60 km max radius gives a
+// noticeably smoother boundary than the original 24 bearings without
+// overspending on Distance Matrix elements.
+//
+// At 30 km out, adjacent 36-bearing samples sit ~5.2 km apart — close
+// enough that single-sample outliers (e.g. a rural lane between two
+// highways) get smoothed away by the median filter below rather than
+// creating a visible spike. 24 bearings produced visible 7.8 km gaps
+// and aliasing-style artifacts.
+const NUM_BEARINGS = 36;
 const MAX_RADIUS_KM = 60;
+// Median-filter window radius. 1 = take median of [self-1, self, self+1].
+// Removes single-bearing outliers (sampling noise, transient traffic,
+// road network anomalies) while preserving the genuine shape of the
+// drive-time isochrone. Set to 0 to disable smoothing.
+const SMOOTH_RADIUS = 1;
 
 // State
 let map = null;
@@ -650,8 +662,11 @@ async function generateBoundary() {
   }
 
   // For each bearing, walk outward until duration crosses targetSec, then
-  // linearly interpolate the boundary distance.
-  const boundaryPoints = [];
+  // linearly interpolate the boundary distance. We collect raw distances
+  // first, then run a median-filter smoothing pass before turning them
+  // into LatLng points — that way single-bearing outliers get suppressed
+  // before they become visible spikes in the polygon.
+  const rawDistKm = new Array(bearings.length).fill(null);
   let bearingsExceededRadius = 0;
   for (let bi = 0; bi < bearings.length; bi++) {
     const samples = candidates
@@ -674,7 +689,38 @@ async function generateBoundary() {
       boundaryDistKm = samples[samples.length - 1].distKm;
       bearingsExceededRadius++;
     }
-    boundaryPoints.push(destinationPoint(originLatLng, bearings[bi], boundaryDistKm * 1000));
+    rawDistKm[bi] = boundaryDistKm;
+  }
+
+  // ---- Median-filter smoothing ------------------------------------------
+  // Replace each bearing's distance with the median of itself and its
+  // SMOOTH_RADIUS neighbours on either side (wrapping around 0/360°).
+  // Median is much more spike-resistant than a moving average — a single
+  // bad sample doesn't pull the smoothed value toward the outlier.
+  // Genuine isochrone shape (highway tongues, peninsulas) is preserved
+  // because those features span multiple consecutive bearings.
+  const smoothedDistKm = new Array(bearings.length).fill(null);
+  if (SMOOTH_RADIUS > 0) {
+    for (let bi = 0; bi < bearings.length; bi++) {
+      const window = [];
+      for (let off = -SMOOTH_RADIUS; off <= SMOOTH_RADIUS; off++) {
+        // Wrap-around indexing — bearing 0 neighbours bearing N-1, etc.
+        const idx = ((bi + off) % bearings.length + bearings.length) % bearings.length;
+        if (rawDistKm[idx] != null) window.push(rawDistKm[idx]);
+      }
+      if (window.length) {
+        window.sort((a, b) => a - b);
+        smoothedDistKm[bi] = window[Math.floor(window.length / 2)];
+      }
+    }
+  } else {
+    for (let bi = 0; bi < bearings.length; bi++) smoothedDistKm[bi] = rawDistKm[bi];
+  }
+
+  const boundaryPoints = [];
+  for (let bi = 0; bi < bearings.length; bi++) {
+    if (smoothedDistKm[bi] == null) continue;
+    boundaryPoints.push(destinationPoint(originLatLng, bearings[bi], smoothedDistKm[bi] * 1000));
   }
 
   if (boundaryPoints.length < 3) {
@@ -691,6 +737,7 @@ async function generateBoundary() {
     strokeOpacity: 0.95,
     fillColor: "#004a99",
     fillOpacity: 0.18,
+    geodesic: true,        // curve edges along the earth's surface
     map,
     clickable: false,
   });
