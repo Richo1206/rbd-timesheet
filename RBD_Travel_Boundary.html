@@ -476,9 +476,9 @@
 
     <div class="section-header">Centre of Employment</div>
     <div class="toggle-section cols-3" id="officeGroup">
-      <div class="toggle-btn active" data-value="Dev">Devonport Office</div>
-      <div class="toggle-btn"        data-value="Hob">Hobart Office</div>
-      <div class="toggle-btn"        data-value="Custom">Custom</div>
+      <div class="toggle-btn" data-value="Dev">Devonport Office</div>
+      <div class="toggle-btn" data-value="Hob">Hobart Office</div>
+      <div class="toggle-btn" data-value="Custom">Custom</div>
     </div>
     <div id="customOriginRow">
       <label>Custom origin</label>
@@ -488,8 +488,8 @@
 
     <div class="section-header">Travel Time</div>
     <div class="toggle-section cols-2" id="modeGroup">
-      <div class="toggle-btn"        data-value="20">20 min (Incidentals)</div>
-      <div class="toggle-btn active" data-value="30">30 min (EA Boundary)</div>
+      <div class="toggle-btn" data-value="30">30 min (EA Boundary)</div>
+      <div class="toggle-btn" data-value="20">20 min (Incidentals)</div>
     </div>
     <div class="help">
       <strong>30 min</strong> draws the EA Cl 64.1 Travel Boundary plus a 7-min
@@ -601,10 +601,13 @@ let boundaryPolygon = null;
 let outerPolygon = null;   // larger "rounding-tolerant" boundary at
                            // (target + ROUND_BUFFER_MIN) min. Drawn under
                            // the primary boundary in lighter blue.
-let rawPolygon = null;     // diagnostic overlay: un-smoothed polygon, drawn
-                           // as a thin red outline when the Advanced checkbox
-                           // is ticked. Lets the user spot-check whether the
-                           // smoothing is hiding important detail.
+let rawPolygon = null;     // diagnostic overlay: un-smoothed primary polygon
+                           // drawn as a thin red outline. Lets the user
+                           // spot-check whether the smoothing is hiding
+                           // important detail.
+let rawOuterPolygon = null;// second raw overlay for the outer (drive time +
+                           // 7 min) boundary. Only drawn in 30-min mode;
+                           // null in 20-min mode.
 let lastRun = null;        // cached snapshot of the most recent successful
                            // generateBoundary() run. Lets us draw the raw
                            // overlay AFTER generation when the user ticks
@@ -613,10 +616,10 @@ let lastRun = null;        // cached snapshot of the most recent successful
                            // clearBoundary() runs or the origin changes.
 let mapsLoaded = false;
 let autocomplete = null;
-let activeOffice = "Dev";  // matches the default-active button above
-let modeMin = 30;          // selected drive-time mode in minutes — 20 (Inc-1
-                           // threshold, single layer) or 30 (EA boundary,
-                           // two layers including the +7 rounding halo).
+let activeOffice = null;   // no office selected by default — user must
+                           // explicitly pick Devonport / Hobart / Custom.
+let modeMin = null;        // selected drive-time mode (20 or 30). Null
+                           // until the user clicks one of the mode buttons.
 
 const $ = (id) => document.getElementById(id);
 
@@ -768,8 +771,8 @@ async function initMap() {
   $("generate").disabled = false;
   $("clear").disabled = false;
 
-  // Kick off the default Devonport lookup.
-  onOfficeChanged();
+  // No default office or mode — user must pick both before generating.
+  setStatus("Pick a Centre of Employment and a drive-time mode above, then click Generate Boundary.");
 }
 
 // Resolve a free-text address (one of the two known offices) to a LatLng
@@ -854,39 +857,74 @@ function resetGenerateButton() {
   if (btn) btn.disabled = false;
 }
 
-// Draws the un-smoothed polygon as a thin red outline using the cached
+// Draws the un-smoothed polygon(s) as thin red outlines using the cached
 // per-bearing distances from the most recent generation. Idempotent —
 // removes any previous overlay before drawing the new one. Safe to call
 // when there's no cached run (silently does nothing).
+//
+// In 30-min mode there are TWO raw polygons: one for the primary 30-min
+// boundary and a second for the 30+7 = 37-min boundary. Both drawn the
+// same red so the user can see the unsmoothed source data behind both
+// blue layers.
 function drawRawOverlay() {
-  if (rawPolygon) { rawPolygon.setMap(null); rawPolygon = null; }
+  if (rawPolygon)      { rawPolygon.setMap(null);      rawPolygon = null; }
+  if (rawOuterPolygon) { rawOuterPolygon.setMap(null); rawOuterPolygon = null; }
   if (!lastRun) return;
-  const { bearings, rawDistKm, origin } = lastRun;
-  const rawPoints = [];
-  for (let bi = 0; bi < bearings.length; bi++) {
-    if (rawDistKm[bi] == null) continue;
-    rawPoints.push(destinationPoint(origin, bearings[bi], rawDistKm[bi] * 1000));
+  const { bearings, rawDistKm, rawOuterDistKm, origin } = lastRun;
+
+  // Helper — turn an array of per-bearing distances into a Polygon path.
+  function pointsFromDistKm(distKm) {
+    const pts = [];
+    for (let bi = 0; bi < bearings.length; bi++) {
+      if (distKm[bi] == null) continue;
+      pts.push(destinationPoint(origin, bearings[bi], distKm[bi] * 1000));
+    }
+    return pts;
   }
-  if (rawPoints.length < 3) return;
-  rawPolygon = new google.maps.Polygon({
-    paths: rawPoints,
-    strokeColor: "#d93025",
-    strokeWeight: 1.2,
-    strokeOpacity: 0.9,
-    fillOpacity: 0,        // outline only, no fill
-    geodesic: true,
-    zIndex: 1,             // sits below the smoothed polygon
-    map,
-    clickable: false,
-  });
+
+  // Primary raw outline.
+  const primaryRawPts = pointsFromDistKm(rawDistKm);
+  if (primaryRawPts.length >= 3) {
+    rawPolygon = new google.maps.Polygon({
+      paths: primaryRawPts,
+      strokeColor: "#d93025",
+      strokeWeight: 1.2,
+      strokeOpacity: 0.9,
+      fillOpacity: 0,        // outline only, no fill
+      geodesic: true,
+      zIndex: 1,             // sits below the smoothed polygons
+      map,
+      clickable: false,
+    });
+  }
+
+  // Outer raw outline (only present when generation was in 30-min mode).
+  if (rawOuterDistKm) {
+    const outerRawPts = pointsFromDistKm(rawOuterDistKm);
+    if (outerRawPts.length >= 3) {
+      rawOuterPolygon = new google.maps.Polygon({
+        paths: outerRawPts,
+        strokeColor: "#d93025",
+        strokeWeight: 1.2,
+        strokeOpacity: 0.9,
+        fillOpacity: 0,
+        geodesic: true,
+        zIndex: 1,
+        map,
+        clickable: false,
+      });
+    }
+  }
+
   const row = document.getElementById("legendRawRow");
   if (row) row.classList.add("show");
 }
 
 function clearBoundary() {
-  if (boundaryPolygon) { boundaryPolygon.setMap(null); boundaryPolygon = null; }
-  if (outerPolygon)    { outerPolygon.setMap(null);    outerPolygon = null; }
-  if (rawPolygon)      { rawPolygon.setMap(null);      rawPolygon = null; }
+  if (boundaryPolygon)  { boundaryPolygon.setMap(null);  boundaryPolygon = null; }
+  if (outerPolygon)     { outerPolygon.setMap(null);     outerPolygon = null; }
+  if (rawPolygon)       { rawPolygon.setMap(null);       rawPolygon = null; }
+  if (rawOuterPolygon)  { rawOuterPolygon.setMap(null);  rawOuterPolygon = null; }
   lastRun = null;        // invalidate cached samples — origin or scope changed
 }
 
@@ -996,7 +1034,11 @@ function smoothToBoundaryPoints(rawDistKm, bearings, originLatLng) {
 
 async function generateBoundary() {
   if (!originLatLng) {
-    setStatus("No origin set. Pick a Centre of Employment above.");
+    setStatus("Pick a Centre of Employment above first.");
+    return;
+  }
+  if (modeMin == null) {
+    setStatus("Pick a drive-time mode above (20 or 30 min).");
     return;
   }
   // Drive-time mode (20 Inc-1 or 30 EA). The +7 rounding-tolerant outer
@@ -1088,9 +1130,12 @@ async function generateBoundary() {
 
   let outerPoints = [];
   let outerRender = null;
+  let rawOuterDistKm = null;  // shared with lastRun cache so drawRawOverlay
+                              // can re-draw the second raw outline
   if (drawOuter) {
     const outer = bisectAtTime(candidates, bearings, targetSec + ROUND_BUFFER_MIN * 60);
-    outerRender = smoothToBoundaryPoints(outer.distKm, bearings, originLatLng);
+    rawOuterDistKm = outer.distKm;
+    outerRender = smoothToBoundaryPoints(rawOuterDistKm, bearings, originLatLng);
     outerPoints = outerRender.points;
   }
 
@@ -1102,12 +1147,14 @@ async function generateBoundary() {
   }
 
   // ---- Cache the raw bearing/distance arrays ----------------------------
-  // Lets the Advanced "Show raw polygon" checkbox draw its overlay on top
-  // of an already-generated boundary without re-fetching every Distance
-  // Matrix sample. Cleared when the boundary or origin is cleared.
+  // Used by drawRawOverlay() so we can render the raw red outline(s)
+  // without re-fetching every Distance Matrix sample. In 30-min mode we
+  // also cache the outer raw distances so a second red outline can be
+  // drawn at the 37-min boundary.
   lastRun = {
     bearings: bearings.slice(),
     rawDistKm: rawDistKm.slice(),
+    rawOuterDistKm: rawOuterDistKm ? rawOuterDistKm.slice() : null,
     origin: originLatLng,
   };
 
