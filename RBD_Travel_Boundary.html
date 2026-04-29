@@ -46,9 +46,42 @@
   }
   #map { flex: 1; height: 100%; min-height: 320px; }
   @media (max-width: 720px) {
+    /* Mobile layout — sidebar stacks on top of the map. Tightened
+       padding, font sizes, and spacing so the form fits in a smaller
+       slice of the viewport, leaving more room for the map. */
     #app { flex-direction: column; }
-    #sidebar { width: 100%; min-width: 0; max-height: 55vh; }
-    #map { height: 45vh; min-height: 280px; }
+    #sidebar {
+      width: 100%; min-width: 0;
+      max-height: 50vh;
+      padding: 14px 16px 18px;
+    }
+    #map { height: 50vh; min-height: 260px; }
+    h2 { font-size: 18px; margin: 6px 0 2px; }
+    .sub { margin-bottom: 10px; }
+    .section-header { margin: 14px 0 8px; padding-bottom: 4px; }
+    .disclaimer-note, .howto-note {
+      padding: 8px 10px;
+      font-size: 10.5px;
+      line-height: 1.5;
+    }
+    .disclaimer-note { margin-bottom: 8px; }
+    .howto-note { margin-bottom: 12px; }
+    input[type="text"], input[type="number"] {
+      padding: 10px 12px; font-size: 14px;
+    }
+    .toggle-btn { padding: 11px 4px; font-size: 11.5px; }
+    .maps-btn { padding: 12px; font-size: 13px; }
+    .maps-btn.primary { padding: 13px; font-size: 14px; margin-top: 10px; }
+    .maps-btn.secondary { margin-top: 4px; }
+    #status { padding: 10px 12px; font-size: 11.5px; margin-top: 10px; }
+    .legend { padding: 10px 12px; font-size: 11.5px; margin-top: 12px; }
+    .footer-note { font-size: 9px; margin-top: 16px; }
+    .back-link { margin-top: 2px; padding: 2px 0; }
+  }
+  /* Very narrow phones (≤380px) — drop the office labels to two lines
+     so they fit a 3-column grid without truncation. */
+  @media (max-width: 380px) {
+    .toggle-btn { font-size: 10.5px; padding: 11px 2px; line-height: 1.25; }
   }
 
   /* Back-to-calculator link — small, unobtrusive, top-left of sidebar */
