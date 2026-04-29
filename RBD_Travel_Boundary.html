@@ -409,6 +409,20 @@
   }
   #legendRawRow { margin-top: 6px; }
 
+  /* Outer (rounding-tolerant) polygon swatch — same shape as the inner
+     swatch but lighter blue to match the on-map polygon. */
+  .legend .swatch-outer {
+    display: inline-block;
+    width: 14px;
+    height: 14px;
+    border: 2px solid #5e95d4;
+    background: rgba(94, 149, 212, 0.12);
+    vertical-align: middle;
+    margin-right: 6px;
+    border-radius: 3px;
+  }
+  #legendOuterRow { margin-top: 6px; }
+
   /* Polish the Google Places autocomplete dropdown */
   .pac-container {
     z-index: 10000;
@@ -444,13 +458,19 @@
 
       <div class="howto-note">
         <strong>How it works.</strong> Pick a Centre of Employment
-        (or type a Custom origin), set the drive time, and click
-        Generate Boundary. The tool samples driving times in 100
-        directions out from the origin and draws two shapes:
-        a <strong style="color:#003366;">solid blue polygon</strong>
-        (smoothed using a median + mean filter and curve-fitted
-        edges) and a <strong style="color:#d93025;">thin red
-        outline</strong> showing the raw, unsmoothed sample points.
+        (or type a Custom origin), choose a drive-time mode, and
+        click Generate Boundary. The tool samples driving times in
+        100 directions out from the origin and draws:
+        a <strong style="color:#003366;">solid dark-blue polygon</strong>
+        for the primary boundary at your chosen drive time, and
+        a <strong style="color:#d93025;">thin red outline</strong>
+        showing the raw, unsmoothed samples for that boundary.
+        In <strong>30-min mode</strong> it also draws
+        a <strong style="color:#5e95d4;">lighter blue halo</strong>
+        at drive time + 7&nbsp;min, the effective EA boundary
+        accounting for Cl 53.b rounding. In <strong>20-min mode</strong>
+        only the primary polygon is drawn, since the Inc-1 threshold
+        isn't subject to the rounding rule.
       </div>
     </div>
 
@@ -467,9 +487,16 @@
     </div>
 
     <div class="section-header">Travel Time</div>
-    <label>Drive time (minutes)</label>
-    <input type="number" id="time" value="30" min="5" max="120" step="1">
-    <div class="help">EA Cl 64.1 defines the Travel Boundary as 30 minutes from the centre of employment. Adjust to model other thresholds (e.g. 60 mins for distant works).</div>
+    <div class="toggle-section cols-2" id="modeGroup">
+      <div class="toggle-btn"        data-value="20">20 min (Incidentals)</div>
+      <div class="toggle-btn active" data-value="30">30 min (EA Boundary)</div>
+    </div>
+    <div class="help">
+      <strong>30 min</strong> draws the EA Cl 64.1 Travel Boundary plus a 7-min
+      rounding-tolerant halo (Cl 53.b). <strong>20 min</strong> draws a single
+      polygon at the Cl 64.5 Incidentals threshold (used to determine when a
+      distant-job accommodation rule applies).
+    </div>
 
     <button id="generate" class="maps-btn primary" disabled><span id="generateLabel">Generate Boundary</span></button>
     <button id="clear"    class="maps-btn secondary" disabled>Clear Boundary</button>
@@ -478,7 +505,8 @@
     <div id="status">Loading map…</div>
 
     <div class="legend">
-      <div><span class="swatch"></span>Reachable within selected drive time</div>
+      <div><span class="swatch"></span>EA boundary (reachable within selected drive time)</div>
+      <div id="legendOuterRow"><span class="swatch-outer"></span>Effective boundary (drive time + 7&nbsp;min rounding)</div>
       <div style="margin-top:6px;"><span class="dot"></span>Origin (centre of employment)</div>
       <div id="legendRawRow"><span class="swatch-raw"></span>Raw polygon (no smoothing)</div>
     </div>
@@ -556,6 +584,11 @@ const MEAN_RADIUS = 2;  // 5-bearing window (self ± 2) per pass
 // Purely visual — doesn't change the underlying isochrone calculation.
 // 16 steps × 100 bearings = 1600 polygon vertices, drawn smoothly.
 const SPLINE_STEPS = 16;
+// Rounding-tolerant outer boundary, in minutes added to the primary
+// drive time. Per EA Cl 53.b, time is rounded in 15-min lumps with 7
+// min rounding down — so driving (target + 7 min) is the practical
+// edge of the boundary before extra travel becomes credit-bearing.
+const ROUND_BUFFER_MIN = 7;
 
 // State
 let map = null;
@@ -565,6 +598,9 @@ let originAddress = "";
 let originMarker = null;
 let originInfoWindow = null;
 let boundaryPolygon = null;
+let outerPolygon = null;   // larger "rounding-tolerant" boundary at
+                           // (target + ROUND_BUFFER_MIN) min. Drawn under
+                           // the primary boundary in lighter blue.
 let rawPolygon = null;     // diagnostic overlay: un-smoothed polygon, drawn
                            // as a thin red outline when the Advanced checkbox
                            // is ticked. Lets the user spot-check whether the
@@ -578,6 +614,9 @@ let lastRun = null;        // cached snapshot of the most recent successful
 let mapsLoaded = false;
 let autocomplete = null;
 let activeOffice = "Dev";  // matches the default-active button above
+let modeMin = 30;          // selected drive-time mode in minutes — 20 (Inc-1
+                           // threshold, single layer) or 30 (EA boundary,
+                           // two layers including the +7 rounding halo).
 
 const $ = (id) => document.getElementById(id);
 
@@ -591,6 +630,25 @@ function wireOfficeGroup() {
       activeOffice = btn.dataset.value;
       $("customOriginRow").classList.toggle("show", activeOffice === "Custom");
       onOfficeChanged();
+    });
+  });
+}
+
+// Drive-time mode selector — 20 (Inc-1, single layer) or 30 (EA, two
+// layers). Updating modeMin doesn't redraw immediately; the user clicks
+// Generate Boundary to re-fetch and render with the new mode.
+function wireModeGroup() {
+  const group = $("modeGroup");
+  if (!group) return;
+  group.querySelectorAll(".toggle-btn").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      group.querySelectorAll(".toggle-btn").forEach((b) => b.classList.remove("active"));
+      btn.classList.add("active");
+      modeMin = parseInt(btn.dataset.value, 10);
+      // Hide the outer-halo legend row in 20-min mode; the next generation
+      // won't draw that polygon. Show it again in 30-min mode.
+      const outerRow = $("legendOuterRow");
+      if (outerRow) outerRow.style.display = (modeMin === 30) ? "" : "none";
     });
   });
 }
@@ -633,6 +691,7 @@ function escapeHtml(s) {
 // --- Auto-load Google Maps on page load ------------------------------------
 window.addEventListener("DOMContentLoaded", () => {
   wireOfficeGroup();
+  wireModeGroup();
   $("generate").addEventListener("click", generateBoundary);
   $("clear").addEventListener("click", clearBoundary);
   // Information dropdown — collapses the disclaimer + how-it-works into a
@@ -826,8 +885,113 @@ function drawRawOverlay() {
 
 function clearBoundary() {
   if (boundaryPolygon) { boundaryPolygon.setMap(null); boundaryPolygon = null; }
+  if (outerPolygon)    { outerPolygon.setMap(null);    outerPolygon = null; }
   if (rawPolygon)      { rawPolygon.setMap(null);      rawPolygon = null; }
   lastRun = null;        // invalidate cached samples — origin or scope changed
+}
+
+// ---- Boundary-pipeline helpers ------------------------------------------
+// Bisect each bearing's samples to find the distance where travel time
+// crosses targetSec. Returns { distKm: [], exceeded: number }.
+// distKm[bi] is null when the bearing has no usable samples.
+function bisectAtTime(candidates, bearings, targetSec) {
+  const distKm = new Array(bearings.length).fill(null);
+  let exceeded = 0;
+  for (let bi = 0; bi < bearings.length; bi++) {
+    const samples = candidates
+      .filter((c) => c.bi === bi && c.duration != null)
+      .sort((a, b) => a.distKm - b.distKm);
+    if (!samples.length) continue;
+    let prev = { distKm: 0, duration: 0 };
+    let d = null;
+    for (const s of samples) {
+      if (s.duration >= targetSec) {
+        const span = s.duration - prev.duration;
+        const t = span > 0 ? (targetSec - prev.duration) / span : 0;
+        d = prev.distKm + t * (s.distKm - prev.distKm);
+        break;
+      }
+      prev = s;
+    }
+    if (d == null) {
+      d = samples[samples.length - 1].distKm;
+      exceeded++;
+    }
+    distKm[bi] = d;
+  }
+  return { distKm, exceeded };
+}
+
+// Apply median + mean smoothing, then Catmull-Rom spline rendering to
+// turn an array of per-bearing distances into a smooth polygon path.
+function smoothToBoundaryPoints(rawDistKm, bearings, originLatLng) {
+  const N = bearings.length;
+  // 1) Median filter
+  let smoothed = new Array(N).fill(null);
+  if (SMOOTH_RADIUS > 0) {
+    for (let bi = 0; bi < N; bi++) {
+      const win = [];
+      for (let off = -SMOOTH_RADIUS; off <= SMOOTH_RADIUS; off++) {
+        const idx = ((bi + off) % N + N) % N;
+        if (rawDistKm[idx] != null) win.push(rawDistKm[idx]);
+      }
+      if (win.length) {
+        win.sort((a, b) => a - b);
+        smoothed[bi] = win[Math.floor(win.length / 2)];
+      }
+    }
+  } else {
+    for (let bi = 0; bi < N; bi++) smoothed[bi] = rawDistKm[bi];
+  }
+  // 2) Mean smoothing passes
+  for (let pass = 0; pass < MEAN_PASSES; pass++) {
+    const next = new Array(N).fill(null);
+    for (let bi = 0; bi < N; bi++) {
+      const win = [];
+      for (let off = -MEAN_RADIUS; off <= MEAN_RADIUS; off++) {
+        const idx = ((bi + off) % N + N) % N;
+        if (smoothed[idx] != null) win.push(smoothed[idx]);
+      }
+      if (win.length) next[bi] = win.reduce((a, b) => a + b, 0) / win.length;
+    }
+    smoothed = next;
+  }
+  // 3) Project to LatLngs
+  const sampled = [];
+  for (let bi = 0; bi < N; bi++) {
+    if (smoothed[bi] == null) continue;
+    sampled.push(destinationPoint(originLatLng, bearings[bi], smoothed[bi] * 1000));
+  }
+  // 4) Catmull-Rom spline
+  function lerpCatmullRom(p0, p1, p2, p3, t) {
+    const t2 = t * t, t3 = t2 * t;
+    const lat0 = p0.lat(), lat1 = p1.lat(), lat2 = p2.lat(), lat3 = p3.lat();
+    const lng0 = p0.lng(), lng1 = p1.lng(), lng2 = p2.lng(), lng3 = p3.lng();
+    return new google.maps.LatLng(
+      0.5 * ((2 * lat1) + (-lat0 + lat2) * t +
+             (2*lat0 - 5*lat1 + 4*lat2 - lat3) * t2 +
+             (-lat0 + 3*lat1 - 3*lat2 + lat3) * t3),
+      0.5 * ((2 * lng1) + (-lng0 + lng2) * t +
+             (2*lng0 - 5*lng1 + 4*lng2 - lng3) * t2 +
+             (-lng0 + 3*lng1 - 3*lng2 + lng3) * t3)
+    );
+  }
+  const points = [];
+  const M = sampled.length;
+  if (M >= 4) {
+    for (let i = 0; i < M; i++) {
+      const p0 = sampled[(i - 1 + M) % M];
+      const p1 = sampled[i];
+      const p2 = sampled[(i + 1) % M];
+      const p3 = sampled[(i + 2) % M];
+      for (let s = 0; s < SPLINE_STEPS; s++) {
+        points.push(lerpCatmullRom(p0, p1, p2, p3, s / SPLINE_STEPS));
+      }
+    }
+  } else {
+    points.push(...sampled);
+  }
+  return { points, sampledCount: sampled.length };
 }
 
 async function generateBoundary() {
@@ -835,9 +999,12 @@ async function generateBoundary() {
     setStatus("No origin set. Pick a Centre of Employment above.");
     return;
   }
-  const targetMin = parseFloat($("time").value);
-  if (!(targetMin > 0)) { setStatus("Enter a valid drive time."); return; }
+  // Drive-time mode (20 Inc-1 or 30 EA). The +7 rounding-tolerant outer
+  // polygon is only drawn in 30-min mode — Inc-1 is a different threshold,
+  // not subject to the EA boundary's rounding rule.
+  const targetMin = modeMin;
   const targetSec = targetMin * 60;
+  const drawOuter = (modeMin === 30);
 
   $("generate").disabled = true;
   setGenerateProgress(0, "Generating… 0%");
@@ -905,128 +1072,26 @@ async function generateBoundary() {
     await new Promise((r) => setTimeout(r, 80));
   }
 
-  // For each bearing, walk outward until duration crosses targetSec, then
-  // linearly interpolate the boundary distance. We collect raw distances
-  // first, then run a median-filter smoothing pass before turning them
-  // into LatLng points — that way single-bearing outliers get suppressed
-  // before they become visible spikes in the polygon.
-  const rawDistKm = new Array(bearings.length).fill(null);
-  let bearingsExceededRadius = 0;
-  for (let bi = 0; bi < bearings.length; bi++) {
-    const samples = candidates
-      .filter((c) => c.bi === bi && c.duration != null)
-      .sort((a, b) => a.distKm - b.distKm);
-    if (!samples.length) continue;
+  // ---- Bisect samples at the boundary threshold(s) ----------------------
+  // primary = the boundary at the user's chosen drive time (20 or 30).
+  // outer   = same data interpreted at (drive time + 7 min) — the
+  //           rounding-tolerant outer edge per Cl 53.b. Only computed in
+  //           30-min mode; Inc-1's 20-min threshold isn't subject to the
+  //           rounding rule. Same Distance Matrix samples support both
+  //           interpolations, so this costs zero extra API elements.
+  const primary = bisectAtTime(candidates, bearings, targetSec);
+  const rawDistKm = primary.distKm;
+  const bearingsExceededRadius = primary.exceeded;
 
-    let prev = { distKm: 0, duration: 0 };
-    let boundaryDistKm = null;
-    for (const s of samples) {
-      if (s.duration >= targetSec) {
-        const span = s.duration - prev.duration;
-        const t = span > 0 ? (targetSec - prev.duration) / span : 0;
-        boundaryDistKm = prev.distKm + t * (s.distKm - prev.distKm);
-        break;
-      }
-      prev = s;
-    }
-    if (boundaryDistKm == null) {
-      boundaryDistKm = samples[samples.length - 1].distKm;
-      bearingsExceededRadius++;
-    }
-    rawDistKm[bi] = boundaryDistKm;
-  }
+  const primaryRender = smoothToBoundaryPoints(rawDistKm, bearings, originLatLng);
+  const boundaryPoints = primaryRender.points;
 
-  // ---- Median-filter smoothing ------------------------------------------
-  // Replace each bearing's distance with the median of itself and its
-  // SMOOTH_RADIUS neighbours on either side (wrapping around 0/360°).
-  // Median is much more spike-resistant than a moving average — a single
-  // bad sample doesn't pull the smoothed value toward the outlier.
-  // Genuine isochrone shape (highway tongues, peninsulas) is preserved
-  // because those features span multiple consecutive bearings.
-  let smoothedDistKm = new Array(bearings.length).fill(null);
-  if (SMOOTH_RADIUS > 0) {
-    for (let bi = 0; bi < bearings.length; bi++) {
-      const window = [];
-      for (let off = -SMOOTH_RADIUS; off <= SMOOTH_RADIUS; off++) {
-        // Wrap-around indexing — bearing 0 neighbours bearing N-1, etc.
-        const idx = ((bi + off) % bearings.length + bearings.length) % bearings.length;
-        if (rawDistKm[idx] != null) window.push(rawDistKm[idx]);
-      }
-      if (window.length) {
-        window.sort((a, b) => a - b);
-        smoothedDistKm[bi] = window[Math.floor(window.length / 2)];
-      }
-    }
-  } else {
-    for (let bi = 0; bi < bearings.length; bi++) smoothedDistKm[bi] = rawDistKm[bi];
-  }
-
-  // ---- Mean-smoothing passes --------------------------------------------
-  // Multiple passes of a 5-bearing moving average. Each pass turns sharp
-  // corners into gentle curves. Median doesn't do this on its own because
-  // it always picks an actual sample value — mean averages neighbours,
-  // pulling outliers toward the local trend. Combined effect: median
-  // kills spikes, mean rounds off the silhouette.
-  for (let pass = 0; pass < MEAN_PASSES; pass++) {
-    const next = new Array(smoothedDistKm.length).fill(null);
-    for (let bi = 0; bi < smoothedDistKm.length; bi++) {
-      const N = smoothedDistKm.length;
-      const win = [];
-      for (let off = -MEAN_RADIUS; off <= MEAN_RADIUS; off++) {
-        const idx = ((bi + off) % N + N) % N;
-        if (smoothedDistKm[idx] != null) win.push(smoothedDistKm[idx]);
-      }
-      if (win.length) next[bi] = win.reduce((a, b) => a + b, 0) / win.length;
-    }
-    smoothedDistKm = next;
-  }
-
-  // ---- Build the sampled polygon vertices --------------------------------
-  // One LatLng per surviving bearing, in order. These are the "real" points
-  // — the spline below draws smooth curves *through* them.
-  const sampledPoints = [];
-  for (let bi = 0; bi < bearings.length; bi++) {
-    if (smoothedDistKm[bi] == null) continue;
-    sampledPoints.push(destinationPoint(originLatLng, bearings[bi], smoothedDistKm[bi] * 1000));
-  }
-
-  // ---- Catmull-Rom spline interpolation ---------------------------------
-  // Render smooth curves through the sample points instead of straight
-  // segments. Catmull-Rom passes exactly through every sample point and
-  // uses neighbour points to control the tangent — gives a visually
-  // continuous, organic-looking boundary without changing the underlying
-  // isochrone math. We wrap around the array (last point neighbours the
-  // first) to close the curve smoothly.
-  function lerpCatmullRom(p0, p1, p2, p3, t) {
-    // Standard 0.5-tension Catmull-Rom formula in lat/lng space.
-    const t2 = t * t, t3 = t2 * t;
-    const lat0 = p0.lat(), lat1 = p1.lat(), lat2 = p2.lat(), lat3 = p3.lat();
-    const lng0 = p0.lng(), lng1 = p1.lng(), lng2 = p2.lng(), lng3 = p3.lng();
-    return new google.maps.LatLng(
-      0.5 * ((2 * lat1) + (-lat0 + lat2) * t +
-             (2*lat0 - 5*lat1 + 4*lat2 - lat3) * t2 +
-             (-lat0 + 3*lat1 - 3*lat2 + lat3) * t3),
-      0.5 * ((2 * lng1) + (-lng0 + lng2) * t +
-             (2*lng0 - 5*lng1 + 4*lng2 - lng3) * t2 +
-             (-lng0 + 3*lng1 - 3*lng2 + lng3) * t3)
-    );
-  }
-
-  const boundaryPoints = [];
-  const N = sampledPoints.length;
-  if (N >= 4) {
-    for (let i = 0; i < N; i++) {
-      const p0 = sampledPoints[(i - 1 + N) % N];
-      const p1 = sampledPoints[i];
-      const p2 = sampledPoints[(i + 1) % N];
-      const p3 = sampledPoints[(i + 2) % N];
-      for (let s = 0; s < SPLINE_STEPS; s++) {
-        boundaryPoints.push(lerpCatmullRom(p0, p1, p2, p3, s / SPLINE_STEPS));
-      }
-    }
-  } else {
-    // Not enough points for a spline — fall back to the raw polygon.
-    boundaryPoints.push(...sampledPoints);
+  let outerPoints = [];
+  let outerRender = null;
+  if (drawOuter) {
+    const outer = bisectAtTime(candidates, bearings, targetSec + ROUND_BUFFER_MIN * 60);
+    outerRender = smoothToBoundaryPoints(outer.distKm, bearings, originLatLng);
+    outerPoints = outerRender.points;
   }
 
   if (boundaryPoints.length < 3) {
@@ -1046,10 +1111,28 @@ async function generateBoundary() {
     origin: originLatLng,
   };
 
-  // Raw-polygon overlay — drawn FIRST so the smoothed polygon renders on
-  // top of it. Always shown so users can see exactly where the smoothing
-  // pipeline is rounding things off.
+  // Raw-polygon overlay (red dashed outline) — drawn FIRST so the
+  // smoothed polygons render on top of it. Always shown so users can see
+  // exactly where the smoothing pipeline is rounding things off.
   drawRawOverlay();
+
+  // Outer (rounding-tolerant) polygon — drawn UNDER the primary so the
+  // primary's darker fill sits on top and the outer "halo" is visible
+  // around the edges.
+  if (outerPoints.length >= 3) {
+    outerPolygon = new google.maps.Polygon({
+      paths: outerPoints,
+      strokeColor: "#5e95d4",
+      strokeWeight: 2,
+      strokeOpacity: 0.85,
+      fillColor: "#5e95d4",
+      fillOpacity: 0.10,
+      geodesic: true,
+      zIndex: 2,           // above the red raw overlay, below the primary
+      map,
+      clickable: false,
+    });
+  }
 
   boundaryPolygon = new google.maps.Polygon({
     paths: boundaryPoints,
@@ -1059,29 +1142,43 @@ async function generateBoundary() {
     fillColor: "#004a99",
     fillOpacity: 0.18,
     geodesic: true,        // curve edges along the earth's surface
-    zIndex: 2,             // draws on top of the optional raw overlay
+    zIndex: 3,             // top of the stack (raw → outer → primary)
     map,
     clickable: false,
   });
 
+  // Fit the map to whichever polygon is larger (outer when in 30-min mode,
+  // primary otherwise) so nothing gets clipped at the edge of the viewport.
   const bounds = new google.maps.LatLngBounds();
+  if (outerPoints.length) outerPoints.forEach((p) => bounds.extend(p));
   boundaryPoints.forEach((p) => bounds.extend(p));
   bounds.extend(originLatLng);
   map.fitBounds(bounds, 40);
 
-  // Distance from origin to the farthest boundary point (km) — handy
-  // sanity-check stat for the timesheet team.
-  let maxKm = 0;
-  for (const p of boundaryPoints) {
-    const d = google.maps.geometry.spherical.computeDistanceBetween(originLatLng, p) / 1000;
-    if (d > maxKm) maxKm = d;
+  // Farthest reach for each polygon — handy sanity-check stat for the
+  // timesheet team.
+  function maxReachKm(pts) {
+    let max = 0;
+    for (const p of pts) {
+      const d = google.maps.geometry.spherical.computeDistanceBetween(originLatLng, p) / 1000;
+      if (d > max) max = d;
+    }
+    return max;
   }
+  const primaryReach = maxReachKm(boundaryPoints);
+  const primaryLabel = drawOuter ? "EA boundary" : "Inc-1 threshold";
 
   let msg =
     "Boundary drawn from <b>" + escapeHtml(originLabel) + "</b>\n" +
-    "Drive time: <b>" + targetMin + " min</b>\n" +
-    "Farthest reach: <b>" + maxKm.toFixed(1) + " km</b>\n" +
-    "Sample bearings: " + sampledPoints.length + " (smoothed)";
+    primaryLabel + ": <b>" + targetMin + " min</b> &middot; reach <b>" +
+      primaryReach.toFixed(1) + " km</b>";
+  if (drawOuter) {
+    const outerReach = maxReachKm(outerPoints);
+    msg +=
+      "\nEffective boundary: <b>" + (targetMin + ROUND_BUFFER_MIN) +
+      " min</b> &middot; reach <b>" + outerReach.toFixed(1) + " km</b>";
+  }
+  msg += "\nSample bearings: " + primaryRender.sampledCount + " (smoothed)";
   if (bearingsExceededRadius > 0) {
     msg += "\n\n<b>Note:</b> " + bearingsExceededRadius +
       " bearing(s) still reachable beyond " + MAX_RADIUS_KM + " km. " +
