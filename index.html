@@ -37,7 +37,7 @@
         .info-btn { width: 24px; height: 24px; border-radius: 50%; border: 1.5px solid #004a99; background: white; color: #004a99; font-size: 13px; font-weight: bold; font-style: italic; font-family: Georgia, serif; cursor: pointer; display: inline-flex; align-items: center; justify-content: center; padding: 0; line-height: 1; flex-shrink: 0; transition: all 0.15s; }
         /* Right-side "open another tool" link button — same blue palette as
            info-btn but pill-shaped with a label. Used to launch the Travel
-           Boundary tool in a new tab without disturbing the timesheet. */
+           Boundary tool. */
         .tool-link-btn { display: inline-flex; align-items: center; gap: 4px; font-size: 10px; font-weight: 800; color: #004a99; text-decoration: none; padding: 5px 9px; border: 1.5px solid #004a99; border-radius: 8px; background: white; text-transform: uppercase; letter-spacing: 0.6px; transition: all 0.15s; white-space: nowrap; line-height: 1; }
         .tool-link-btn:hover, .tool-link-btn:active { background: #004a99; color: white; }
         .tool-link-btn .arrow { font-size: 11px; line-height: 1; }
@@ -133,7 +133,7 @@
     -->
     <div class="section-header no-print" style="display: grid; grid-template-columns: auto 1fr auto; align-items: center; gap: 8px;">
         <span style="white-space: nowrap;">Google Maps Travel Tool</span>
-        <a href="https://richo1206.github.io/rbd-timesheet/RBD_Travel_Boundary.html" target="_blank" rel="noopener" class="tool-link-btn" title="Open the 30-min Travel Boundary map in a new tab" style="justify-self: center;">Travel Boundary Tool <span class="arrow">&#8599;</span></a>
+        <a href="https://richo1206.github.io/rbd-timesheet/RBD_Travel_Boundary.html" class="tool-link-btn" title="Open the 30-min Travel Boundary map" style="justify-self: center;">Travel Boundary Tool</a>
         <button class="info-btn" onclick="toggleInfo('infoMaps')">i</button>
     </div>
     <div id="infoMaps" class="info-panel no-print">
