@@ -417,16 +417,24 @@ const TAS_BOUNDS_LITERAL = {
 // generation (see pricing comments at top of file).
 const NUM_BEARINGS = 100;
 const MAX_RADIUS_KM = 60;
-// Median-filter window radius. 2 = median of 5 bearings (self ± 2).
-// Wider window catches double-bearing artifacts (two consecutive samples
-// off due to a small road segment) while still preserving multi-bearing
-// real features like highway tongues. Set to 0 to disable smoothing.
-const SMOOTH_RADIUS = 2;
+// Median-filter window radius. 4 = median of 9 bearings (self ± 4).
+// Wider window kills triple-bearing artifacts and gives a more polished
+// blob shape. Trade-off: real highway tongues that span fewer than ~4
+// bearings get smoothed away. Acceptable here since the boundary is a
+// visual guide only and we'd rather hide noise than expose it.
+const SMOOTH_RADIUS = 4;
+// Mean-smoothing passes applied after the median filter. Each pass
+// replaces every bearing's distance with the average of its 5-bearing
+// window — turns the polygon from "median-cleaned but still bumpy"
+// into a continuous blob. Two passes is a good blob without losing
+// genuine highway extensions entirely.
+const MEAN_PASSES = 2;
+const MEAN_RADIUS = 2;  // 5-bearing window (self ± 2) per pass
 // Catmull-Rom spline interpolation steps per polygon segment. Renders
 // smooth curves through the sample points instead of straight edges.
 // Purely visual — doesn't change the underlying isochrone calculation.
-// 12 steps × 48 bearings = 576 polygon vertices, drawn smoothly.
-const SPLINE_STEPS = 12;
+// 16 steps × 100 bearings = 1600 polygon vertices, drawn smoothly.
+const SPLINE_STEPS = 16;
 
 // State
 let map = null;
@@ -738,7 +746,7 @@ async function generateBoundary() {
   // bad sample doesn't pull the smoothed value toward the outlier.
   // Genuine isochrone shape (highway tongues, peninsulas) is preserved
   // because those features span multiple consecutive bearings.
-  const smoothedDistKm = new Array(bearings.length).fill(null);
+  let smoothedDistKm = new Array(bearings.length).fill(null);
   if (SMOOTH_RADIUS > 0) {
     for (let bi = 0; bi < bearings.length; bi++) {
       const window = [];
@@ -754,6 +762,26 @@ async function generateBoundary() {
     }
   } else {
     for (let bi = 0; bi < bearings.length; bi++) smoothedDistKm[bi] = rawDistKm[bi];
+  }
+
+  // ---- Mean-smoothing passes --------------------------------------------
+  // Multiple passes of a 5-bearing moving average. Each pass turns sharp
+  // corners into gentle curves. Median doesn't do this on its own because
+  // it always picks an actual sample value — mean averages neighbours,
+  // pulling outliers toward the local trend. Combined effect: median
+  // kills spikes, mean rounds off the silhouette.
+  for (let pass = 0; pass < MEAN_PASSES; pass++) {
+    const next = new Array(smoothedDistKm.length).fill(null);
+    for (let bi = 0; bi < smoothedDistKm.length; bi++) {
+      const N = smoothedDistKm.length;
+      const win = [];
+      for (let off = -MEAN_RADIUS; off <= MEAN_RADIUS; off++) {
+        const idx = ((bi + off) % N + N) % N;
+        if (smoothedDistKm[idx] != null) win.push(smoothedDistKm[idx]);
+      }
+      if (win.length) next[bi] = win.reduce((a, b) => a + b, 0) / win.length;
+    }
+    smoothedDistKm = next;
   }
 
   // ---- Build the sampled polygon vertices --------------------------------
