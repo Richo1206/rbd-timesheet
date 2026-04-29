@@ -282,7 +282,10 @@
 <body>
 <div id="app">
   <div id="sidebar">
-    <a href="RBD_Timesheet_Calculator.html" class="back-link">Back to Calculator</a>
+    <!-- Relative "./" points to the repo root, which serves index.html
+         (the calculator) on GitHub Pages and on the production WordPress
+         deployment. Avoids hard-coding either domain. -->
+    <a href="./" class="back-link">Back to Calculator</a>
     <h2>RBD Travel Boundary</h2>
     <div class="sub">30-Minute Drive-Time Boundary &middot; EA 2025</div>
 
