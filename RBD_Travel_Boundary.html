@@ -270,6 +270,21 @@
     line-height: 1.6;
   }
 
+  /* Subtle "visual guide only" disclaimer banner — sits right under the
+     page sub-line so users see it before they generate anything. Muted
+     palette so it informs without alarming. */
+  .disclaimer-note {
+    margin: -2px 0 14px;
+    padding: 9px 12px;
+    background: #f8fafc;
+    border-left: 3px solid #b0c4de;
+    border-radius: 6px;
+    font-size: 11px;
+    color: #4a5568;
+    line-height: 1.55;
+  }
+  .disclaimer-note strong { color: #003366; }
+
   /* Polish the Google Places autocomplete dropdown */
   .pac-container {
     z-index: 10000;
@@ -288,6 +303,14 @@
     <a href="./" class="back-link">Back to Calculator</a>
     <h2>RBD Travel Boundary</h2>
     <div class="sub">30-Minute Drive-Time Boundary &middot; EA 2025</div>
+
+    <div class="disclaimer-note">
+      <strong>Visual guide only.</strong> Polygon shows approximate
+      free-flow driving distances from Google Maps &mdash; actual
+      travel times vary with traffic, weather, and road conditions.
+      Final 30-min Travel Boundary determinations are governed by
+      the RBD Enterprise Agreement 2025 (Cl 64.1).
+    </div>
 
     <div class="section-header">Centre of Employment</div>
     <div class="toggle-section cols-3" id="officeGroup">
@@ -362,23 +385,26 @@ const TAS_BOUNDS_LITERAL = {
   ne: { lat: -39.20, lng: 148.70 }
 };
 
-// Internal sample defaults — previously exposed in an "Advanced" panel
-// and now baked in. 36 bearings (every 10°) + 60 km max radius gives a
-// noticeably smoother boundary than the original 24 bearings without
-// overspending on Distance Matrix elements.
+// Internal sample defaults.
 //
-// At 30 km out, adjacent 36-bearing samples sit ~5.2 km apart — close
-// enough that single-sample outliers (e.g. a rural lane between two
-// highways) get smoothed away by the median filter below rather than
-// creating a visible spike. 24 bearings produced visible 7.8 km gaps
-// and aliasing-style artifacts.
-const NUM_BEARINGS = 36;
+// 100 bearings (every 3.6°) at 30 km out puts adjacent samples ~1.9 km
+// apart — fine resolution for picking up subtle changes in the road
+// network. Combined with the median filter below and the Catmull-Rom
+// spline rendering further down, this produces a smooth, accurate
+// isochrone at the cost of ~1000 Distance Matrix elements per
+// generation (see pricing comments at top of file).
+const NUM_BEARINGS = 100;
 const MAX_RADIUS_KM = 60;
-// Median-filter window radius. 1 = take median of [self-1, self, self+1].
-// Removes single-bearing outliers (sampling noise, transient traffic,
-// road network anomalies) while preserving the genuine shape of the
-// drive-time isochrone. Set to 0 to disable smoothing.
-const SMOOTH_RADIUS = 1;
+// Median-filter window radius. 2 = median of 5 bearings (self ± 2).
+// Wider window catches double-bearing artifacts (two consecutive samples
+// off due to a small road segment) while still preserving multi-bearing
+// real features like highway tongues. Set to 0 to disable smoothing.
+const SMOOTH_RADIUS = 2;
+// Catmull-Rom spline interpolation steps per polygon segment. Renders
+// smooth curves through the sample points instead of straight edges.
+// Purely visual — doesn't change the underlying isochrone calculation.
+// 12 steps × 48 bearings = 576 polygon vertices, drawn smoothly.
+const SPLINE_STEPS = 12;
 
 // State
 let map = null;
@@ -565,15 +591,12 @@ function setOrigin(latLng, label, address) {
 }
 
 // --- Boundary generation ----------------------------------------------------
-// Departure time is fixed at "now + 1 minute" using BEST_GUESS traffic.
-// The Advanced toggles from the original draft are gone; if you want a
-// peak-hour boundary, switch your machine clock or re-introduce the
-// departure toggle here.
-function getDepartureTime() {
-  const d = new Date();
-  d.setMinutes(d.getMinutes() + 1);
-  return d;
-}
+// Uses Distance Matrix BASIC mode — no drivingOptions / departureTime /
+// trafficModel — which gives free-flow driving times rather than
+// traffic-aware snapshots. Halves the per-element cost ($5/1000 vs
+// $10/1000) and is arguably closer to the EA's intent: the 30-min
+// Travel Boundary in Cl 64.1 is a fixed theoretical figure, not a
+// real-time peak-traffic measurement.
 
 function destinationPoint(origin, bearingDeg, distanceM) {
   return google.maps.geometry.spherical.computeOffset(origin, distanceM, bearingDeg);
@@ -591,7 +614,6 @@ async function generateBoundary() {
   const targetMin = parseFloat($("time").value);
   if (!(targetMin > 0)) { setStatus("Enter a valid drive time."); return; }
   const targetSec = targetMin * 60;
-  const departureTime = getDepartureTime();
 
   $("generate").disabled = true;
   clearBoundary();
@@ -633,19 +655,14 @@ async function generateBoundary() {
           origins: [originLatLng],
           destinations: batch.map((c) => c.latLng),
           travelMode: google.maps.TravelMode.DRIVING,
-          drivingOptions: { departureTime, trafficModel: google.maps.TrafficModel.BEST_GUESS },
+          // No drivingOptions → Basic tier ($5/1000 elements). Returns
+          // free-flow durations rather than traffic-aware snapshots.
         }, (response, status) => {
           if (status !== "OK") return reject(status);
           const row = response.rows[0].elements;
           for (let k = 0; k < batch.length; k++) {
             const el = row[k];
-            if (el.status === "OK") {
-              batch[k].duration = el.duration_in_traffic
-                ? el.duration_in_traffic.value
-                : el.duration.value;
-            } else {
-              batch[k].duration = null;
-            }
+            batch[k].duration = (el.status === "OK") ? el.duration.value : null;
           }
           resolve();
         });
@@ -717,10 +734,52 @@ async function generateBoundary() {
     for (let bi = 0; bi < bearings.length; bi++) smoothedDistKm[bi] = rawDistKm[bi];
   }
 
-  const boundaryPoints = [];
+  // ---- Build the sampled polygon vertices --------------------------------
+  // One LatLng per surviving bearing, in order. These are the "real" points
+  // — the spline below draws smooth curves *through* them.
+  const sampledPoints = [];
   for (let bi = 0; bi < bearings.length; bi++) {
     if (smoothedDistKm[bi] == null) continue;
-    boundaryPoints.push(destinationPoint(originLatLng, bearings[bi], smoothedDistKm[bi] * 1000));
+    sampledPoints.push(destinationPoint(originLatLng, bearings[bi], smoothedDistKm[bi] * 1000));
+  }
+
+  // ---- Catmull-Rom spline interpolation ---------------------------------
+  // Render smooth curves through the sample points instead of straight
+  // segments. Catmull-Rom passes exactly through every sample point and
+  // uses neighbour points to control the tangent — gives a visually
+  // continuous, organic-looking boundary without changing the underlying
+  // isochrone math. We wrap around the array (last point neighbours the
+  // first) to close the curve smoothly.
+  function lerpCatmullRom(p0, p1, p2, p3, t) {
+    // Standard 0.5-tension Catmull-Rom formula in lat/lng space.
+    const t2 = t * t, t3 = t2 * t;
+    const lat0 = p0.lat(), lat1 = p1.lat(), lat2 = p2.lat(), lat3 = p3.lat();
+    const lng0 = p0.lng(), lng1 = p1.lng(), lng2 = p2.lng(), lng3 = p3.lng();
+    return new google.maps.LatLng(
+      0.5 * ((2 * lat1) + (-lat0 + lat2) * t +
+             (2*lat0 - 5*lat1 + 4*lat2 - lat3) * t2 +
+             (-lat0 + 3*lat1 - 3*lat2 + lat3) * t3),
+      0.5 * ((2 * lng1) + (-lng0 + lng2) * t +
+             (2*lng0 - 5*lng1 + 4*lng2 - lng3) * t2 +
+             (-lng0 + 3*lng1 - 3*lng2 + lng3) * t3)
+    );
+  }
+
+  const boundaryPoints = [];
+  const N = sampledPoints.length;
+  if (N >= 4) {
+    for (let i = 0; i < N; i++) {
+      const p0 = sampledPoints[(i - 1 + N) % N];
+      const p1 = sampledPoints[i];
+      const p2 = sampledPoints[(i + 1) % N];
+      const p3 = sampledPoints[(i + 2) % N];
+      for (let s = 0; s < SPLINE_STEPS; s++) {
+        boundaryPoints.push(lerpCatmullRom(p0, p1, p2, p3, s / SPLINE_STEPS));
+      }
+    }
+  } else {
+    // Not enough points for a spline — fall back to the raw polygon.
+    boundaryPoints.push(...sampledPoints);
   }
 
   if (boundaryPoints.length < 3) {
@@ -759,7 +818,7 @@ async function generateBoundary() {
     "Boundary drawn from <b>" + escapeHtml(originLabel) + "</b>\n" +
     "Drive time: <b>" + targetMin + " min</b>\n" +
     "Farthest reach: <b>" + maxKm.toFixed(1) + " km</b>\n" +
-    "Sample bearings: " + boundaryPoints.length;
+    "Sample bearings: " + sampledPoints.length + " (smoothed)";
   if (bearingsExceededRadius > 0) {
     msg += "\n\n<b>Note:</b> " + bearingsExceededRadius +
       " bearing(s) still reachable beyond " + MAX_RADIUS_KM + " km — " +
