@@ -327,17 +327,22 @@
 
 // =========================================================================
 //  Google Maps API key.
-//  This file is the GitHub Test source — restrict the key by HTTP referrer
-//  in GCP to your GitHub Pages domain. The Production build swaps this
-//  string for the production key (see RBD_Travel_Boundary_Production.html).
+//  Shared with the timesheet calculator — both files live under the same
+//  GitHub Pages domain, so one referrer-restricted key covers both. The
+//  Production build swaps this string for the production key in the same
+//  way the calculator does.
 //
-//  Required APIs on the key:
+//  Required APIs on the key (already enabled on the calculator key):
 //    • Maps JavaScript API
 //    • Places API
 //    • Distance Matrix API
 //    • Geometry library (auto-loaded via &libraries=geometry)
+//
+//  Referrer restriction must include https://richo1206.github.io/rbd-timesheet/*
+//  (the trailing wildcard covers RBD_Travel_Boundary.html too — no change
+//  needed on the existing calculator restriction).
 // =========================================================================
-const GOOGLE_MAPS_API_KEY = "AIzaSyAxs0Z3xxi-IdjT1b9PtYEVgVtwVWtZtQc";
+const GOOGLE_MAPS_API_KEY = "AIzaSyCJJtYddJaE3tYzw7CvjlvZRPTpb4vD2eo";
 
 // Canonical RBD office addresses — kept in sync with the timesheet
 // calculator so both tools resolve to identical centre-of-employment points.
