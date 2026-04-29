@@ -68,6 +68,15 @@
             .card { box-shadow: none; border: none; padding: 8px 12px; }
             .card::before { display: none; }
             .print-only { display: block !important; }
+            /* Force the browser to keep background colours when printing.
+               Without this the navy "ticked" checkbox squares in the
+               Settings Selected block come out blank — browsers strip
+               background colours by default to save ink. */
+            .print-only, .print-only * {
+                -webkit-print-color-adjust: exact !important;
+                color-adjust: exact !important;
+                print-color-adjust: exact !important;
+            }
             /* Tighten vertical rhythm for print — on-screen spacing is
                kept generous for usability; paper just needs compactness. */
             body { padding: 4px; }
@@ -1205,12 +1214,16 @@
         // on every printer (older inkjets and thermal printers sometimes
         // mis-render the Unicode symbols).
         const stgCellStyle = 'padding: 2px 8px 2px 0; vertical-align: top; width: 33%;';
-        const stgBoxBase = 'display:inline-block; width:10px; height:10px; border:1px solid #333; margin-right:4px; vertical-align:middle; box-sizing:border-box;';
-        const stgBoxOn   = stgBoxBase + ' background:#004a99;';
+        // Off (unticked) state — empty square outline.
+        const stgBoxOff = 'display:inline-block; width:11px; height:11px; line-height:11px; text-align:center; border:1px solid #333; margin-right:4px; vertical-align:middle; box-sizing:border-box; font-size:10px; font-weight:700; color:transparent;';
+        // On (ticked) state — navy fill + white ✓ inside. The ✓ glyph means
+        // the tick is still readable on printers that strip background
+        // colours despite the print-color-adjust:exact hint above.
+        const stgBoxOn  = 'display:inline-block; width:11px; height:11px; line-height:11px; text-align:center; border:1px solid #004a99; margin-right:4px; vertical-align:middle; box-sizing:border-box; font-size:10px; font-weight:700; background:#004a99; color:#fff;';
         const stgCell = function(label, on) {
             if (label === null) return '<td style="' + stgCellStyle + '"></td>';
             return '<td style="' + stgCellStyle + '">' +
-                '<span style="' + (on ? stgBoxOn : stgBoxBase) + '"></span>' +
+                '<span style="' + (on ? stgBoxOn : stgBoxOff) + '">' + (on ? '✓' : '') + '</span>' +
                 label + '</td>';
         };
         html += '<div class="print-only" style="margin-bottom: 6px; padding: 4px 8px; background: #f8fafc; border-left: 5px solid #004a99; border-radius: 6px;">';
