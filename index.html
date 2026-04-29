@@ -146,7 +146,7 @@
             <li>Travel Hrs/Mins (morning leg) auto-set your "Arrived on Site" time. Return Hrs/Mins (return leg) auto-set your "Arrived at Workshop/Accom" time the same way (Left Site + Return time).</li>
             <li><strong>Return section</strong> is always visible: pick where you're heading back to (Devonport, Hobart, or a Custom address like accommodation). The return origin is automatically the last site in your chain. The Return section mirrors the morning section: same Verify Route button + Return Hrs/Mins inputs.</li>
             <li><strong>TK1 / TK2 / Kms (Company Car):</strong> tick these in Extra Allowances and the km fields populate automatically using Google's distances. Kms (CC) uses morning + return for the full day's km when both legs are fetched, and auto-ticks itself on <em>any</em> travelled km when Company Car is on. For TK2 multi-site days, click <em>Add another site</em> to chain up to 5 sites (Dest → Site 2 → Site 3 → …).</li>
-            <li>Manual overrides are always preserved: if you type your own Travel Hrs/Mins, Return Hrs/Mins, or km values, auto-fires won't clobber them.</li>
+            <li>Manual overrides are always preserved. If you type your own Travel Hrs/Mins, Return Hrs/Mins, or km values, auto-fires won't clobber them.</li>
             <li><strong>Travel Boundary Tool</strong> (button at the top of this section): opens a separate 30-min drive-time map. Useful when you need to check whether a site is inside or outside the EA's Travel Boundary (Cl 64.1.a). Pick a Centre of Employment (Devonport, Hobart, or a Custom address) and the tool plots the reachable area as a polygon on Google Maps.</li>
         </ul>
     </div>
@@ -280,10 +280,10 @@
             <li><strong>Company Car</strong>: select if a company vehicle was provided or offered. If unselected, Fares Allowance (FTR) applies. Selecting Company Car also makes TK1 and TK2 own-vehicle km allowances ineligible (Cl 64.3.b: the $0.57/km is not paid when the employee travels in company transport). The calculator enforces this by disabling the TK1 and TK2 checkboxes while Company Car is on.</li>
             <li><strong>Incidentals-1</strong>: select when staying at accommodation on a distant job (>20 min from urban area, employer pays for accom without meals). All accom-to-site travel is paid. TAT and Fares do not apply for accom↔site legs. First/Last Day tick preserves TAT/Fares for the standard workshop↔site leg (Cl 64.5.b).</li>
             <li><strong>Other ▼</strong>: expands to reveal the less-common flags below (Unnotified OT, RDO, Callout).</li>
-            <li><strong>Unnotified OT</strong>: select if you were required to work 2+ hours overtime without being notified the previous day. Triggers the $15.50 meal allowance (any day: Cl 60.1.a).</li>
-            <li><strong>RDO</strong>: select when working a scheduled Rostered Day Off. Treats the day as a Saturday-equivalent penalty day (Cl 62.3.a): DT rate for all work hours, 4-hour minimum (or 2-hour with 24h+ notice).</li>
+            <li><strong>Unnotified OT</strong>: select if you were required to work 2+ hours overtime without being notified the previous day. Triggers the $15.50 meal allowance (any day, Cl 60.1.a).</li>
+            <li><strong>RDO</strong>: select when working a scheduled Rostered Day Off. Treats the day as a Saturday-equivalent penalty day (Cl 62.3.a). All work hours are paid at DT rate, with a 4-hour minimum (or 2-hour with 24h+ notice).</li>
             <li><strong>Callout</strong>: select when recalled to site after hours (Cl 63.a). All work + travel is bundled at the appropriate OT rate with a 4-hour minimum. TT/TT+/TAT/Fares are suppressed: travel is already at OT. Not modelled: Cl 63.e/f on-call-roster variants (3h / 2h mins) and the Cl 63.a.iii TK1 $0.57/km own-vehicle allowance; enter these manually via Extra Allowances.</li>
-            <li><strong>Scheduled (24h+ notice)</strong>: when working a weekend/PH/RDO that was planned 24h+ in advance, minimum drops from 4h to 2h (Cl 62.3.b).</li>
+            <li><strong>Scheduled (24h+ notice)</strong>. When working a weekend/PH/RDO that was planned 24h+ in advance, minimum drops from 4h to 2h (Cl 62.3.b).</li>
         </ul>
         <strong>Key EA rules:</strong>
         <ul>
@@ -358,7 +358,7 @@
             </ul>
             <strong>Travel codes:</strong>
             <ul>
-                <li><strong>TT (Morning)</strong>: Travel Time at single rate. Morning travel outside the 30-min boundary on a weekday (Cl 64.3.c.i). Paid regardless of time of day: travel rate is not affected by the 6am–6pm ordinary-hours window, which only applies to work.</li>
+                <li><strong>TT (Morning)</strong>: Travel Time at single rate. Morning travel outside the 30-min boundary on a weekday (Cl 64.3.c.i). Paid regardless of time of day. Travel rate is not affected by the 6am–6pm ordinary-hours window, which only applies to work.</li>
                 <li><strong>TT+ (Morning)</strong>: Travel Time at time-and-a-half. Applies to <em>all</em> morning travel outside the boundary on weekends, public holidays, or RDO days (Cl 64.3.c.iii). On weekdays morning travel is never TT+: per Cl 64.3.d the weekday TT+ rate is return-only.</li>
                 <li><strong>TT (Return)</strong>: Return travel at single rate, when the day's work + outside-boundary travel hasn't exceeded 8 hours (Cl 64.3.c.i).</li>
                 <li><strong>TT+ (Return)</strong>: Return travel at time-and-a-half. Applies when the day's total work + outside-boundary travel exceeds 8 hours (Cl 64.3.c.ii), or always on weekends, public holidays, or RDO days (Cl 64.3.c.iii).</li>
