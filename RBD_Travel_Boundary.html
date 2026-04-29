@@ -402,9 +402,14 @@
     <div class="howto-note">
       <strong>How it works.</strong> Pick a Centre of Employment
       (or type a Custom origin), set the drive time, and click
-      Generate Boundary. The tool checks driving routes in 100
+      Generate Boundary. The tool samples driving times in 100
       directions out from the origin and draws a polygon of the
-      area reachable within that time.
+      reachable area. The polygon is smoothed (median + mean
+      filter, plus curve-fitted edges) to remove road-snapping
+      artefacts: sharp inward dips that happen when one bearing
+      snaps to a fast highway and the next to a back street.
+      Tick <strong>Advanced &rarr; Show raw polygon</strong> to
+      compare against the unsmoothed shape.
     </div>
 
     <div class="section-header">Centre of Employment</div>
@@ -530,6 +535,12 @@ let rawPolygon = null;     // diagnostic overlay: un-smoothed polygon, drawn
                            // as a thin red outline when the Advanced checkbox
                            // is ticked. Lets the user spot-check whether the
                            // smoothing is hiding important detail.
+let lastRun = null;        // cached snapshot of the most recent successful
+                           // generateBoundary() run. Lets us draw the raw
+                           // overlay AFTER generation when the user ticks
+                           // the Advanced checkbox without having to re-fetch
+                           // every Distance Matrix sample. Cleared when
+                           // clearBoundary() runs or the origin changes.
 let mapsLoaded = false;
 let autocomplete = null;
 let activeOffice = "Dev";  // matches the default-active button above
@@ -651,17 +662,22 @@ async function initMap() {
   $("generate").disabled = false;
   $("clear").disabled = false;
 
-  // Wire the "Show raw polygon" checkbox to toggle its legend row and
-  // clear any existing raw overlay when un-ticked. Re-running Generate
-  // is what actually re-draws the overlay when the box is ticked back on.
+  // Wire the "Show raw polygon" checkbox.
+  //   • Tick ON  → if a boundary has been generated, draw the raw overlay
+  //                using the cached bearing/distance data (no API calls).
+  //                If no generation yet, just toggle the legend row so the
+  //                next Generate click will draw the overlay.
+  //   • Tick OFF → remove any existing overlay immediately.
   const rawCb = document.getElementById("showRaw");
   if (rawCb) {
     rawCb.addEventListener("change", () => {
-      document.getElementById("legendRawRow")
-        .classList.toggle("show", rawCb.checked);
-      if (!rawCb.checked && rawPolygon) {
-        rawPolygon.setMap(null);
-        rawPolygon = null;
+      const row = document.getElementById("legendRawRow");
+      if (rawCb.checked) {
+        if (lastRun) drawRawOverlay();
+        else if (row) row.classList.add("show");
+      } else {
+        if (rawPolygon) { rawPolygon.setMap(null); rawPolygon = null; }
+        if (row) row.classList.remove("show");
       }
     });
   }
@@ -733,9 +749,39 @@ function destinationPoint(origin, bearingDeg, distanceM) {
   return google.maps.geometry.spherical.computeOffset(origin, distanceM, bearingDeg);
 }
 
+// Draws the un-smoothed polygon as a thin red outline using the cached
+// per-bearing distances from the most recent generation. Idempotent —
+// removes any previous overlay before drawing the new one. Safe to call
+// when there's no cached run (silently does nothing).
+function drawRawOverlay() {
+  if (rawPolygon) { rawPolygon.setMap(null); rawPolygon = null; }
+  if (!lastRun) return;
+  const { bearings, rawDistKm, origin } = lastRun;
+  const rawPoints = [];
+  for (let bi = 0; bi < bearings.length; bi++) {
+    if (rawDistKm[bi] == null) continue;
+    rawPoints.push(destinationPoint(origin, bearings[bi], rawDistKm[bi] * 1000));
+  }
+  if (rawPoints.length < 3) return;
+  rawPolygon = new google.maps.Polygon({
+    paths: rawPoints,
+    strokeColor: "#d93025",
+    strokeWeight: 1.2,
+    strokeOpacity: 0.9,
+    fillOpacity: 0,        // outline only, no fill
+    geodesic: true,
+    zIndex: 1,             // sits below the smoothed polygon
+    map,
+    clickable: false,
+  });
+  const row = document.getElementById("legendRawRow");
+  if (row) row.classList.add("show");
+}
+
 function clearBoundary() {
   if (boundaryPolygon) { boundaryPolygon.setMap(null); boundaryPolygon = null; }
   if (rawPolygon)      { rawPolygon.setMap(null);      rawPolygon = null; }
+  lastRun = null;        // invalidate cached samples — origin or scope changed
 }
 
 async function generateBoundary() {
@@ -941,33 +987,22 @@ async function generateBoundary() {
     return;
   }
 
-  // ---- Optional raw-polygon overlay (Advanced > Show raw) ---------------
-  // Built directly from rawDistKm so the user can see exactly what the
-  // smoothing pipeline (median + mean + spline) is hiding. Drawn FIRST so
-  // the smoothed polygon renders on top of it.
-  const showRaw = document.getElementById("showRaw") &&
-                  document.getElementById("showRaw").checked;
-  if (showRaw) {
-    const rawPoints = [];
-    for (let bi = 0; bi < bearings.length; bi++) {
-      if (rawDistKm[bi] == null) continue;
-      rawPoints.push(destinationPoint(originLatLng, bearings[bi], rawDistKm[bi] * 1000));
-    }
-    if (rawPoints.length >= 3) {
-      rawPolygon = new google.maps.Polygon({
-        paths: rawPoints,
-        strokeColor: "#d93025",
-        strokeWeight: 1.2,
-        strokeOpacity: 0.9,
-        fillOpacity: 0,        // outline only, no fill
-        geodesic: true,
-        zIndex: 1,             // sits below the smoothed polygon
-        map,
-        clickable: false,
-      });
-    }
-    document.getElementById("legendRawRow").classList.add("show");
-  }
+  // ---- Cache the raw bearing/distance arrays ----------------------------
+  // Lets the Advanced "Show raw polygon" checkbox draw its overlay on top
+  // of an already-generated boundary without re-fetching every Distance
+  // Matrix sample. Cleared when the boundary or origin is cleared.
+  lastRun = {
+    bearings: bearings.slice(),
+    rawDistKm: rawDistKm.slice(),
+    origin: originLatLng,
+  };
+
+  // Optional raw-polygon overlay — drawn FIRST so the smoothed polygon
+  // renders on top of it. The drawRawOverlay helper is also called from
+  // the Advanced checkbox listener when the user ticks the box AFTER
+  // generation has finished.
+  const showRawCb = document.getElementById("showRaw");
+  if (showRawCb && showRawCb.checked) drawRawOverlay();
 
   boundaryPolygon = new google.maps.Polygon({
     paths: boundaryPoints,
