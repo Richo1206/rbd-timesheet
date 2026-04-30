@@ -149,7 +149,11 @@
         .time-input.is-empty:not(:focus-within) > input { color: transparent; }
         .toggle-btn { padding: 15px 4px; border: 1.5px solid #b0c4de; background: #f8fafc; color: #3a4457; cursor: pointer; border-radius: 10px; text-align: center; font-weight: 700; font-size: 12px; transition: all 0.15s ease; user-select: none; }
         .toggle-btn.active { background: linear-gradient(135deg, #FFD600, #FFEA00); color: #1a1a1a; border-color: #e6c200; box-shadow: 0 2px 8px rgba(255,214,0,0.35); }
-        #results { background: linear-gradient(135deg, #f8fafc, #f0f5fa); padding: 16px; border-radius: 14px; border-left: 4px solid #004a99; margin-top: 12px; box-shadow: inset 0 1px 3px rgba(0,0,0,0.04); }
+        #results { background: linear-gradient(135deg, #f8fafc, #f0f5fa); padding: 16px; border-radius: 14px; border-left: 4px solid #004a99; margin-top: 12px; box-shadow: inset 0 1px 3px rgba(0,0,0,0.04); position: relative; }
+        /* Position the Results (i) button absolutely at the top-right so
+           it lines up with the "Daily Timesheet" h3 (first visible element
+           in calcOutput) instead of sitting on its own row above it. */
+        #results > .info-btn { position: absolute; top: 14px; right: 14px; z-index: 1; }
         #results h3 { margin: 0 0 10px 0; font-size: 14px; color: #003366; font-weight: 700; }
         .code-row { display: flex; justify-content: space-between; padding: 9px 0; border-bottom: 1px solid #e1e8ed; font-size: 14px; font-weight: 500; }
         .code-row:last-child { border-bottom: none; }
@@ -490,10 +494,7 @@
         <div id="btnLastDay" class="toggle-btn" onclick="toggleTripDay('LastDay')">Last Day</div>
     </div>
     <div id="results">
-        <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 4px;">
-            <span></span>
-            <button class="info-btn no-print" onclick="toggleInfo('infoResults')">i</button>
-        </div>
+        <button class="info-btn no-print" onclick="toggleInfo('infoResults')">i</button>
         <div id="infoResults" class="info-panel no-print">
             <strong>Work codes:</strong>
             <ul>
