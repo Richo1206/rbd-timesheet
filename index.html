@@ -1002,9 +1002,9 @@
     }
     // Lightweight time-order validation. Catches fat-finger errors where
     // (e.g.) Left Site is typed before Arrived on Site. Only checks pairs
-    // where both fields have a value, and notes that midnight-crossing
-    // shifts will trigger false positives (acceptable trade-off for a
-    // small Tasmanian electrical business — almost no shifts wrap).
+    // where both fields have a value (the && lw && as guards), so missing
+    // required fields don't generate false positives — the "Fill in" prompt
+    // in the results panel takes precedence for that case.
     function validateTimeOrder() {
         const warn = document.getElementById('timeOrderWarn');
         if (!warn) return;
@@ -1493,6 +1493,43 @@
         html += '<span>Finish: <strong>' + (flags.Fin === 'Work' ? 'Workshop' : 'Site') + '</strong></span>';
         html += '</div>';
         html += '</div>';
+        // -------------------------------------------------------------------
+        // Required-fields gate. Two simple rules:
+        //   • Arrived on Site is required when Start = Site (otherwise unused
+        //     for pay calc — the workday begins at "Left Workshop/Accom").
+        //   • Arrived at Workshop/Accom is always required (it's either the
+        //     paid-work end time when Finish = Workshop, or the return-leg
+        //     endpoint when Finish = Site).
+        // If either is missing we replace the timesheet rows + notes + extra
+        // allowances with a friendly "Fill in X" prompt so the user never
+        // sees nonsense numbers from blank-field treatment as 00:00.
+        // -------------------------------------------------------------------
+        const _aosRequired = (flags.Start === 'Site');
+        const _aosFilled   = !!(document.getElementById('arriveSite').value);
+        const _aowFilled   = !!(document.getElementById('arriveWorkshop').value);
+        const _missing = [];
+        if (_aosRequired && !_aosFilled) _missing.push('<strong>Arrived on Site</strong>');
+        if (!_aowFilled)                 _missing.push('<strong>Arrived at Workshop/Accom</strong>');
+        if (_missing.length) {
+            const _msg = _missing.length === 2
+                ? _missing[0] + ' and ' + _missing[1]
+                : _missing[0];
+            html += '<div class="no-print" style="margin: 10px 0 4px; padding: 14px 16px; background: linear-gradient(135deg, #f0f6fc, #e8f0fa); border-left: 4px solid #004a99; border-radius: 10px; font-size: 12.5px; color: #334155; line-height: 1.55;">' +
+                '<strong style="color:#003366;">Fill in ' + _msg + ' to see your timesheet.</strong>' +
+                '<div style="font-size: 11px; color: #6b7c8d; margin-top: 6px; line-height: 1.5;">These times set the start and end of your paid work day. The Google Maps Travel Tool will auto-fill them once it has the morning and return legs.</div>' +
+            '</div>';
+            // Reset the cached results so the .txt download doesn't carry
+            // stale numbers from a previous valid run.
+            window._lastResults = {};
+            window._lastNotes = [];
+            window._lastAllowNT = 0; window._lastAllowOT = 0;
+            window._lastSiteNT = 0;  window._lastSiteOT = 0;
+            window._lastSupTH = 0;   window._lastSupDT = 0;
+            window._lastSupTT = 0;   window._lastSupTTP = 0;
+            window._lastHvCapActive = false;
+            document.getElementById('calcOutput').innerHTML = html;
+            return;
+        }
         html += "<h3>Daily Timesheet (Excludes most allowances)</h3>";
         for (let code in results) {
             if (results[code] > 0.001) {
