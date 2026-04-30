@@ -145,7 +145,8 @@
             <li>Tap <strong>Verify Route</strong> to open Google Maps in a new tab and visually sanity-check the route Google is using.</li>
             <li>Travel Hrs/Mins (morning leg) auto-set your "Arrived on Site" time. Return Hrs/Mins (return leg) auto-set your "Arrived at Workshop/Accom" time the same way (Left Site + Return time).</li>
             <li><strong>Return section</strong> is always visible: pick where you're heading back to (Devonport, Hobart, or a Custom address like accommodation). The return origin is automatically the last site in your chain. The Return section mirrors the morning section: same Verify Route button + Return Hrs/Mins inputs.</li>
-            <li><strong>TK1 / TK2 / Kms (Company Car):</strong> tick these in Extra Allowances and the km fields populate automatically using Google's distances. Kms (CC) uses morning + return for the full day's km when both legs are fetched, and auto-ticks itself on <em>any</em> travelled km when Company Car is on. For TK2 multi-site days, click <em>Add another site</em> to chain up to 5 sites (Dest → Site 2 → Site 3 → …).</li>
+            <li><strong>TK1 / TK2 / Kms (Company Car):</strong> tick these in Extra Allowances and the km fields populate automatically using Google's distances. Kms (CC) totals every leg the driver covers (morning + every between-site leg + return), and auto-ticks itself on <em>any</em> travelled km when Company Car is on.</li>
+            <li><strong>Multi-site days</strong> (Dest &rarr; Site 2 &rarr; Site 3 &rarr; &hellip;): click <em>+ Add another site</em> to chain up to 5 sites. Works regardless of allowance: Company Car, TK1, or TK2. The return leg automatically starts from the last site in the chain (e.g. Site 3, not the morning Destination). When TK2 is also ticked, between-site km auto-fill from the chain.</li>
             <li>Manual overrides are always preserved. If you type your own Travel Hrs/Mins, Return Hrs/Mins, or km values, auto-fires won't clobber them.</li>
             <li><strong>Travel Boundary Tool</strong> (button at the top of this section): opens a separate 30-min drive-time map. Useful when you need to check whether a site is inside or outside the EA's Travel Boundary (Cl 64.1.a). Pick a Centre of Employment (Devonport, Hobart, or a Custom address) and the tool plots the reachable area as a polygon on Google Maps.</li>
         </ul>
@@ -178,7 +179,7 @@
           hidden so Autocomplete can be initialised once at page load: when
           the slot becomes visible Autocomplete just works.
         -->
-        <button id="btnAddSite" class="maps-btn hidden" onclick="addNextSite()" style="background:#004a99; margin-top: 6px; font-size: 13px; padding: 10px;">+ Add another site</button>
+        <button id="btnAddSite" class="maps-btn" onclick="addNextSite()" style="background:#004a99; margin-top: 6px; font-size: 13px; padding: 10px;">+ Add another site</button>
         <div id="extraSitesContainer">
             <div id="siteWrap2" class="site-wrap hidden" style="margin-top: 8px;">
                 <label style="display:flex; justify-content:space-between; align-items:center;"><span>Site 2 (between):</span><span onclick="removeSite(2)" style="cursor:pointer; color:#c33; font-weight:bold; padding:2px 8px;">&times;</span></label>
@@ -223,7 +224,7 @@
           fires a return-leg Distance Matrix query alongside the morning leg
           and feeds the result into:
             • "Arrived at Workshop/Accom" time (= leaveSite + return time)
-            • Kms (Company Car) km (= morning + return, when ticked)
+            • Kms (Company Car) km (= morning + between-site legs + return, when ticked)
             • TK1 outside-boundary km (when ticked)
         -->
         <div id="returnSection" style="margin-top: 14px;">
@@ -480,7 +481,7 @@
         html += '<ul>';
         html += '<li><strong>TK1 ($0.57/km, Cl 64.3.a)</strong> \u2014 own-vehicle km travelled outside the 30-min Travel Boundary. Ratio-method: km \u00D7 (mins outside boundary) / (total mins). Not paid when company transport is used (Cl 64.3.b).</li>';
         html += '<li><strong>TK2 ($1.05/km, Cl 64.4)</strong> \u2014 own-vehicle km travelled between worksites during the workday. Not applicable when company transport is used.</li>';
-        html += '<li><strong>Kms (Company Car) ($0.75/km)</strong> \u2014 km driven when you\'re responsible for a company vehicle. Internal operational allowance. When the Company Car button is on AND any km were travelled today, this allowance auto-ticks itself and the km field auto-fills with the morning + return km (full day round trip). No minimum threshold \u2014 any travelled km counts. Untick manually if you don\'t want to claim it.</li>';
+        html += '<li><strong>Kms (Company Car) ($0.75/km)</strong> \u2014 km driven when you\'re responsible for a company vehicle. Internal operational allowance. When the Company Car button is on AND any km were travelled today, this allowance auto-ticks itself and the km field auto-fills with the sum of every leg (morning + every between-site leg + return). No minimum threshold \u2014 any travelled km counts. Untick manually if you don\'t want to claim it.</li>';
         html += '<li><strong>Mutex:</strong> TK1 + TK2 (own vehicle) and Kms Company Car (company vehicle) are mutually exclusive. Ticking the top-of-form Company Car button disables TK1 and TK2; unticking it disables Kms Company Car.</li>';
         html += '</ul>';
         html += '<strong>Google Maps auto-fill:</strong>';
@@ -488,7 +489,7 @@
         html += '<li>With any of TK1/TK2/Kms CC ticked (as applicable), the km field auto-populates when you use the Google Maps Travel Tool above.</li>';
         html += '<li><strong>TK1</strong> pulls the outside-boundary km for both the morning and return legs. The Return section in the Travel Tool is always visible so you can specify where you\'re going back to (e.g. accommodation, other office).</li>';
         html += '<li><strong>TK2</strong> pulls the sum of between-site km. Click "Add another site" to chain multiple sites (up to 5 total). The return leg automatically starts from your last added site.</li>';
-        html += '<li><strong>Kms (Company Car)</strong> pulls the morning leg + the return leg (full round trip) \u2014 the Return section is always visible so the return distance is known by default. Tap <em>Verify Return Route</em> in the Travel Tool to sanity-check the return leg in Google Maps. Adjust manually if your day was asymmetric (e.g. multiple stops Google didn\'t see).</li>';
+        html += '<li><strong>Kms (Company Car)</strong> sums every leg the driver covers: morning + every between-site leg (when sites are chained) + return. So a Workshop&rarr;Site 1&rarr;Site 2&rarr;Workshop day populates with all three legs added together. Tap <em>Verify Return Route</em> in the Travel Tool to sanity-check the final leg. Adjust manually if your day was asymmetric (e.g. unplanned stops Google didn\'t see).</li>';
         html += '<li>Auto-filled values can always be overwritten manually. Once you type a km value it won\'t be clobbered by a later auto-calculate.</li>';
         html += '</ul>';
         html += '<strong>Note:</strong> TAT, Fares, and Meal Allowance (Overtime) are already auto-calculated by the timesheet above \u2014 they are not duplicated here.';
@@ -520,9 +521,9 @@
             }
             html += '</div>';
             // Inline hint under Km's (Company Car) — only visible when that
-            // allowance is ticked. Explains the morning + return auto-fill.
+            // allowance is ticked. Explains the full-chain auto-fill.
             if (a.id === 'kmCompanyCar') {
-                html += '<div id="ccKmNote" class="hidden" style="font-size: 10px; color: #888; font-style: italic; margin: -4px 0 6px; padding: 0 4px;">Auto-calculation: morning leg + return leg from Google Maps. Adjust manually if your day was asymmetric.</div>';
+                html += '<div id="ccKmNote" class="hidden" style="font-size: 10px; color: #888; font-style: italic; margin: -4px 0 6px; padding: 0 4px;">Auto-calculation: morning leg + every between-site leg + return leg, from Google Maps. Adjust manually if your day was asymmetric.</div>';
             }
         });
         panel.innerHTML = html;
@@ -1703,11 +1704,16 @@
         if (returnSec && !flags.ReturnOffice && flags.Office) {
             setReturnOffice(flags.Office);
         }
-        // Add Site button — visible only when TK2 is ticked AND there's room
-        // for another slot.
+        // Add Site button — always visible when there's room for another
+        // slot. The button is no longer gated by TK2 because chained-site
+        // days happen with Company Car too: the return leg needs to start
+        // from the last site in the chain (Site 2/3/4/5), not from the
+        // morning Destination, regardless of which km allowance applies.
+        // TK2 km auto-fill still requires TK2 to be ticked, but the chain
+        // itself is allowance-agnostic.
         if (addSiteBtn) {
             const roomForMore = activeExtraSiteCount() < 4;  // max 4 extras = 5 total sites
-            addSiteBtn.classList.toggle('hidden', !(tk2Ticked && roomForMore));
+            addSiteBtn.classList.toggle('hidden', !roomForMore);
         }
         if (ccNote) ccNote.classList.toggle('hidden', !ccTicked);
         // Opportunistic km auto-fill when user toggles an allowance after
@@ -2074,7 +2080,10 @@
             document.getElementById('manualHours').value   = Math.floor(totalMinutes / 60);
             document.getElementById('manualMinutes').value = totalMinutes % 60;
             if (typeof syncArriveTime === 'function') syncArriveTime();
-            // 2. Between-site legs (only if TK2 with extras)
+            // 2. Between-site legs — fetched whenever there are extra sites
+            //    in the chain, regardless of which km allowance is ticked.
+            //    Kms (Company Car) needs the between-leg km to total the
+            //    full day correctly, and TK2 km auto-fill uses the same data.
             const betweenLegs = [];
             for (let i = 0; i < activeSites.length - 1; i++) {
                 const label = 'between-site leg ' + (i + 1) + '\u2192' + (i + 2);   /* U+2192 → */
@@ -2128,13 +2137,16 @@
             if (onlyIfEmpty && input.value && String(input.value).trim() !== '') return;
             input.value = value;
         };
-        // Km's (Company Car) — morning + return km (full round trip) when
-        // both legs are known; falls back to morning-only if return wasn't
-        // fetched yet.
+        // Km's (Company Car) — full day's km. The driver covers every leg,
+        // so we sum morning + every between-site leg + return. Falls back
+        // gracefully when only some legs have been fetched.
         const ccCb = document.getElementById('allow_kmCompanyCar');
         const ccInput = document.getElementById('km_kmCompanyCar');
-        // Total km the driver covered today, given what we know.
+        const betweenKm = betweenLegs.reduce(function(sum, leg) {
+            return sum + (leg && leg.km != null ? leg.km : 0);
+        }, 0);
         const ccTotalKm = (morningLeg && morningLeg.km != null ? morningLeg.km : 0) +
+                          betweenKm +
                           (returnLeg  && returnLeg.km  != null ? returnLeg.km  : 0);
         // REVENUE-PROTECTION REMINDER: when Company Car is on AND any km
         // were travelled today, auto-tick the Kms (CC) allowance so the
