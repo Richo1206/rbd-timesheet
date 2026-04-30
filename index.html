@@ -50,10 +50,47 @@
         .maps-btn:active { transform: scale(0.98); }
         .toggle-section { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 15px; }
         .day-toggle-section { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 6px; margin-bottom: 15px; border-top: 1.5px solid #e8eef5; padding-top: 15px; }
-        /* Mini-header above each toggle group — subtle grey uppercase
-           label, tightly bound to the row below. Breaks the dense stack
-           of toggles into named functional groups (where / when / how). */
-        .toggle-group-label { font-size: 10px; font-weight: 700; color: #6b7c8d; text-transform: uppercase; letter-spacing: 0.6px; margin: 4px 0 6px; padding-left: 2px; }
+        /* Section divider with centred uppercase label and gradient-faded
+           horizontal lines on each side. Matches the "Return Trip" divider
+           in the route box. Used to break the dense toggle stack into
+           named functional groups (where / when / how) and as the
+           inter-row label between Start and Finish toggle pairs. */
+        .divider-label { display: flex; align-items: center; gap: 10px; margin: 12px 0 8px; }
+        .divider-label::before, .divider-label::after {
+            content: '';
+            flex: 1;
+            height: 1px;
+        }
+        .divider-label::before { background: linear-gradient(to right, transparent, #b0c4de); }
+        .divider-label::after  { background: linear-gradient(to left,  transparent, #b0c4de); }
+        .divider-label > span {
+            font-size: 10px;
+            font-weight: 700;
+            color: #6b7c8d;
+            text-transform: uppercase;
+            letter-spacing: 1.2px;
+            white-space: nowrap;
+        }
+        /* Time-input wrapper — provides a "Select time" placeholder overlay
+           when the native widget doesn't render its own --:-- prompt. iOS
+           Safari and some Android browsers leave time inputs blank when
+           empty; this overlay makes the field self-explanatory.
+           The shim is hidden on focus-within so it doesn't fight the user
+           while they type, and JS toggles `.is-empty` based on value. */
+        .time-input { position: relative; display: block; }
+        .time-input::after {
+            content: attr(data-placeholder);
+            position: absolute;
+            left: 14px;
+            top: 50%;
+            transform: translateY(-50%);
+            color: #99a5b3;
+            font-size: 15px;
+            pointer-events: none;
+            display: none;
+        }
+        .time-input.is-empty:not(:focus-within)::after { display: block; }
+        .time-input.is-empty:not(:focus-within) > input { color: transparent; }
         .toggle-btn { padding: 15px 4px; border: 1.5px solid #b0c4de; background: #f8fafc; color: #3a4457; cursor: pointer; border-radius: 10px; text-align: center; font-weight: 700; font-size: 12px; transition: all 0.15s ease; user-select: none; }
         .toggle-btn.active { background: linear-gradient(135deg, #FFD600, #FFEA00); color: #1a1a1a; border-color: #e6c200; box-shadow: 0 2px 8px rgba(255,214,0,0.35); }
         #results { background: linear-gradient(135deg, #f8fafc, #f0f5fa); padding: 16px; border-radius: 14px; border-left: 4px solid #004a99; margin-top: 12px; box-shadow: inset 0 1px 3px rgba(0,0,0,0.04); }
@@ -332,19 +369,27 @@
     <div class="input-grid">
         <div id="leftWorkshopWrap">
             <label id="startLabel">Left Workshop/Accom:</label>
-            <input type="time" id="leftWorkshop" oninput="syncArriveTime(); calculate();">
+            <span class="time-input" data-placeholder="Select time">
+                <input type="time" id="leftWorkshop" oninput="syncArriveTime(); calculate();">
+            </span>
         </div>
         <div id="arriveSiteWrap">
             <label>Arrived on Site:</label>
-            <input type="time" id="arriveSite" oninput="calculate()">
+            <span class="time-input" data-placeholder="Select time">
+                <input type="time" id="arriveSite" oninput="calculate()">
+            </span>
         </div>
         <div id="leaveSiteWrap">
             <label>Left Site:</label>
-            <input type="time" id="leaveSite" oninput="syncArriveWorkshopTime(); calculate();">
+            <span class="time-input" data-placeholder="Select time">
+                <input type="time" id="leaveSite" oninput="syncArriveWorkshopTime(); calculate();">
+            </span>
         </div>
         <div id="arriveWorkshopWrap">
             <label id="finishLabel">Arrived at Workshop/Accom:</label>
-            <input type="time" id="arriveWorkshop" oninput="calculate()">
+            <span class="time-input" data-placeholder="Select time">
+                <input type="time" id="arriveWorkshop" oninput="calculate()">
+            </span>
         </div>
     </div>
     <!--
@@ -354,20 +399,23 @@
       pay codes. Hidden when all is well.
     -->
     <div id="timeOrderWarn" class="hidden no-print" style="background: #fff7d6; border-left: 4px solid #e0c24a; padding: 8px 12px; margin: -4px 0 12px; border-radius: 6px; font-size: 11.5px; color: #6b5800; line-height: 1.5;"></div>
-    <div class="toggle-group-label">Where you started &amp; finished</div>
+    <div class="divider-label"><span>Where you started</span></div>
     <div class="toggle-section">
         <div id="btnStartWork" class="toggle-btn" onclick="setStart('Work')">Start Workshop</div>
         <div id="btnStartSite" class="toggle-btn active" onclick="setStart('Site')">Start Site</div>
+    </div>
+    <div class="divider-label"><span>Where you finished</span></div>
+    <div class="toggle-section">
         <div id="btnFinWork" class="toggle-btn" onclick="setFinish('Work')">Finish Workshop</div>
         <div id="btnFinSite" class="toggle-btn active" onclick="setFinish('Site')">Finish Site</div>
     </div>
-    <div class="toggle-group-label">Day type</div>
+    <div class="divider-label"><span>Day type</span></div>
     <div class="day-toggle-section" style="grid-template-columns: 1fr 1fr 1fr; border-top:none; padding-top:0;">
         <div id="btnWeekday" class="toggle-btn active" onclick="toggleDay('Weekday')">Weekday</div>
         <div id="btnWeekend" class="toggle-btn" onclick="toggleDay('Weekend')">Weekend</div>
         <div id="btnPH" class="toggle-btn" onclick="toggleDay('PH')">Pub Holiday</div>
     </div>
-    <div class="toggle-group-label">Vehicle &amp; allowances</div>
+    <div class="divider-label"><span>Vehicle &amp; allowances</span></div>
     <div class="day-toggle-section" style="border-top:none; padding-top:0;">
         <div id="btnCo" class="toggle-btn active" onclick="toggle('Co')">Company Car</div>
         <div id="btnInc1" class="toggle-btn" onclick="toggleInc1()">Incidentals-1</div>
@@ -883,6 +931,18 @@
         let parts = t.split(':');
         return parseInt(parts[0]) * 60 + parseInt(parts[1]);
     }
+    // Toggle the .is-empty class on each .time-input wrapper so the
+    // CSS overlay ("Select time" placeholder) appears when the field
+    // has no value. Native <input type="time"> rendering varies wildly
+    // on mobile (iOS leaves them blank, Android shows --:--), so this
+    // shim normalises the empty state.
+    function syncTimePlaceholders() {
+        document.querySelectorAll('.time-input').forEach(function(wrap) {
+            const input = wrap.querySelector('input[type="time"]');
+            if (!input) return;
+            wrap.classList.toggle('is-empty', !input.value);
+        });
+    }
     // Lightweight time-order validation. Catches fat-finger errors where
     // (e.g.) Left Site is typed before Arrived on Site. Only checks pairs
     // where both fields have a value, and notes that midnight-crossing
@@ -938,6 +998,8 @@
     }
     // ---------- main calculation ----------
     function calculate() {
+        // Sync the "Select time" overlay state on each time input wrapper.
+        syncTimePlaceholders();
         // Time-order sanity check — show a yellow banner if any field is
         // out of order. Does not block calculation; the user can still
         // proceed (e.g. for legitimate midnight-wrap shifts).
