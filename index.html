@@ -26,7 +26,23 @@
             .sub { font-size: 9.5px; margin-bottom: 6px; }
             .section-header { margin: 16px 0 8px; padding-bottom: 4px; }
             .input-grid { gap: 8px; margin-bottom: 12px; }
-            input[type="time"], input[type="text"], input[type="number"] { padding: 10px; font-size: 15px; }
+            /* Bumped to font-size: 16px to prevent iOS Safari from zooming
+               the page on input focus (anything <16px triggers zoom). */
+            input[type="text"], input[type="number"] { padding: 11px; font-size: 16px; }
+            /* Time inputs need explicit sizing on mobile because iOS Safari
+               auto-shrinks them when the inner content is transparent (the
+               trick we use to hide native --:-- rendering for our "Select
+               time" placeholder). Min-height + explicit padding guarantee
+               the box stays the same size whether populated or empty. */
+            .time-input { display: block; min-height: 48px; box-sizing: border-box; }
+            input[type="time"] {
+                padding: 12px 14px;
+                font-size: 16px;
+                min-height: 48px;
+                box-sizing: border-box;
+                line-height: 1.2;
+            }
+            .time-input::after { font-size: 16px; left: 14px; }
             label { font-size: 11.5px; margin-bottom: 4px; }
             .route-box { padding: 10px; margin-bottom: 14px; border-radius: 10px; }
             .toggle-btn { padding: 12px 4px; font-size: 11.5px; }
@@ -48,6 +64,35 @@
         .route-box { background: linear-gradient(135deg, #f8fafc, #f0f5fa); padding: 12px; border-radius: 12px; border: 1.5px solid #d2dce6; margin-bottom: 18px; }
         .maps-btn { width: 100%; padding: 11px; background: linear-gradient(135deg, #004a99, #0058b3); color: white; border: none; border-radius: 10px; font-weight: 700; cursor: pointer; margin-bottom: 10px; font-size: 13px; transition: transform 0.1s, box-shadow 0.2s; box-shadow: 0 2px 8px rgba(0,74,153,0.25); }
         .maps-btn:active { transform: scale(0.98); }
+        /* Slim outlined "Verify route" buttons. The verify action is a
+           sanity-check, not a primary action — slim secondary styling
+           stops them shouting for attention next to Generate / Add Site. */
+        .verify-route-btn {
+            width: 100%;
+            padding: 8px 12px;
+            background: white;
+            color: #004a99;
+            border: 1.5px solid #b0c4de;
+            border-radius: 8px;
+            font-weight: 700;
+            cursor: pointer;
+            margin-bottom: 10px;
+            font-size: 11px;
+            text-transform: uppercase;
+            letter-spacing: 0.6px;
+            transition: background 0.15s, border-color 0.15s, color 0.15s;
+            font-family: inherit;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 5px;
+            line-height: 1.2;
+        }
+        .verify-route-btn:hover, .verify-route-btn:active {
+            background: #f0f6fc;
+            border-color: #004a99;
+        }
+        .verify-route-btn .arrow { font-size: 12px; line-height: 1; }
         .toggle-section { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 15px; }
         .day-toggle-section { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 6px; margin-bottom: 15px; border-top: 1.5px solid #e8eef5; padding-top: 15px; }
         /* Section divider with centred uppercase label and gradient-faded
@@ -238,7 +283,7 @@
         </div>
         <label>Dest:</label>
         <input type="text" id="destination" placeholder="Site address" style="margin-bottom: 12px;" onblur="destinationChanged()">
-        <button class="maps-btn" onclick="checkRoute()">Verify Route (opens Google Maps)</button>
+        <button class="verify-route-btn" onclick="checkRoute()" title="Open this morning leg in Google Maps to sanity-check the route">Verify route <span class="arrow">&#8599;</span></button>
         <div class="input-grid">
             <div>
                 <label>Travel Hrs:</label>
@@ -320,7 +365,7 @@
               Maps call fires automatically as fields change, so there's
               no Calculate button: auto-calc covers it.
             -->
-            <button class="maps-btn" onclick="checkReturnRoute()">Verify Return Route (opens Google Maps)</button>
+            <button class="verify-route-btn" onclick="checkReturnRoute()" title="Open the return leg in Google Maps to sanity-check the route">Verify return route <span class="arrow">&#8599;</span></button>
             <div class="input-grid">
                 <div>
                     <label>Return Hrs:</label>
@@ -1875,14 +1920,18 @@
         // stale — fire the silent background refetch so the km fields
         // populate without requiring a second Calculate press.
         if (lastLegs && lastLegs.morning) {
-            const tk2Active = tk2Ticked && activeExtraSiteCount() > 0;
-            const needReturn  = tk1Ticked && !lastLegs.returnLeg;
-            const needBetween = tk2Active && (lastLegs.betweenLegs || []).length === 0;
-            if (tk2Active && (needReturn || needBetween)) {
-                // TK2 helper re-fetches between-legs + return leg in one chain.
+            // Chain detection is allowance-agnostic: if there are extra
+            // sites visible and we don't have between-leg data cached,
+            // re-fetch the whole chain (between + return). This catches
+            // Company Car days where the user added a site after-the-fact.
+            const hasExtras   = activeExtraSiteCount() > 0;
+            const needReturn  = !lastLegs.returnLeg && (tk1Ticked || hasExtras);
+            const needBetween = hasExtras && (lastLegs.betweenLegs || []).length === 0;
+            if (hasExtras && (needReturn || needBetween)) {
+                // Chain helper — fetches between-legs + return leg together.
                 backgroundFetchTk2Legs();
             } else if (needReturn) {
-                // TK1-only path: just the return leg.
+                // No-chain path (TK1 ticked, return missing): just the return leg.
                 backgroundFetchReturnLeg();
             }
         }
@@ -1962,9 +2011,12 @@
             .catch(function() { /* silent — errors surface on explicit recalc */ })
             .then(function() { _bgReturnInFlight = false; setCalcInFlight(false); });
     }
-    // Fire between-site legs + return leg in the background when TK2 is
-    // ticked and sites are filled post-Calculate. Requires every visible
-    // site slot to have text; otherwise no-ops.
+    // Fire between-site legs + return leg in the background whenever the
+    // chain has changed (e.g. user added a site after the main Calculate
+    // already ran). Allowance-agnostic — fires for Company Car days too,
+    // not just TK2. Requires every visible site slot to have text;
+    // otherwise no-ops. Function name retained for backwards compat with
+    // existing callsites; semantically it's just "fetch chain legs".
     function backgroundFetchTk2Legs() {
         if (_bgTk2InFlight) return;
         if (!window.google || !window.google.maps) return;
@@ -2086,16 +2138,17 @@
         } else {
             returnDest = OFFICES[flags.ReturnOffice];
         }
-        // Return origin = last site in the chain.
+        // Return origin = last visible & filled site in the chain. Walk
+        // Site 5 → Site 2 looking for the last one that's both visible and
+        // has a value; if none found, fall back to the morning Destination.
+        // Allowance-agnostic — the chain dictates the return origin
+        // regardless of which km allowance (or none) is ticked.
         let originText = '';
-        const tk2Cb = document.getElementById('allow_tk2');
-        if (tk2Cb && tk2Cb.checked) {
-            for (let i = 5; i >= 2; i--) {
-                const w = document.getElementById('siteWrap' + i);
-                const s = document.getElementById('site' + i);
-                if (w && !w.classList.contains('hidden') && s && s.value.trim()) {
-                    originText = s.value.trim(); break;
-                }
+        for (let i = 5; i >= 2; i--) {
+            const w = document.getElementById('siteWrap' + i);
+            const s = document.getElementById('site' + i);
+            if (w && !w.classList.contains('hidden') && s && s.value.trim()) {
+                originText = s.value.trim(); break;
             }
         }
         if (!originText) {
@@ -2170,15 +2223,20 @@
         // --- TK2 EXTRA SITES (2..5) ---
         const tk2Cb = document.getElementById('allow_tk2');
         const tk2Ticked = !!(tk2Cb && tk2Cb.checked);
+        // Always build the chain when extra sites are visible, regardless
+        // of which km allowance (TK1/TK2/Kms CC) is ticked. The chain
+        // determines the correct return-leg origin and produces the
+        // between-leg km that Kms (Company Car) needs to sum the full day.
+        // Previously gated on tk2Ticked, which silently broke Company Car
+        // multi-site days (return leg reverted to morning Dest, between-leg
+        // km were never fetched).
         const extraSiteSpecs = [];
-        if (tk2Ticked) {
-            for (let i = 2; i <= 5; i++) {
-                const w = document.getElementById('siteWrap' + i);
-                if (!w || w.classList.contains('hidden')) continue;
-                const txt = document.getElementById('site' + i).value.trim();
-                if (!txt) { warn('Site ' + i + ' is empty \u2014 enter an address or remove the row.'); return; }
-                extraSiteSpecs.push(specFromInputAndPlace(txt, selectedPlaces['site' + i]));
-            }
+        for (let i = 2; i <= 5; i++) {
+            const w = document.getElementById('siteWrap' + i);
+            if (!w || w.classList.contains('hidden')) continue;
+            const txt = document.getElementById('site' + i).value.trim();
+            if (!txt) { warn('Site ' + i + ' is empty \u2014 enter an address or remove the row.'); return; }
+            extraSiteSpecs.push(specFromInputAndPlace(txt, selectedPlaces['site' + i]));
         }
         // All sites, starting with morning destination. activeSites[N-1] is
         // the last site of the day.
