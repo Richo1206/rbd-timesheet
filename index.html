@@ -16,6 +16,32 @@
         .section-header { font-size: 11px; font-weight: 800; color: #003366; margin: 22px 0 10px; text-transform: uppercase; border-bottom: 2px solid #e8eef5; padding-bottom: 6px; letter-spacing: 1.2px; display: flex; align-items: center; justify-content: space-between; }
         .input-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 15px; }
         @media (max-width: 400px) { .input-grid { grid-template-columns: 1fr; } }
+        /* Mobile polish — tighten padding, font sizes, and spacing on
+           phone-sized screens so more content fits without scrolling.
+           Tap-target sizes stay above the iOS/Android 44dp recommendation. */
+        @media (max-width: 520px) {
+            body { padding: 8px; }
+            .card { padding: 14px; border-radius: 16px; }
+            h2 { font-size: 18px; margin: 8px 0 2px; }
+            .sub { font-size: 9.5px; margin-bottom: 6px; }
+            .section-header { margin: 16px 0 8px; padding-bottom: 4px; }
+            .input-grid { gap: 8px; margin-bottom: 12px; }
+            input[type="time"], input[type="text"], input[type="number"] { padding: 10px; font-size: 15px; }
+            label { font-size: 11.5px; margin-bottom: 4px; }
+            .route-box { padding: 10px; margin-bottom: 14px; border-radius: 10px; }
+            .toggle-btn { padding: 12px 4px; font-size: 11.5px; }
+            .toggle-section, .day-toggle-section { gap: 6px; margin-bottom: 12px; }
+            .day-toggle-section { padding-top: 12px; }
+            .info-panel { padding: 10px; font-size: 11.5px; line-height: 1.55; }
+            .allow-panel { padding: 10px; }
+            .allow-item { font-size: 12px; padding: 7px 0; }
+            .allow-item label { font-size: 11.5px; }
+            .tool-link-btn { padding: 4px 7px; font-size: 9.5px; }
+            #results { padding: 12px; }
+            #results h3 { font-size: 13px; }
+            .code-row { font-size: 13px; padding: 7px 0; }
+            .footer-note { font-size: 8.5px; margin-top: 14px; }
+        }
         label { display: block; font-weight: 600; margin-bottom: 5px; font-size: 12px; color: #4a5568; }
         input[type="time"], input[type="text"], input[type="number"] { width: 100%; padding: 12px; border: 1.5px solid #d2dce6; border-radius: 10px; font-size: 16px; background: #f8fafc; appearance: none; transition: border-color 0.2s, box-shadow 0.2s; }
         input:focus { border-color: #004a99; outline: none; background: #fff; box-shadow: 0 0 0 3px rgba(0,74,153,0.1); }
@@ -24,6 +50,10 @@
         .maps-btn:active { transform: scale(0.98); }
         .toggle-section { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 15px; }
         .day-toggle-section { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 6px; margin-bottom: 15px; border-top: 1.5px solid #e8eef5; padding-top: 15px; }
+        /* Mini-header above each toggle group — subtle grey uppercase
+           label, tightly bound to the row below. Breaks the dense stack
+           of toggles into named functional groups (where / when / how). */
+        .toggle-group-label { font-size: 10px; font-weight: 700; color: #6b7c8d; text-transform: uppercase; letter-spacing: 0.6px; margin: 4px 0 6px; padding-left: 2px; }
         .toggle-btn { padding: 15px 4px; border: 1.5px solid #b0c4de; background: #f8fafc; color: #3a4457; cursor: pointer; border-radius: 10px; text-align: center; font-weight: 700; font-size: 12px; transition: all 0.15s ease; user-select: none; }
         .toggle-btn.active { background: linear-gradient(135deg, #FFD600, #FFEA00); color: #1a1a1a; border-color: #e6c200; box-shadow: 0 2px 8px rgba(255,214,0,0.35); }
         #results { background: linear-gradient(135deg, #f8fafc, #f0f5fa); padding: 16px; border-radius: 14px; border-left: 4px solid #004a99; margin-top: 12px; box-shadow: inset 0 1px 3px rgba(0,0,0,0.04); }
@@ -172,32 +202,6 @@
         <label>Dest:</label>
         <input type="text" id="destination" placeholder="Site address" style="margin-bottom: 12px;" onblur="destinationChanged()">
         <button class="maps-btn" onclick="checkRoute()">Verify Route (opens Google Maps)</button>
-        <!--
-          TK2 multi-site UI. The "Add another site" button appears when the
-          TK2 allowance is ticked. Up to 4 extra sites (Site 2..5); Site 1 is
-          the main Destination field above. Each extra slot is pre-rendered
-          hidden so Autocomplete can be initialised once at page load: when
-          the slot becomes visible Autocomplete just works.
-        -->
-        <button id="btnAddSite" class="maps-btn" onclick="addNextSite()" style="background:#004a99; margin-top: 6px; font-size: 13px; padding: 10px;">+ Add another site</button>
-        <div id="extraSitesContainer">
-            <div id="siteWrap2" class="site-wrap hidden" style="margin-top: 8px;">
-                <label style="display:flex; justify-content:space-between; align-items:center;"><span>Site 2 (between):</span><span onclick="removeSite(2)" style="cursor:pointer; color:#c33; font-weight:bold; padding:2px 8px;">&times;</span></label>
-                <input type="text" id="site2" placeholder="Site 2 address" onblur="siteInputChanged()">
-            </div>
-            <div id="siteWrap3" class="site-wrap hidden" style="margin-top: 8px;">
-                <label style="display:flex; justify-content:space-between; align-items:center;"><span>Site 3 (between):</span><span onclick="removeSite(3)" style="cursor:pointer; color:#c33; font-weight:bold; padding:2px 8px;">&times;</span></label>
-                <input type="text" id="site3" placeholder="Site 3 address" onblur="siteInputChanged()">
-            </div>
-            <div id="siteWrap4" class="site-wrap hidden" style="margin-top: 8px;">
-                <label style="display:flex; justify-content:space-between; align-items:center;"><span>Site 4 (between):</span><span onclick="removeSite(4)" style="cursor:pointer; color:#c33; font-weight:bold; padding:2px 8px;">&times;</span></label>
-                <input type="text" id="site4" placeholder="Site 4 address" onblur="siteInputChanged()">
-            </div>
-            <div id="siteWrap5" class="site-wrap hidden" style="margin-top: 8px;">
-                <label style="display:flex; justify-content:space-between; align-items:center;"><span>Site 5 (between):</span><span onclick="removeSite(5)" style="cursor:pointer; color:#c33; font-weight:bold; padding:2px 8px;">&times;</span></label>
-                <input type="text" id="site5" placeholder="Site 5 address" onblur="siteInputChanged()">
-            </div>
-        </div>
         <div class="input-grid">
             <div>
                 <label>Travel Hrs:</label>
@@ -217,6 +221,34 @@
         <div id="calcStatus" class="hidden" style="margin-top: 4px; font-size: 11px; color: #004a99; font-style: italic; display: flex; align-items: center; gap: 6px;">
             <span style="display: inline-block; width: 10px; height: 10px; border: 2px solid #004a99; border-top-color: transparent; border-radius: 50%; animation: calcSpin 0.8s linear infinite;"></span>
             <span>Calculating travel time &amp; distance&hellip;</span>
+        </div>
+        <!--
+          Multi-site chain UI. Sits BELOW the morning Travel Hrs/Mins so the
+          morning leg (Dest + Verify + Hrs/Mins) reads as a self-contained
+          group; chained sites are then a clear extension. Up to 4 extra
+          sites (Site 2..5) can be added on top of the main Destination.
+          Each extra slot is pre-rendered hidden so Autocomplete can be
+          initialised once at page load — the slot just becomes visible
+          when the user clicks Add another site.
+        -->
+        <button id="btnAddSite" class="maps-btn" onclick="addNextSite()" style="background:#004a99; margin-top: 12px; font-size: 13px; padding: 10px;">+ Add another site</button>
+        <div id="extraSitesContainer">
+            <div id="siteWrap2" class="site-wrap hidden" style="margin-top: 8px;">
+                <label style="display:flex; justify-content:space-between; align-items:center;"><span>Site 2 (between):</span><span onclick="removeSite(2)" style="cursor:pointer; color:#c33; font-weight:bold; padding:2px 8px;">&times;</span></label>
+                <input type="text" id="site2" placeholder="Site 2 address" onblur="siteInputChanged()">
+            </div>
+            <div id="siteWrap3" class="site-wrap hidden" style="margin-top: 8px;">
+                <label style="display:flex; justify-content:space-between; align-items:center;"><span>Site 3 (between):</span><span onclick="removeSite(3)" style="cursor:pointer; color:#c33; font-weight:bold; padding:2px 8px;">&times;</span></label>
+                <input type="text" id="site3" placeholder="Site 3 address" onblur="siteInputChanged()">
+            </div>
+            <div id="siteWrap4" class="site-wrap hidden" style="margin-top: 8px;">
+                <label style="display:flex; justify-content:space-between; align-items:center;"><span>Site 4 (between):</span><span onclick="removeSite(4)" style="cursor:pointer; color:#c33; font-weight:bold; padding:2px 8px;">&times;</span></label>
+                <input type="text" id="site4" placeholder="Site 4 address" onblur="siteInputChanged()">
+            </div>
+            <div id="siteWrap5" class="site-wrap hidden" style="margin-top: 8px;">
+                <label style="display:flex; justify-content:space-between; align-items:center;"><span>Site 5 (between):</span><span onclick="removeSite(5)" style="cursor:pointer; color:#c33; font-weight:bold; padding:2px 8px;">&times;</span></label>
+                <input type="text" id="site5" placeholder="Site 5 address" onblur="siteInputChanged()">
+            </div>
         </div>
         <!--
           Return section: always visible. Lets the user specify where they're
@@ -300,32 +332,42 @@
     <div class="input-grid">
         <div id="leftWorkshopWrap">
             <label id="startLabel">Left Workshop/Accom:</label>
-            <input type="time" id="leftWorkshop" value="06:00" oninput="syncArriveTime(); calculate();">
+            <input type="time" id="leftWorkshop" oninput="syncArriveTime(); calculate();">
         </div>
         <div id="arriveSiteWrap">
             <label>Arrived on Site:</label>
-            <input type="time" id="arriveSite" value="07:00" oninput="calculate()">
+            <input type="time" id="arriveSite" oninput="calculate()">
         </div>
         <div id="leaveSiteWrap">
             <label>Left Site:</label>
-            <input type="time" id="leaveSite" value="15:30" oninput="syncArriveWorkshopTime(); calculate();">
+            <input type="time" id="leaveSite" oninput="syncArriveWorkshopTime(); calculate();">
         </div>
         <div id="arriveWorkshopWrap">
             <label id="finishLabel">Arrived at Workshop/Accom:</label>
-            <input type="time" id="arriveWorkshop" value="16:30" oninput="calculate()">
+            <input type="time" id="arriveWorkshop" oninput="calculate()">
         </div>
     </div>
+    <!--
+      Time-order validation banner — visible only when the four times are
+      out of order (e.g. Left Site is before Arrived on Site). Catches
+      fat-finger entry before the wrong totals propagate into the day's
+      pay codes. Hidden when all is well.
+    -->
+    <div id="timeOrderWarn" class="hidden no-print" style="background: #fff7d6; border-left: 4px solid #e0c24a; padding: 8px 12px; margin: -4px 0 12px; border-radius: 6px; font-size: 11.5px; color: #6b5800; line-height: 1.5;"></div>
+    <div class="toggle-group-label">Where you started &amp; finished</div>
     <div class="toggle-section">
         <div id="btnStartWork" class="toggle-btn" onclick="setStart('Work')">Start Workshop</div>
         <div id="btnStartSite" class="toggle-btn active" onclick="setStart('Site')">Start Site</div>
         <div id="btnFinWork" class="toggle-btn" onclick="setFinish('Work')">Finish Workshop</div>
         <div id="btnFinSite" class="toggle-btn active" onclick="setFinish('Site')">Finish Site</div>
     </div>
-    <div class="day-toggle-section" style="grid-template-columns: 1fr 1fr 1fr;">
+    <div class="toggle-group-label">Day type</div>
+    <div class="day-toggle-section" style="grid-template-columns: 1fr 1fr 1fr; border-top:none; padding-top:0;">
         <div id="btnWeekday" class="toggle-btn active" onclick="toggleDay('Weekday')">Weekday</div>
         <div id="btnWeekend" class="toggle-btn" onclick="toggleDay('Weekend')">Weekend</div>
         <div id="btnPH" class="toggle-btn" onclick="toggleDay('PH')">Pub Holiday</div>
     </div>
+    <div class="toggle-group-label">Vehicle &amp; allowances</div>
     <div class="day-toggle-section" style="border-top:none; padding-top:0;">
         <div id="btnCo" class="toggle-btn active" onclick="toggle('Co')">Company Car</div>
         <div id="btnInc1" class="toggle-btn" onclick="toggleInc1()">Incidentals-1</div>
@@ -403,8 +445,12 @@
         <label>Or Select Date:</label>
         <input type="date" id="projectDate" style="margin-bottom: 0;" onchange="if(this.value) document.getElementById('projectDay').value=''; calculate();">
     </div>
+    <!-- Primary export action — solid green, biggest button. -->
     <button class="no-print" style="width:100%; margin-top:15px; padding:16px; background:linear-gradient(135deg,#1e7a3a,#28a745); color:white; border:none; border-radius:12px; font-weight:700; cursor:pointer; font-size:15px; box-shadow:0 2px 10px rgba(40,167,69,0.3); transition:transform 0.1s;" onclick="this.style.transform='scale(0.98)'; setTimeout(()=>this.style.transform='',100); window.print()">Save to PDF / Print</button>
-    <button class="no-print" style="width:100%; margin-top:8px; padding:16px; background:linear-gradient(135deg,#1e7a3a,#28a745); color:white; border:none; border-radius:12px; font-weight:700; cursor:pointer; font-size:15px; box-shadow:0 2px 10px rgba(40,167,69,0.3); transition:transform 0.1s;" onclick="this.style.transform='scale(0.98)'; setTimeout(()=>this.style.transform='',100); downloadSummary()">Download Text File Summary</button>
+    <!-- Secondary export action — outlined / slimmer to establish that
+         the .txt summary is a fallback for payroll edge cases, not the
+         main output. -->
+    <button class="no-print" style="width:100%; margin-top:6px; padding:11px; background:white; color:#1e7a3a; border:1.5px solid #1e7a3a; border-radius:10px; font-weight:700; cursor:pointer; font-size:13px; transition:transform 0.1s, background 0.15s;" onclick="this.style.transform='scale(0.98)'; setTimeout(()=>this.style.transform='',100); downloadSummary()">Download Text File Summary</button>
     <div class="footer-note" style="font-size: 9px; color: #999; text-align: center; margin-top: 20px; line-height: 1.5;">
         <strong style="color:#666;">Disclaimer:</strong> This calculator is a guide only and does not override the RBD Enterprise Agreement 2025 or RBD Handbook Rev 8.0. Additional allowances can be selected under Extra Allowances. Some entitlements such as call-in, shift work, and overtime meal escalations may not be reflected. Always refer to the EA for definitive entitlements.
     </div>
@@ -837,6 +883,40 @@
         let parts = t.split(':');
         return parseInt(parts[0]) * 60 + parseInt(parts[1]);
     }
+    // Lightweight time-order validation. Catches fat-finger errors where
+    // (e.g.) Left Site is typed before Arrived on Site. Only checks pairs
+    // where both fields have a value, and notes that midnight-crossing
+    // shifts will trigger false positives (acceptable trade-off for a
+    // small Tasmanian electrical business — almost no shifts wrap).
+    function validateTimeOrder() {
+        const warn = document.getElementById('timeOrderWarn');
+        if (!warn) return;
+        const lw = (document.getElementById('leftWorkshop')   || {}).value || '';
+        const as = (document.getElementById('arriveSite')     || {}).value || '';
+        const ls = (document.getElementById('leaveSite')      || {}).value || '';
+        const aw = (document.getElementById('arriveWorkshop') || {}).value || '';
+        const startLbl = (typeof getStartLabel === 'function') ? getStartLabel() : 'Left Workshop/Accom';
+        const finLbl   = (typeof getFinishLabel === 'function') ? getFinishLabel() : 'Arrived at Workshop/Accom';
+        const issues = [];
+        if (lw && as && timeToMin(lw) > timeToMin(as)) {
+            issues.push('"Arrived on Site" is before "' + startLbl + '"');
+        }
+        if (as && ls && timeToMin(as) > timeToMin(ls)) {
+            issues.push('"Left Site" is before "Arrived on Site"');
+        }
+        if (ls && aw && timeToMin(ls) > timeToMin(aw)) {
+            issues.push('"' + finLbl + '" is before "Left Site"');
+        }
+        if (issues.length) {
+            warn.classList.remove('hidden');
+            warn.innerHTML = '<strong>⚠ Time order looks off.</strong><br>' +
+                issues.map(function(s) { return '• ' + s + '. Check the times.'; }).join('<br>') +
+                '<div style="font-size:10px; color:#9b7d40; margin-top:4px; font-style:italic;">If your shift crossed midnight, this warning is safe to ignore.</div>';
+        } else {
+            warn.classList.add('hidden');
+            warn.innerHTML = '';
+        }
+    }
     function minToTime(m) {
         let h = Math.floor(m / 60) % 24;
         let mins = m % 60;
@@ -858,6 +938,10 @@
     }
     // ---------- main calculation ----------
     function calculate() {
+        // Time-order sanity check — show a yellow banner if any field is
+        // out of order. Does not block calculation; the user can still
+        // proceed (e.g. for legitimate midnight-wrap shifts).
+        validateTimeOrder();
         let tLeftBase   = timeToMin(document.getElementById('leftWorkshop').value);
         let tArriveSite = timeToMin(document.getElementById('arriveSite').value);
         let tLeaveSite  = timeToMin(document.getElementById('leaveSite').value);
