@@ -64,16 +64,19 @@
         .route-box { background: linear-gradient(135deg, #f8fafc, #f0f5fa); padding: 12px; border-radius: 12px; border: 1.5px solid #d2dce6; margin-bottom: 18px; }
         .maps-btn { width: 100%; padding: 11px; background: linear-gradient(135deg, #004a99, #0058b3); color: white; border: none; border-radius: 10px; font-weight: 700; cursor: pointer; margin-bottom: 10px; font-size: 13px; transition: transform 0.1s, box-shadow 0.2s; box-shadow: 0 2px 8px rgba(0,74,153,0.25); }
         .maps-btn:active { transform: scale(0.98); }
-        /* Slim outlined "Verify route" buttons. Sanity-check action, not
-           primary — slim secondary styling stops them shouting next to
-           Generate / Add Site. Green border matches the export buttons'
-           palette so verify reads as a "safe to click" auxiliary action. */
+        /* Slim outlined "Verify route" buttons in Google Maps livery.
+           Multi-colour gradient border uses the four Google brand colours
+           (blue/red/yellow/green) so the button reads as a Google action
+           at a glance. Inner white fill via padding-box + border-box
+           background-clip trick. Hover inverts to a soft Google-blue tint. */
         .verify-route-btn {
             width: 100%;
             padding: 8px 12px;
-            background: white;
-            color: #1e7a3a;
-            border: 1.5px solid #1e7a3a;
+            color: #1a73e8;
+            background:
+                linear-gradient(#fff, #fff) padding-box,
+                linear-gradient(90deg, #4285F4 0%, #EA4335 35%, #FBBC04 65%, #34A853 100%) border-box;
+            border: 2px solid transparent;
             border-radius: 8px;
             font-weight: 700;
             cursor: pointer;
@@ -81,17 +84,25 @@
             font-size: 11px;
             text-transform: uppercase;
             letter-spacing: 0.6px;
-            transition: background 0.15s, color 0.15s;
+            transition: background 0.15s, color 0.15s, transform 0.1s;
             font-family: inherit;
             display: inline-flex;
             align-items: center;
             justify-content: center;
-            gap: 5px;
+            gap: 7px;
             line-height: 1.2;
         }
-        .verify-route-btn:hover, .verify-route-btn:active {
-            background: #1e7a3a;
-            color: white;
+        .verify-route-btn:hover {
+            background:
+                linear-gradient(#f0f6fc, #f0f6fc) padding-box,
+                linear-gradient(90deg, #4285F4 0%, #EA4335 35%, #FBBC04 65%, #34A853 100%) border-box;
+        }
+        .verify-route-btn:active { transform: scale(0.98); }
+        /* Inline Google Maps pin (red teardrop + white center hole). Sized
+           to match button text height. Drawn as inline SVG so it stays
+           crisp on any DPI and doesn't depend on platform emoji. */
+        .verify-route-btn .gmaps-pin {
+            width: 14px; height: 14px; flex-shrink: 0;
         }
         .toggle-section { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 15px; }
         .day-toggle-section { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 6px; margin-bottom: 15px; border-top: 1.5px solid #e8eef5; padding-top: 15px; }
@@ -283,7 +294,7 @@
         </div>
         <label>Dest:</label>
         <input type="text" id="destination" placeholder="Site address" style="margin-bottom: 12px;" onblur="destinationChanged()">
-        <button class="verify-route-btn" onclick="checkRoute()" title="Open this morning leg in Google Maps to sanity-check the route">Verify Route (opens Google Maps)</button>
+        <button class="verify-route-btn" onclick="checkRoute()" title="Open this morning leg in Google Maps to sanity-check the route"><svg class="gmaps-pin" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" aria-hidden="true"><path d="M12 2C7.589 2 4 5.589 4 9.995C4 16.5 12 22 12 22C12 22 20 16.5 20 9.995C20 5.589 16.411 2 12 2Z" fill="#EA4335"/><circle cx="12" cy="10" r="3" fill="#fff"/></svg>Verify Route (opens Google Maps)</button>
         <div class="input-grid">
             <div>
                 <label>Travel Hrs:</label>
@@ -365,7 +376,7 @@
               Maps call fires automatically as fields change, so there's
               no Calculate button: auto-calc covers it.
             -->
-            <button class="verify-route-btn" onclick="checkReturnRoute()" title="Open the return leg in Google Maps to sanity-check the route">Verify Return Route (opens Google Maps)</button>
+            <button class="verify-route-btn" onclick="checkReturnRoute()" title="Open the return leg in Google Maps to sanity-check the route"><svg class="gmaps-pin" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" aria-hidden="true"><path d="M12 2C7.589 2 4 5.589 4 9.995C4 16.5 12 22 12 22C12 22 20 16.5 20 9.995C20 5.589 16.411 2 12 2Z" fill="#EA4335"/><circle cx="12" cy="10" r="3" fill="#fff"/></svg>Verify Return Route (opens Google Maps)</button>
             <div class="input-grid">
                 <div>
                     <label>Return Hrs:</label>
