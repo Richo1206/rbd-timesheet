@@ -1644,11 +1644,19 @@
         // a friendly "Fill in X" prompt so the user never sees nonsense
         // numbers from blank-field treatment as 00:00.
         // -------------------------------------------------------------------
+        // Helper — a field is "active" only when its wrapper is visible
+        // on screen. The Left Site wrap is hidden in Finish=Workshop mode
+        // (the workday continues past the site visit, so LS isn't a
+        // boundary for pay calc), so the gate shouldn't ask for it.
+        const _isVisible = function(wrapId) {
+            const w = document.getElementById(wrapId);
+            return w && !w.classList.contains('hidden');
+        };
         const _missing = [];
-        if (!document.getElementById('leftWorkshop').value)   _missing.push((typeof getStartLabel  === 'function' ? getStartLabel()  : 'Left Workshop/Accom') + ':');
-        if (!document.getElementById('arriveSite').value)     _missing.push('Arrived on Site:');
-        if (!document.getElementById('leaveSite').value)      _missing.push('Left Site:');
-        if (!document.getElementById('arriveWorkshop').value) _missing.push((typeof getFinishLabel === 'function' ? getFinishLabel() : 'Arrived at Workshop/Accom') + ':');
+        if (_isVisible('leftWorkshopWrap')   && !document.getElementById('leftWorkshop').value)   _missing.push((typeof getStartLabel  === 'function' ? getStartLabel()  : 'Left Workshop/Accom') + ':');
+        if (_isVisible('arriveSiteWrap')     && !document.getElementById('arriveSite').value)     _missing.push('Arrived on Site:');
+        if (_isVisible('leaveSiteWrap')      && !document.getElementById('leaveSite').value)      _missing.push('Left Site:');
+        if (_isVisible('arriveWorkshopWrap') && !document.getElementById('arriveWorkshop').value) _missing.push((typeof getFinishLabel === 'function' ? getFinishLabel() : 'Arrived at Workshop/Accom') + ':');
         if (_missing.length) {
             // Each missing field on its own line, with a simple closing
             // note so the user knows what's still needed at a glance.
