@@ -709,16 +709,16 @@
         html += '<div id="infoAllow" class="info-panel">';
         html += '<strong>How to use:</strong> Select any additional allowances that apply to the day. These appear in the summary alongside the auto-calculated time codes.';
         html += '<ul>';
-        html += '<li><strong>Per-hour allowances</strong> (Industrial, Site, Firmus, Supervisor) \u2014 automatically split into NT and OT hours based on the day\'s calculation. Supervisor allowances include travel time (Cl 49.c).</li>';
-        html += '<li><strong>Manual-entry allowances</strong> (HSM, Inclement Weather) \u2014 enter the number of hours that apply. Also split into NT and OT.</li>';
-        html += '<li><strong>Per-day/night allowances</strong> (Living Away, Incidentals 1/2/3, HV, On Call) \u2014 tick the box and 1 Unit is added to the summary.</li>';
-        html += '<li><strong>Per-km allowances</strong> (TK1, TK2, Kms Company Car) \u2014 enter the kilometres travelled, or let the Google Maps tool auto-fill them (see below).</li>';
+        html += '<li><strong>Per-hour allowances</strong> (Industrial, Site, Firmus, Supervisor): automatically split into NT and OT hours based on the day\'s calculation. Supervisor allowances include travel time (Cl 49.c).</li>';
+        html += '<li><strong>Manual-entry allowances</strong> (HSM, Inclement Weather): enter the number of hours that apply. Also split into NT and OT.</li>';
+        html += '<li><strong>Per-day/night allowances</strong> (Living Away, Incidentals 1/2/3, HV, On Call): tick the box and 1 Unit is added to the summary.</li>';
+        html += '<li><strong>Per-km allowances</strong> (TK1, TK2, Kms Company Car): enter the kilometres travelled, or let the Google Maps tool auto-fill them (see below).</li>';
         html += '</ul>';
         html += '<strong>km allowance EA references:</strong>';
         html += '<ul>';
-        html += '<li><strong>TK1 ($0.57/km, Cl 64.3.a)</strong> \u2014 own-vehicle km travelled outside the 30-min Travel Boundary. Ratio-method: km \u00D7 (mins outside boundary) / (total mins). Not paid when company transport is used (Cl 64.3.b).</li>';
-        html += '<li><strong>TK2 ($1.05/km, Cl 64.4)</strong> \u2014 own-vehicle km travelled between worksites during the workday. Not applicable when company transport is used.</li>';
-        html += '<li><strong>Kms (Company Car) ($0.75/km)</strong> \u2014 km driven when you\'re responsible for a company vehicle. Internal operational allowance. When the Company Car button is on AND any km were travelled today, this allowance auto-ticks itself and the km field auto-fills with the sum of every leg (morning + every between-site leg + return). No minimum threshold \u2014 any travelled km counts. Untick manually if you don\'t want to claim it.</li>';
+        html += '<li><strong>TK1 ($0.57/km, Cl 64.3.a)</strong>: own-vehicle km travelled outside the 30-min Travel Boundary. Ratio-method: km \u00D7 (mins outside boundary) / (total mins). Not paid when company transport is used (Cl 64.3.b).</li>';
+        html += '<li><strong>TK2 ($1.05/km, Cl 64.4)</strong>: own-vehicle km travelled between worksites during the workday. Not applicable when company transport is used.</li>';
+        html += '<li><strong>Kms (Company Car) ($0.75/km)</strong>: km driven when you\'re responsible for a company vehicle. Internal operational allowance. When the Company Car button is on AND any km were travelled today, this allowance auto-ticks itself and the km field auto-fills with the sum of every leg (morning + every between-site leg + return). No minimum threshold: any travelled km counts. Untick manually if you don\'t want to claim it.</li>';
         html += '<li><strong>Mutex:</strong> TK1 + TK2 (own vehicle) and Kms Company Car (company vehicle) are mutually exclusive. Ticking the top-of-form Company Car button disables TK1 and TK2; unticking it disables Kms Company Car.</li>';
         html += '</ul>';
         html += '<strong>Google Maps auto-fill:</strong>';
@@ -729,7 +729,7 @@
         html += '<li><strong>Kms (Company Car)</strong> sums every leg the driver covers: morning + every between-site leg (when sites are chained) + return. So a Workshop&rarr;Site 1&rarr;Site 2&rarr;Workshop day populates with all three legs added together. Tap <em>Verify Return Route</em> in the Travel Tool to sanity-check the final leg. Adjust manually if your day was asymmetric (e.g. unplanned stops Google didn\'t see).</li>';
         html += '<li>Auto-filled values can always be overwritten manually. Once you type a km value it won\'t be clobbered by a later auto-calculate.</li>';
         html += '</ul>';
-        html += '<strong>Note:</strong> TAT, Fares, and Meal Allowance (Overtime) are already auto-calculated by the timesheet above \u2014 they are not duplicated here.';
+        html += '<strong>Note:</strong> TAT, Fares, and Meal Allowance (Overtime) are already auto-calculated by the timesheet above: they are not duplicated here.';
         html += '</div>';
         let currentGroup = '';
         let firstGroup = true;
@@ -1560,7 +1560,7 @@
         html += '<div class="print-only" style="margin-bottom: 6px; padding: 4px 8px; background: #f8fafc; border-left: 5px solid #004a99; border-radius: 6px;">';
         html += '<div style="font-weight: 700; color: #004a99; font-size: 12px; margin-bottom: 2px;">Time Entries</div>';
         timeLabels.forEach(function(pair) {
-            const v = (document.getElementById(pair[1]) || {}).value || '\u2014';
+            const v = (document.getElementById(pair[1]) || {}).value || '-';
             html += '<div class="code-row" style="padding: 2px 0; font-size: 12px;"><span>' + pair[0] + '</span><span>' + v + '</span></div>';
         });
         html += '</div>';
@@ -1645,19 +1645,20 @@
         // numbers from blank-field treatment as 00:00.
         // -------------------------------------------------------------------
         const _missing = [];
-        if (!document.getElementById('leftWorkshop').value)   _missing.push('<strong>' + (typeof getStartLabel  === 'function' ? getStartLabel()  : 'Left Workshop/Accom') + '</strong>');
-        if (!document.getElementById('arriveSite').value)     _missing.push('<strong>Arrived on Site</strong>');
-        if (!document.getElementById('leaveSite').value)      _missing.push('<strong>Left Site</strong>');
-        if (!document.getElementById('arriveWorkshop').value) _missing.push('<strong>' + (typeof getFinishLabel === 'function' ? getFinishLabel() : 'Arrived at Workshop/Accom') + '</strong>');
+        if (!document.getElementById('leftWorkshop').value)   _missing.push((typeof getStartLabel  === 'function' ? getStartLabel()  : 'Left Workshop/Accom') + ':');
+        if (!document.getElementById('arriveSite').value)     _missing.push('Arrived on Site:');
+        if (!document.getElementById('leaveSite').value)      _missing.push('Left Site:');
+        if (!document.getElementById('arriveWorkshop').value) _missing.push((typeof getFinishLabel === 'function' ? getFinishLabel() : 'Arrived at Workshop/Accom') + ':');
         if (_missing.length) {
-            // Join missing labels with commas + "and" before the last one.
-            let _msg;
-            if (_missing.length === 1)      _msg = _missing[0];
-            else if (_missing.length === 2) _msg = _missing[0] + ' and ' + _missing[1];
-            else _msg = _missing.slice(0, -1).join(', ') + ', and ' + _missing[_missing.length - 1];
+            // Each missing field on its own line, with a simple closing
+            // note so the user knows what's still needed at a glance.
+            const _list = _missing.map(function(f) {
+                return '<div style="margin-top: 4px;">' + f + '</div>';
+            }).join('');
             html += '<div class="no-print" style="margin: 10px 0 4px; padding: 14px 16px; background: linear-gradient(135deg, #f0f6fc, #e8f0fa); border-left: 4px solid #004a99; border-radius: 10px; font-size: 12.5px; color: #334155; line-height: 1.55;">' +
-                '<strong style="color:#003366;">Fill in ' + _msg + ' to see your timesheet.</strong>' +
-                '<div style="font-size: 11px; color: #6b7c8d; margin-top: 6px; line-height: 1.5;">All four time entries are needed for an accurate calc. The Google Maps Travel Tool can fill the gaps automatically — type whichever times you know (e.g. just "Arrived on Site" if you left from home, not the workshop), and the calculator will work backwards from the morning and return legs.</div>' +
+                '<strong style="color:#003366;">Please fill in time entry fields</strong>' +
+                '<div style="margin: 8px 0 6px; font-weight: 600;">' + _list + '</div>' +
+                '<div style="font-size: 11px; color: #6b7c8d; margin-top: 8px; line-height: 1.5;">All fields showing need to be filled for an accurate calculation.</div>' +
             '</div>';
             // Reset the cached results so the .txt download doesn't carry
             // stale numbers from a previous valid run.
@@ -1681,27 +1682,27 @@
         // Status notes
         let notes = [];
         if (isEarlyTravel) notes.push("Early travel rule applied (Cl 64.3.d): 30m TT + deemed 0700 start; TAT suppressed.");
-        if (flags.Day === 'Weekday' && !flags.RDO && outsideOT > 0) notes.push("Work outside ordinary hours (6am\u20136pm) detected \u2014 " + (outsideOT/60).toFixed(2) + "h paid as overtime (Cl 55.a).");
-        if (mealDeduct === 0 && spanOfWork >= 720) notes.push("12+ hours worked \u2014 meal break paid (Cl 60.a).");
-        if (mealDeduct === 0 && spanOfWork > 0 && spanOfWork < 300) notes.push("Less than 5h worked \u2014 no meal break deducted (Cl 60.a/b).");
+        if (flags.Day === 'Weekday' && !flags.RDO && outsideOT > 0) notes.push("Work outside ordinary hours (6am\u20136pm) detected: " + (outsideOT/60).toFixed(2) + "h paid as overtime (Cl 55.a).");
+        if (mealDeduct === 0 && spanOfWork >= 720) notes.push("12+ hours worked: meal break paid (Cl 60.a).");
+        if (mealDeduct === 0 && spanOfWork > 0 && spanOfWork < 300) notes.push("Less than 5h worked: no meal break deducted (Cl 60.a/b).");
         if (flags.Start === 'Site' && morningTravelTotal > 0 && morningTravelTotal <= 30) {
-            notes.push("Morning travel within 30-min Travel Boundary \u2014 no TT (Cl 64.1).");
+            notes.push("Morning travel within 30-min Travel Boundary: no TT (Cl 64.1).");
         }
         if (flags.Inc1) {
             let tripNote = "Incidentals-1 active";
-            if (flags.FirstDay) tripNote += " (First Day \u2014 morning standard, return Inc-1)";
-            else if (flags.LastDay) tripNote += " (Last Day \u2014 morning Inc-1, return standard)";
-            tripNote += " \u2014 TAT and Fares not payable for accom\u2194site travel (Cl 64.5.a.iii); First/Last Day legs follow standard rules (Cl 64.5.b).";
+            if (flags.FirstDay) tripNote += " (First Day: morning leg standard, return Inc-1)";
+            else if (flags.LastDay) tripNote += " (Last Day: morning leg Inc-1, return standard)";
+            tripNote += ": TAT and Fares not payable for accom\u2194site travel (Cl 64.5.a.iii); First/Last Day legs follow standard rules (Cl 64.5.b).";
             notes.push(tripNote);
         }
         if (isPenaltyDay() && results.DT > 0 && flags.Notified24h) {
-            notes.push("24h+ notice \u2014 2h minimum applied (Cl 62.3.b).");
+            notes.push("24h+ notice: 2h minimum applied (Cl 62.3.b).");
         }
         if (flags.RDO) {
-            notes.push("RDO overlay \u2014 work treated as Saturday-equivalent penalty day (Cl 62.3.a): DT rate, 4h min (or 2h with 24h+ notice).");
+            notes.push("RDO overlay: work treated as Saturday-equivalent penalty day (Cl 62.3.a): DT rate, 4h min (or 2h with 24h+ notice).");
         }
         if (flags.Callout) {
-            notes.push("Callout (Cl 63.a) \u2014 bundled work+travel at OT rate, 4h min, TT/TT+/TAT/Fares suppressed. On-call roster variants (Cl 63.e/f) and TK1 km allowance (Cl 63.a.iii) not auto-calculated.");
+            notes.push("Callout (Cl 63.a): bundled work+travel at OT rate, 4h min, TT/TT+/TAT/Fares suppressed. On-call roster variants (Cl 63.e/f) and TK1 km allowance (Cl 63.a.iii) not auto-calculated.");
         }
         if (results["NT (RDO, AL or LWOP)"] > 0.001) notes.push("Less than 8 hours NT worked. Remaining hours must be covered by RDO, Annual Leave, or LWOP. Note: LWOP is only allowed if approved by management.");
         if (notes.length) {
@@ -2074,8 +2075,8 @@
             }
         };
         const hasCompanyCar = !!flags.Co;
-        const ownVehTip = 'Disabled \u2014 Company Car is active. Cl 64.3.b: own-vehicle km allowances not payable when company transport is provided.';
-        const noCarTip  = 'Disabled \u2014 Company Car is not active. Select Company Car at the top of the form to enable.';
+        const ownVehTip = 'Disabled: Company Car is active. Cl 64.3.b: own-vehicle km allowances not payable when company transport is provided.';
+        const noCarTip  = 'Disabled: Company Car is not active. Select Company Car at the top of the form to enable.';
         setRow(tk1Cb, hasCompanyCar,  ownVehTip);
         setRow(tk2Cb, hasCompanyCar,  ownVehTip);
         setRow(ccCb,  !hasCompanyCar, noCarTip);
@@ -2408,7 +2409,7 @@
         const warn = function(msg) { if (!silent) alert(msg); };
         // Gate: API must be loaded.
         if (!window.google || !window.google.maps) {
-            warn('Google Maps API not loaded \u2014 check the API key in the page head, or your network connection.');
+            warn('Google Maps API not loaded: check the API key in the page head, or your network connection.');
             return;
         }
         // Gate: start location selected.
@@ -2443,7 +2444,7 @@
             const w = document.getElementById('siteWrap' + i);
             if (!w || w.classList.contains('hidden')) continue;
             const txt = document.getElementById('site' + i).value.trim();
-            if (!txt) { warn('Site ' + i + ' is empty \u2014 enter an address or remove the row.'); return; }
+            if (!txt) { warn('Site ' + i + ' is empty: enter an address or remove the row.'); return; }
             extraSiteSpecs.push(specFromInputAndPlace(txt, selectedPlaces['site' + i]));
         }
         // All sites, starting with morning destination. activeSites[N-1] is
