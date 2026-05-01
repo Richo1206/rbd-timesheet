@@ -213,28 +213,6 @@
         .section-flash { animation: sectionFlash 1.5s ease-out; }
         .print-only { display: none; }
         @media print {
-            /* Define consistent printer-margin around the page so the
-               browser's default printer margin (which varies wildly) is
-               normalised. 0.5in matches typical Word-style page margin. */
-            @page { margin: 0.5in; }
-            /* Centre the .card horizontally AND vertically on the printed
-               page. body fills the printable area (min-height: 100vh in
-               print = page content height after @page margin), then flex
-               centres the .card within. Note: if a single timesheet ever
-               exceeds one page (lots of allowances + long notes), this
-               can produce odd page-break behaviour — flip to top-aligned
-               by removing justify-content if you ever hit that. */
-            html, body { height: auto; }
-            body {
-                margin: 0;
-                padding: 0;
-                min-height: 100vh;
-                display: flex;
-                flex-direction: column;
-                justify-content: center;
-                align-items: center;
-            }
-            .card { margin: 0; }
             /* Hide interactive / decorative elements */
             .no-print, .toggle-btn, input, label, .day-toggle-section, .route-box, .info-btn, .info-panel, .allow-panel, .divider-label, .toggle-section { display: none !important; }
             /* Belt-and-braces — make sure the centred group dividers
