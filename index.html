@@ -12,6 +12,19 @@
         .card { background: white; max-width: 520px; margin: 0 auto; padding: 20px; border-radius: 20px; box-shadow: 0 4px 24px rgba(0,40,100,0.10), 0 1px 3px rgba(0,0,0,0.06); overflow: hidden; position: relative; }
         .card::before { content: ''; position: absolute; top: 0; left: 0; right: 0; height: 6px; background: linear-gradient(90deg, #003366, #004a99, #0066cc); }
         h2 { color: #003366; margin: 12px 0 4px 0; text-align: center; font-size: 21px; font-weight: 800; letter-spacing: -0.3px; }
+        /* Small RBD brand mark in the top-left corner — letterhead-style
+           touch that sits beside the centred title, mirroring the look
+           of a printed company header. Absolute-positioned so it doesn't
+           push the title flow. The card already has position: relative.
+           Hidden silently if the image fails to load via inline onerror. */
+        .brand-logo {
+            position: absolute;
+            top: 12px;
+            left: 12px;
+            height: 36px;
+            width: auto;
+            z-index: 2;
+        }
         .sub { text-align: center; font-size: 10px; color: #8899aa; margin-bottom: 10px; letter-spacing: 0.3px; }
         .section-header { font-size: 11px; font-weight: 800; color: #003366; margin: 22px 0 10px; text-transform: uppercase; border-bottom: 2px solid #e8eef5; padding-bottom: 6px; letter-spacing: 1.2px; display: flex; align-items: center; justify-content: space-between; }
         .input-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 15px; }
@@ -22,6 +35,7 @@
         @media (max-width: 520px) {
             body { padding: 8px; }
             .card { padding: 14px; border-radius: 16px; }
+            .brand-logo { top: 10px; left: 10px; height: 30px; }
             h2 { font-size: 18px; margin: 8px 0 2px; }
             .sub { font-size: 9.5px; margin-bottom: 6px; }
             .section-header { margin: 16px 0 8px; padding-bottom: 4px; }
@@ -198,7 +212,15 @@
         .print-only { display: none; }
         @media print {
             /* Hide interactive / decorative elements */
-            .no-print, .toggle-btn, input, label, .day-toggle-section, .route-box, .info-btn, .info-panel, .allow-panel { display: none !important; }
+            .no-print, .toggle-btn, input, label, .day-toggle-section, .route-box, .info-btn, .info-panel, .allow-panel, .divider-label, .toggle-section { display: none !important; }
+            /* Belt-and-braces — make sure the centred group dividers
+               (Where you started/finished, Day type, Vehicle & allowances)
+               and their pseudo-element gradient lines are fully suppressed
+               in print. The group labels are screen-only UI grouping;
+               the printed page already has a "Settings Selected" block
+               that shows day type + vehicle config more clearly. */
+            .divider-label, .divider-label::before, .divider-label::after,
+            .divider-label span, .toggle-section, .day-toggle-section { display: none !important; }
             .card { box-shadow: none; border: none; padding: 8px 12px; }
             .card::before { display: none; }
             .print-only { display: block !important; }
@@ -214,6 +236,13 @@
             /* Tighten vertical rhythm for print — on-screen spacing is
                kept generous for usability; paper just needs compactness. */
             body { padding: 4px; }
+            .brand-logo {
+                top: 8px;
+                left: 8px;
+                height: 28px;
+                -webkit-print-color-adjust: exact !important;
+                print-color-adjust: exact !important;
+            }
             h2 { font-size: 16px; margin: 0 0 2px; }
             .sub { font-size: 9px; margin-bottom: 4px; padding-bottom: 3px; border-bottom: 2px solid #e8eef5; }
             .section-header { font-size: 10px; margin: 6px 0 2px; padding-bottom: 2px; }
@@ -248,6 +277,7 @@
 </head>
 <body>
 <div class="card">
+    <img src="https://rbdelectrical.com.au/wp-content/uploads/2020/05/favicon-main-trans-full.png" alt="RBD Electrical" class="brand-logo" onerror="this.style.display='none';">
     <h2>RBD Timesheet Calculator</h2>
     <div class="sub">EA 2025 &amp; Handbook Rev 8.0</div>
     <div class="sub no-print" style="margin-bottom: 8px; font-size: 10px; color: #999; font-style: italic;">For more information on each section, click the <span style="display:inline-flex; align-items:center; justify-content:center; width:16px; height:16px; border-radius:50%; border:1.5px solid #004a99; color:#004a99; font-size:10px; font-weight:bold; font-family:Georgia,serif; vertical-align:middle;">i</span> button to the right.</div>
