@@ -279,7 +279,11 @@
 <body>
 <div class="card">
     <div class="title-row">
-        <img src="https://rbdelectrical.com.au/wp-content/uploads/2020/05/favicon-main-trans-full.png" alt="RBD Electrical" class="brand-logo" onerror="this.style.display='none'; this.parentElement.style.justifyContent='center';">
+        <!-- Logo loaded from the same repo as the HTML (rbd-logo.png) so
+             it works without depending on hotlinks to rbdelectrical.com.au.
+             Mobile browsers and stricter CDNs won't have the cross-origin
+             issue that an external URL can suffer from. -->
+        <img src="rbd-logo.png" alt="RBD Electrical" class="brand-logo" onerror="this.style.display='none'; this.parentElement.style.justifyContent='center';">
         <h2>RBD Timesheet Calculator</h2>
     </div>
     <div class="sub">EA 2025 &amp; Handbook Rev 8.0</div>
