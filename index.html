@@ -307,7 +307,7 @@
             <li>Select your <strong>start location</strong>: Devonport Office, Hobart Office, or Custom. If Custom, start typing the address or place name and pick from the Google Autocomplete dropdown (accommodation, other RBD office, meeting point, etc.). The dropdown is biased to Tasmania, so TAS results appear at the top.</li>
             <li>Start typing the <strong>destination</strong> (site name or address) and pick from the Google Autocomplete dropdown. If the place you need isn't listed, type a street address or town + state instead.</li>
             <li>Tap <strong>Verify Route</strong> to open Google Maps in a new tab and visually sanity-check the route Google is using.</li>
-            <li>Travel Hrs/Mins (morning leg) auto-set your "Arrived on Site" time. Return Hrs/Mins (return leg) auto-set your "Arrived at Workshop/Accom" time the same way (Left Site + Return time).</li>
+            <li><strong>Bidirectional time sync.</strong> When the morning Travel Hrs/Mins arrive, the calculator fills in whichever time you haven't typed yourself: type "Left Workshop/Accom" and "Arrived on Site" auto-fills; type "Arrived on Site" (e.g. you left from home, not the workshop) and "Left Workshop/Accom" back-calculates. Same logic on the return leg with "Left Site" / "Arrived at Workshop/Accom".</li>
             <li><strong>Return section</strong> is always visible: pick where you're heading back to (Devonport, Hobart, or a Custom address like accommodation). The return origin is automatically the last site in your chain. The Return section mirrors the morning section: same Verify Route button + Return Hrs/Mins inputs.</li>
             <li><strong>TK1 / TK2 / Kms (Company Car):</strong> tick these in Extra Allowances and the km fields populate automatically using Google's distances. Kms (CC) totals every leg the driver covers (morning + every between-site leg + return), and auto-ticks itself on <em>any</em> travelled km when Company Car is on.</li>
             <li><strong>Multi-site days</strong> (Dest &rarr; Site 2 &rarr; Site 3 &rarr; &hellip;): click <em>+ Add another site</em> to chain up to 5 sites. Works regardless of allowance: Company Car, TK1, or TK2. The return leg automatically starts from the last site in the chain (e.g. Site 3, not the morning Destination). When TK2 is also ticked, between-site km auto-fill from the chain.</li>
@@ -339,11 +339,11 @@
         <div class="input-grid">
             <div>
                 <label>Travel Hrs:</label>
-                <input type="number" id="manualHours" placeholder="Example: 1" oninput="syncArriveTime()">
+                <input type="number" id="manualHours" placeholder="Example: 1" oninput="syncMorningTimes()">
             </div>
             <div>
                 <label>Travel Mins:</label>
-                <input type="number" id="manualMinutes" placeholder="Example: 30" oninput="syncArriveTime()">
+                <input type="number" id="manualMinutes" placeholder="Example: 30" oninput="syncMorningTimes()">
             </div>
         </div>
         <!--
@@ -421,11 +421,11 @@
             <div class="input-grid">
                 <div>
                     <label>Return Hrs:</label>
-                    <input type="number" id="returnHours" placeholder="Example: 1" oninput="syncArriveWorkshopTime()">
+                    <input type="number" id="returnHours" placeholder="Example: 1" oninput="syncReturnTimes()">
                 </div>
                 <div>
                     <label>Return Mins:</label>
-                    <input type="number" id="returnMinutes" placeholder="Example: 30" oninput="syncArriveWorkshopTime()">
+                    <input type="number" id="returnMinutes" placeholder="Example: 30" oninput="syncReturnTimes()">
                 </div>
             </div>
         </div>
@@ -433,11 +433,13 @@
     <div class="section-header no-print"><span>Time Entries</span><button class="info-btn no-print" onclick="toggleInfo('infoTime')">i</button></div>
     <div id="infoTime" class="info-panel no-print">
         <strong>How to fill this in:</strong>
+        <p style="margin: 4px 0 8px;">All four times are used to calculate your day's pay. <strong>You only need to type the times you know</strong> — once the Google Maps Travel Tool has the morning and return travel times, the calculator will fill the gaps in either direction.</p>
         <ul>
-            <li><strong>Left Workshop/Accom</strong>: the time you left the workshop or accommodation.</li>
-            <li><strong>Arrived on Site</strong>: the time you arrived at the job site. Auto-fills from "Left Workshop/Accom" + the morning Travel Hrs/Mins (set by the Google Maps Travel Tool above). Type over it to override.</li>
-            <li><strong>Left Site</strong>: the time you left the job site at the end of the day.</li>
-            <li><strong>Arrived at Workshop/Accom</strong>: the time you got back to workshop or accommodation. Auto-fills from "Left Site" + the Return Hrs/Mins. Type over it to override.</li>
+            <li><strong>Left Workshop/Accom</strong>: the time you left the workshop or accommodation. If you left from home (not the workshop) and don't know this time, leave it blank — it'll auto-fill backwards from "Arrived on Site" minus the morning travel time.</li>
+            <li><strong>Arrived on Site</strong>: the time you arrived at the job site. If you only know your departure, leave this blank and it auto-fills forwards from "Left Workshop/Accom" plus the morning travel time.</li>
+            <li><strong>Left Site</strong>: the time you left the job site at the end of the day. Same logic as above — if you only know when you got home, leave this blank and it'll back-calculate.</li>
+            <li><strong>Arrived at Workshop/Accom</strong>: the time you got back to workshop, home, or accommodation. Auto-fills forwards from "Left Site" + Return Hrs/Mins, OR auto-fills if you typed it directly and the calculator works backwards to fill "Left Site".</li>
+            <li><em>Tip:</em> the calculator only auto-fills a field you haven't touched. If you want to switch from "I know my arrival" to "I know my departure" mode, just clear the field you previously typed and let the auto-fill take over.</li>
         </ul>
         <strong>Toggle buttons:</strong>
         <ul>
@@ -467,25 +469,25 @@
         <div id="leftWorkshopWrap">
             <label id="startLabel">Left Workshop/Accom:</label>
             <span class="time-input" data-placeholder="Select time">
-                <input type="time" id="leftWorkshop" value="06:00" oninput="syncArriveTime(); calculate();">
+                <input type="time" id="leftWorkshop" oninput="syncMorningTimes();">
             </span>
         </div>
         <div id="arriveSiteWrap">
             <label>Arrived on Site:</label>
             <span class="time-input" data-placeholder="Select time">
-                <input type="time" id="arriveSite" oninput="calculate()">
+                <input type="time" id="arriveSite" oninput="syncMorningTimes();">
             </span>
         </div>
         <div id="leaveSiteWrap">
             <label>Left Site:</label>
             <span class="time-input" data-placeholder="Select time">
-                <input type="time" id="leaveSite" value="15:30" oninput="syncArriveWorkshopTime(); calculate();">
+                <input type="time" id="leaveSite" oninput="syncReturnTimes();">
             </span>
         </div>
         <div id="arriveWorkshopWrap">
             <label id="finishLabel">Arrived at Workshop/Accom:</label>
             <span class="time-input" data-placeholder="Select time">
-                <input type="time" id="arriveWorkshop" oninput="calculate()">
+                <input type="time" id="arriveWorkshop" oninput="syncReturnTimes();">
             </span>
         </div>
     </div>
@@ -909,17 +911,58 @@
             }
         }
     }
-    function syncArriveTime() {
+    // -----------------------------------------------------------------
+    // BIDIRECTIONAL TIME SYNC
+    // The user might know their morning DEPARTURE (Left Workshop/Accom)
+    // OR their morning ARRIVAL (Arrived on Site) — but not both. Same on
+    // the return leg. We track which fields the user has explicitly typed
+    // into; whichever they HAVEN'T touched gets auto-calculated from the
+    // other plus the Travel Hrs/Mins value.
+    //   • Both flags false (default state) → forward-sync from default LW
+    //     (06:00) so AS auto-populates when Travel arrives. Same on
+    //     return: forward-sync from default LS (15:30) → AoW/A.
+    //   • Departure flag true, arrival flag false → forward-sync (existing
+    //     behaviour for users who know what time they left workshop/site).
+    //   • Arrival flag true, departure flag false → REVERSE-sync, fill
+    //     departure backwards (the new case for users who know when they
+    //     arrived but not when they left).
+    //   • Both flags true → don't auto-touch either field; user has
+    //     explicit values for both and we shouldn't overwrite.
+    // Clearing a field flips its flag back to false, so the user can
+    // toggle modes by simply emptying a field.
+    // -----------------------------------------------------------------
+    let userTouched = { lw: false, as: false, ls: false, aw: false };
+    function markTouched(key) {
+        const map = { lw: 'leftWorkshop', as: 'arriveSite', ls: 'leaveSite', aw: 'arriveWorkshop' };
+        const el = document.getElementById(map[key]);
+        userTouched[key] = !!(el && el.value);
+    }
+    function syncMorningTimes() {
+        markTouched('lw'); markTouched('as');
         const hInput = document.getElementById('manualHours').value;
         const mInput = document.getElementById('manualMinutes').value;
+        const lwInput = document.getElementById('leftWorkshop');
+        const asInput = document.getElementById('arriveSite');
         if (hInput !== "" || mInput !== "") {
-            const h = parseInt(hInput) || 0;
-            const m = parseInt(mInput) || 0;
-            const leftMins = timeToMin(document.getElementById('leftWorkshop').value);
-            document.getElementById('arriveSite').value = minToTime(leftMins + (h * 60) + m);
+            const travelMins = (parseInt(hInput) || 0) * 60 + (parseInt(mInput) || 0);
+            if (userTouched.as && !userTouched.lw && asInput.value) {
+                // Reverse-sync: AS known, LW unknown → LW = AS - travel
+                let lwMins = timeToMin(asInput.value) - travelMins;
+                if (lwMins < 0) lwMins += 1440;  // midnight wrap safety
+                lwInput.value = minToTime(lwMins);
+            } else if (lwInput.value && !userTouched.as) {
+                // Forward-sync (default + LW-touched cases): AS = LW + travel
+                asInput.value = minToTime(timeToMin(lwInput.value) + travelMins);
+            }
+            // Both touched: leave both alone — user has explicit values.
         }
+        if (typeof syncTimePlaceholders === 'function') syncTimePlaceholders();
         calculate();
     }
+    // Backwards-compat alias — called by the Google Maps integration paths
+    // that were written before the bidirectional refactor. Keeps callsites
+    // working without rewriting them.
+    function syncArriveTime() { syncMorningTimes(); }
     function setStart(type) {
         flags.Start = type;
         document.getElementById('btnStartWork').classList.toggle('active', type === 'Work');
@@ -1531,29 +1574,32 @@
         html += '</div>';
         html += '</div>';
         // -------------------------------------------------------------------
-        // Required-fields gate. Two simple rules:
-        //   • Arrived on Site is required when Start = Site (otherwise unused
-        //     for pay calc — the workday begins at "Left Workshop/Accom").
-        //   • Arrived at Workshop/Accom is always required (it's either the
-        //     paid-work end time when Finish = Workshop, or the return-leg
-        //     endpoint when Finish = Site).
-        // If either is missing we replace the timesheet rows + notes + extra
-        // allowances with a friendly "Fill in X" prompt so the user never
-        // sees nonsense numbers from blank-field treatment as 00:00.
+        // Required-fields gate. All four time fields must have values for
+        // an accurate calc:
+        //   • LW + AS — used for morning travel (SS) or paidWorkStart (SW)
+        //     and grossSiteMins (allowance hours regardless of Start mode).
+        //   • LS + AoW/A — used for paidWorkEnd, return travel, on-site
+        //     duration (allowance hours).
+        // Bidirectional sync means the user only needs to type some of them
+        // — the rest auto-fill from Travel time. But until all four have
+        // values, we replace the timesheet rows + notes + allowances with
+        // a friendly "Fill in X" prompt so the user never sees nonsense
+        // numbers from blank-field treatment as 00:00.
         // -------------------------------------------------------------------
-        const _aosRequired = (flags.Start === 'Site');
-        const _aosFilled   = !!(document.getElementById('arriveSite').value);
-        const _aowFilled   = !!(document.getElementById('arriveWorkshop').value);
         const _missing = [];
-        if (_aosRequired && !_aosFilled) _missing.push('<strong>Arrived on Site</strong>');
-        if (!_aowFilled)                 _missing.push('<strong>Arrived at Workshop/Accom</strong>');
+        if (!document.getElementById('leftWorkshop').value)   _missing.push('<strong>' + (typeof getStartLabel  === 'function' ? getStartLabel()  : 'Left Workshop/Accom') + '</strong>');
+        if (!document.getElementById('arriveSite').value)     _missing.push('<strong>Arrived on Site</strong>');
+        if (!document.getElementById('leaveSite').value)      _missing.push('<strong>Left Site</strong>');
+        if (!document.getElementById('arriveWorkshop').value) _missing.push('<strong>' + (typeof getFinishLabel === 'function' ? getFinishLabel() : 'Arrived at Workshop/Accom') + '</strong>');
         if (_missing.length) {
-            const _msg = _missing.length === 2
-                ? _missing[0] + ' and ' + _missing[1]
-                : _missing[0];
+            // Join missing labels with commas + "and" before the last one.
+            let _msg;
+            if (_missing.length === 1)      _msg = _missing[0];
+            else if (_missing.length === 2) _msg = _missing[0] + ' and ' + _missing[1];
+            else _msg = _missing.slice(0, -1).join(', ') + ', and ' + _missing[_missing.length - 1];
             html += '<div class="no-print" style="margin: 10px 0 4px; padding: 14px 16px; background: linear-gradient(135deg, #f0f6fc, #e8f0fa); border-left: 4px solid #004a99; border-radius: 10px; font-size: 12.5px; color: #334155; line-height: 1.55;">' +
                 '<strong style="color:#003366;">Fill in ' + _msg + ' to see your timesheet.</strong>' +
-                '<div style="font-size: 11px; color: #6b7c8d; margin-top: 6px; line-height: 1.5;">These times set the start and end of your paid work day. The Google Maps Travel Tool will auto-fill them once it has the morning and return legs.</div>' +
+                '<div style="font-size: 11px; color: #6b7c8d; margin-top: 6px; line-height: 1.5;">All four time entries are needed for an accurate calc. The Google Maps Travel Tool can fill the gaps automatically — type whichever times you know (e.g. just "Arrived on Site" if you left from home, not the workshop), and the calculator will work backwards from the morning and return legs.</div>' +
             '</div>';
             // Reset the cached results so the .txt download doesn't carry
             // stale numbers from a previous valid run.
@@ -2198,17 +2244,31 @@
     // Mirrors syncArriveTime() for the morning side. Reads the user-visible
     // Return Hrs/Mins inputs (which are auto-populated when a return leg is
     // fetched, but the user can also edit them manually).
-    function syncArriveWorkshopTime() {
+    // Bidirectional return-leg sync — mirrors syncMorningTimes(). LS is
+    // analogous to LW (departure), AoW/A is analogous to AS (arrival).
+    function syncReturnTimes() {
+        markTouched('ls'); markTouched('aw');
         const hInput = document.getElementById('returnHours').value;
         const mInput = document.getElementById('returnMinutes').value;
+        const lsInput = document.getElementById('leaveSite');
+        const awInput = document.getElementById('arriveWorkshop');
         if (hInput !== "" || mInput !== "") {
-            const h = parseInt(hInput) || 0;
-            const m = parseInt(mInput) || 0;
-            const leaveMins = timeToMin(document.getElementById('leaveSite').value);
-            document.getElementById('arriveWorkshop').value = minToTime(leaveMins + (h * 60) + m);
+            const travelMins = (parseInt(hInput) || 0) * 60 + (parseInt(mInput) || 0);
+            if (userTouched.aw && !userTouched.ls && awInput.value) {
+                // Reverse-sync: AoW/A known, LS unknown → LS = AoW/A - travel
+                let lsMins = timeToMin(awInput.value) - travelMins;
+                if (lsMins < 0) lsMins += 1440;
+                lsInput.value = minToTime(lsMins);
+            } else if (lsInput.value && !userTouched.aw) {
+                // Forward-sync: AoW/A = LS + travel
+                awInput.value = minToTime(timeToMin(lsInput.value) + travelMins);
+            }
         }
+        if (typeof syncTimePlaceholders === 'function') syncTimePlaceholders();
         calculate();
     }
+    // Backwards-compat alias.
+    function syncArriveWorkshopTime() { syncReturnTimes(); }
     // Verify Return Route — opens Google Maps with directions from the
     // last site of the day to the return office. Mirrors checkRoute() for
     // the morning leg.
