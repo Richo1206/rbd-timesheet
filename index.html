@@ -178,6 +178,40 @@
         .footer-note { font-size: 9px; color: #8899aa; text-align: center; margin-top: 22px; font-style: italic; line-height: 1.6; }
         .hidden { display: none !important; }
         .info-btn { width: 24px; height: 24px; border-radius: 50%; border: 1.5px solid #004a99; background: white; color: #004a99; font-size: 13px; font-weight: bold; font-style: italic; font-family: Georgia, serif; cursor: pointer; display: inline-flex; align-items: center; justify-content: center; padding: 0; line-height: 1; flex-shrink: 0; transition: all 0.15s; }
+        /* Manual / Auto mode toggle pill in the Time Entries header.
+           Default state (Auto): green pill — bidirectional sync is on.
+           Active state (Manual): orange pill — sync disabled, full
+           manual control. The colour shift is the user's reminder of
+           which mode they're in. */
+        .manual-mode-btn {
+            padding: 4px 10px;
+            border: 1.5px solid #1e7a3a;
+            background: #e8f5ed;
+            color: #1e7a3a;
+            border-radius: 14px;
+            font-weight: 700;
+            font-size: 10px;
+            text-transform: uppercase;
+            letter-spacing: 0.6px;
+            cursor: pointer;
+            transition: all 0.15s;
+            font-family: inherit;
+            line-height: 1.2;
+            white-space: nowrap;
+        }
+        .manual-mode-btn:hover { filter: brightness(0.97); }
+        .manual-mode-btn.active {
+            border-color: #c0651e;
+            background: #fdf3e8;
+            color: #c0651e;
+        }
+        /* Group the right-side header actions (mode toggle + info btn). */
+        .section-header-right {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            flex-shrink: 0;
+        }
         /* Right-side "open another tool" link button — same blue palette as
            info-btn but pill-shaped with a label. Used to launch the Travel
            Boundary tool. */
@@ -430,17 +464,30 @@
             </div>
         </div>
     </div>
-    <div class="section-header no-print"><span>Time Entries</span><button class="info-btn no-print" onclick="toggleInfo('infoTime')">i</button></div>
+    <div class="section-header no-print">
+        <span>Time Entries</span>
+        <span class="section-header-right">
+            <button id="btnManualMode" class="manual-mode-btn" type="button" onclick="toggleManualMode()" aria-pressed="false" title="Auto mode: typing one time auto-fills its paired field from the Travel time. Manual mode: type all four times yourself, no auto-sync.">Auto</button>
+            <button class="info-btn no-print" onclick="toggleInfo('infoTime')">i</button>
+        </span>
+    </div>
     <div id="infoTime" class="info-panel no-print">
         <strong>How to fill this in:</strong>
-        <p style="margin: 4px 0 8px;">All four times are used to calculate your day's pay. <strong>You only need to type the times you know</strong> — once the Google Maps Travel Tool has the morning and return travel times, the calculator will fill the gaps in either direction.</p>
+        <p style="margin: 4px 0 8px;">All four times are used to calculate your day's pay. The <strong>Auto / Manual</strong> toggle in the section header controls whether the calculator helps you fill them in.</p>
+        <strong>Auto mode (default):</strong>
         <ul>
-            <li><strong>Left Workshop/Accom</strong>: the time you left the workshop or accommodation. If you left from home (not the workshop) and don't know this time, leave it blank — it'll auto-fill backwards from "Arrived on Site" minus the morning travel time.</li>
-            <li><strong>Arrived on Site</strong>: the time you arrived at the job site. If you only know your departure, leave this blank and it auto-fills forwards from "Left Workshop/Accom" plus the morning travel time.</li>
-            <li><strong>Left Site</strong>: the time you left the job site at the end of the day. Same logic as above — if you only know when you got home, leave this blank and it'll back-calculate.</li>
-            <li><strong>Arrived at Workshop/Accom</strong>: the time you got back to workshop, home, or accommodation. Auto-fills forwards from "Left Site" + Return Hrs/Mins, OR auto-fills if you typed it directly and the calculator works backwards to fill "Left Site".</li>
-            <li><em>Tip:</em> the calculator only auto-fills a field you haven't touched. If you want to switch from "I know my arrival" to "I know my departure" mode, just clear the field you previously typed and let the auto-fill take over.</li>
+            <li>Whenever you change one of the four time fields, the calculator updates the paired field using the Travel Hrs/Mins (from the Google Maps Travel Tool above). The most recently edited field is treated as the source of truth.</li>
+            <li><strong>Left Workshop/Accom</strong> &harr; <strong>Arrived on Site</strong> are paired. Type either one; the other auto-fills.</li>
+            <li><strong>Left Site</strong> &harr; <strong>Arrived at Workshop/Accom</strong> are paired the same way for the return leg.</li>
+            <li>Useful when you left from home (not the workshop) and only know your site arrival time: type "Arrived on Site" and the calculator works backwards to fill "Left Workshop/Accom".</li>
         </ul>
+        <strong>Manual mode:</strong>
+        <ul>
+            <li>Tap the <strong>Auto</strong> pill in the Time Entries header to flip to <strong>Manual</strong>. The pill turns orange.</li>
+            <li>In Manual mode the calculator does not auto-fill anything. You're responsible for typing all four times accurately.</li>
+            <li>Use this when your day didn't follow the standard pattern (e.g. you stopped for personal errands, route was diverted, or you want to log the exact times you were on the clock without the tool computing anything).</li>
+        </ul>
+        <p style="margin: 4px 0 6px; font-style: italic; color: #6b7c8d; font-size: 11px;">Either way, all four time fields are required for an accurate pay calculation. The Daily Timesheet stays hidden until they're all filled in.</p>
         <strong>Toggle buttons:</strong>
         <ul>
             <li><strong>Start Workshop / Start Site</strong>: select where your working day commenced (Cl 53.a). Select <strong>Start Workshop</strong> if you were directed by your supervisor or project manager to carry out work-related tasks at your centre of employment before travelling to site. Select <strong>Start Site</strong> if you travelled directly to the worksite from home, your centre of employment (without carrying out work-related tasks), or an arranged meeting point.</li>
@@ -469,25 +516,25 @@
         <div id="leftWorkshopWrap">
             <label id="startLabel">Left Workshop/Accom:</label>
             <span class="time-input" data-placeholder="Select time">
-                <input type="time" id="leftWorkshop" oninput="syncMorningTimes();">
+                <input type="time" id="leftWorkshop" oninput="noteMorningEdit('lw');">
             </span>
         </div>
         <div id="arriveSiteWrap">
             <label>Arrived on Site:</label>
             <span class="time-input" data-placeholder="Select time">
-                <input type="time" id="arriveSite" oninput="syncMorningTimes();">
+                <input type="time" id="arriveSite" oninput="noteMorningEdit('as');">
             </span>
         </div>
         <div id="leaveSiteWrap">
             <label>Left Site:</label>
             <span class="time-input" data-placeholder="Select time">
-                <input type="time" id="leaveSite" oninput="syncReturnTimes();">
+                <input type="time" id="leaveSite" oninput="noteReturnEdit('ls');">
             </span>
         </div>
         <div id="arriveWorkshopWrap">
             <label id="finishLabel">Arrived at Workshop/Accom:</label>
             <span class="time-input" data-placeholder="Select time">
-                <input type="time" id="arriveWorkshop" oninput="syncReturnTimes();">
+                <input type="time" id="arriveWorkshop" oninput="noteReturnEdit('aw');">
             </span>
         </div>
     </div>
@@ -913,48 +960,59 @@
     }
     // -----------------------------------------------------------------
     // BIDIRECTIONAL TIME SYNC
-    // The user might know their morning DEPARTURE (Left Workshop/Accom)
-    // OR their morning ARRIVAL (Arrived on Site) — but not both. Same on
-    // the return leg. We track which fields the user has explicitly typed
-    // into; whichever they HAVEN'T touched gets auto-calculated from the
-    // other plus the Travel Hrs/Mins value.
-    //   • Both flags false (default state) → forward-sync from default LW
-    //     (06:00) so AS auto-populates when Travel arrives. Same on
-    //     return: forward-sync from default LS (15:30) → AoW/A.
-    //   • Departure flag true, arrival flag false → forward-sync (existing
-    //     behaviour for users who know what time they left workshop/site).
-    //   • Arrival flag true, departure flag false → REVERSE-sync, fill
-    //     departure backwards (the new case for users who know when they
-    //     arrived but not when they left).
-    //   • Both flags true → don't auto-touch either field; user has
-    //     explicit values for both and we shouldn't overwrite.
-    // Clearing a field flips its flag back to false, so the user can
-    // toggle modes by simply emptying a field.
+    //   Auto mode (default): whichever of the four time fields the user
+    //   most recently edited is treated as the "source of truth"; its
+    //   paired field auto-recalculates from Travel Hrs/Mins.
+    //     • LW edited → AS = LW + travel        (forward morning)
+    //     • AS edited → LW = AS - travel        (reverse morning)
+    //     • LS edited → AoW/A = LS + travel     (forward return)
+    //     • AoW/A edited → LS = AoW/A - travel  (reverse return)
+    //   Travel changes (e.g. Google Maps fetched new times) re-run the
+    //   sync using whatever direction the most recent edit established.
+    //
+    //   Manual mode: sync is fully disabled. The user types every field
+    //   themselves; calculator just reads what's there. Toggled via the
+    //   "Auto / Manual" button in the Time Entries section header.
     // -----------------------------------------------------------------
-    let userTouched = { lw: false, as: false, ls: false, aw: false };
-    function markTouched(key) {
-        const map = { lw: 'leftWorkshop', as: 'arriveSite', ls: 'leaveSite', aw: 'arriveWorkshop' };
-        const el = document.getElementById(map[key]);
-        userTouched[key] = !!(el && el.value);
+    let manualMode = false;
+    let lastEditedMorning = null;  // 'lw' | 'as' — which morning field the user changed last
+    let lastEditedReturn  = null;  // 'ls' | 'aw' — same for return leg
+    function noteMorningEdit(field) { lastEditedMorning = field; syncMorningTimes(); }
+    function noteReturnEdit(field)  { lastEditedReturn  = field; syncReturnTimes(); }
+    function toggleManualMode() {
+        manualMode = !manualMode;
+        const btn = document.getElementById('btnManualMode');
+        if (btn) {
+            btn.classList.toggle('active', manualMode);
+            btn.textContent = manualMode ? 'Manual' : 'Auto';
+            btn.setAttribute('aria-pressed', manualMode ? 'true' : 'false');
+        }
+        // No re-sync on toggle — current values stay as-is. The user can
+        // type freely in manual mode without auto-fill, and switching
+        // back to auto won't disturb existing values until the next edit.
+        calculate();
     }
     function syncMorningTimes() {
-        markTouched('lw'); markTouched('as');
-        const hInput = document.getElementById('manualHours').value;
-        const mInput = document.getElementById('manualMinutes').value;
+        if (manualMode) {
+            if (typeof syncTimePlaceholders === 'function') syncTimePlaceholders();
+            calculate();
+            return;
+        }
         const lwInput = document.getElementById('leftWorkshop');
         const asInput = document.getElementById('arriveSite');
+        const hInput = document.getElementById('manualHours').value;
+        const mInput = document.getElementById('manualMinutes').value;
         if (hInput !== "" || mInput !== "") {
             const travelMins = (parseInt(hInput) || 0) * 60 + (parseInt(mInput) || 0);
-            if (userTouched.as && !userTouched.lw && asInput.value) {
-                // Reverse-sync: AS known, LW unknown → LW = AS - travel
+            if (lastEditedMorning === 'as' && asInput.value) {
+                // Reverse-sync: AS edited last → LW = AS - travel
                 let lwMins = timeToMin(asInput.value) - travelMins;
                 if (lwMins < 0) lwMins += 1440;  // midnight wrap safety
                 lwInput.value = minToTime(lwMins);
-            } else if (lwInput.value && !userTouched.as) {
-                // Forward-sync (default + LW-touched cases): AS = LW + travel
+            } else if ((lastEditedMorning === 'lw' || lastEditedMorning === null) && lwInput.value) {
+                // Forward-sync: LW edited last (or null fallback) → AS = LW + travel
                 asInput.value = minToTime(timeToMin(lwInput.value) + travelMins);
             }
-            // Both touched: leave both alone — user has explicit values.
         }
         if (typeof syncTimePlaceholders === 'function') syncTimePlaceholders();
         calculate();
@@ -2247,20 +2305,24 @@
     // Bidirectional return-leg sync — mirrors syncMorningTimes(). LS is
     // analogous to LW (departure), AoW/A is analogous to AS (arrival).
     function syncReturnTimes() {
-        markTouched('ls'); markTouched('aw');
-        const hInput = document.getElementById('returnHours').value;
-        const mInput = document.getElementById('returnMinutes').value;
+        if (manualMode) {
+            if (typeof syncTimePlaceholders === 'function') syncTimePlaceholders();
+            calculate();
+            return;
+        }
         const lsInput = document.getElementById('leaveSite');
         const awInput = document.getElementById('arriveWorkshop');
+        const hInput = document.getElementById('returnHours').value;
+        const mInput = document.getElementById('returnMinutes').value;
         if (hInput !== "" || mInput !== "") {
             const travelMins = (parseInt(hInput) || 0) * 60 + (parseInt(mInput) || 0);
-            if (userTouched.aw && !userTouched.ls && awInput.value) {
-                // Reverse-sync: AoW/A known, LS unknown → LS = AoW/A - travel
+            if (lastEditedReturn === 'aw' && awInput.value) {
+                // Reverse-sync: AoW/A edited last → LS = AoW/A - travel
                 let lsMins = timeToMin(awInput.value) - travelMins;
                 if (lsMins < 0) lsMins += 1440;
                 lsInput.value = minToTime(lsMins);
-            } else if (lsInput.value && !userTouched.aw) {
-                // Forward-sync: AoW/A = LS + travel
+            } else if ((lastEditedReturn === 'ls' || lastEditedReturn === null) && lsInput.value) {
+                // Forward-sync: LS edited last (or null fallback) → AoW/A = LS + travel
                 awInput.value = minToTime(timeToMin(lsInput.value) + travelMins);
             }
         }
