@@ -1383,28 +1383,31 @@
             // Return transit net of 30-min boundary deduction (non-Inc-1 only)
             let returnTransitNet = Math.max(0, returnTransitPayable - 30);
             // Cl 64.3.c.ii / 64.5.a.ii — return leg is TT+ when the day's
-            // total "work + outside-boundary travel" already exceeds 8h at
-            // the moment the return journey begins. The pre-return accrual is:
+            // total "work + outside-boundary travel" exceeds 8 hours. We
+            // count the FULL day including the return travel itself, not
+            // just pre-return: a day where work is just under 8h with a
+            // long return drive is still a >8h working day from the
+            // employee's perspective and the return should attract TT+.
             //
-            //   non-Inc-1: netWorkMins + max(0, morningTravelTotal − 30)
-            //              (morning travel minus its 30-min boundary)
+            //   non-Inc-1: netWorkMins
+            //              + max(0, morningTravelTotal − 30)   morning OB
+            //              + max(0, returnTransitGross  − 30)  return OB
+            //   Inc-1:     netWorkMins + morningTravelTotal + returnTransitGross
+            //              (no boundary under Inc-1 — accom IS the centre)
             //
-            //   Inc-1:     netWorkMins + morningTravelTotal
-            //              (no boundary under Inc-1 — accommodation IS the centre)
-            //
-            // We use minutes of elapsed time here, not the rounded pay codes —
-            // rounding and NT-capping can hide outside-boundary time and push
-            // marginal shifts onto the wrong side of the 8h threshold.
-            let accruedAtReturn = netWorkMins + (inc1Return
-                ? morningTravelTotal
-                : Math.max(0, morningTravelTotal - 30));
+            // Minutes of elapsed time (not rounded pay codes) — rounding and
+            // NT-capping can hide outside-boundary time and push marginal
+            // shifts onto the wrong side of the 8h threshold.
+            const morningOB = inc1Return ? morningTravelTotal : Math.max(0, morningTravelTotal - 30);
+            const returnOB  = inc1Return ? returnTransitGross  : Math.max(0, returnTransitGross  - 30);
+            const totalDayElapsed = netWorkMins + morningOB + returnOB;
             if (inc1Return) {
-                if (accruedAtReturn > 480) {
+                if (totalDayElapsed > 480) {
                     results["TT+ (Return)"] = roundTo15(returnTransitPayable) / 60;
                 } else {
                     results["TT (Return)"] = roundTo15(returnTransitPayable) / 60;
                 }
-            } else if (accruedAtReturn > 480) {
+            } else if (totalDayElapsed > 480) {
                 results["TT+ (Return)"] = roundTo15(returnTransitNet) / 60;
             } else {
                 results["TT (Return)"] = roundTo15(returnTransitNet) / 60;
