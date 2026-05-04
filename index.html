@@ -642,6 +642,18 @@
          the .txt summary is a fallback for payroll edge cases, not the
          main output. -->
     <button class="no-print" style="width:100%; margin-top:6px; padding:11px; background:white; color:#1e7a3a; border:1.5px solid #1e7a3a; border-radius:10px; font-weight:700; cursor:pointer; font-size:13px; transition:transform 0.1s, background 0.15s;" onclick="this.style.transform='scale(0.98)'; setTimeout(()=>this.style.transform='',100); downloadSummary()">Download Text File Summary</button>
+    <button id="explainBtn" class="no-print" style="width:100%; margin-top:6px; padding:11px; background:white; color:#1e7a3a; border:1.5px solid #1e7a3a; border-radius:10px; font-weight:700; cursor:pointer; font-size:13px; transition:transform 0.1s, background 0.15s;" onclick="this.style.transform='scale(0.98)'; setTimeout(()=>this.style.transform='',100); toggleExplanation()">Explain Results</button>
+    <!-- Explanation panel — hidden by default. Built dynamically by
+         generateExplanation() and shown when "Explain Results" is tapped.
+         Includes a Copy-to-clipboard button so the user can paste into
+         email/Slack to send to a team member. -->
+    <div id="explainPanel" class="no-print" style="display: none; margin-top: 8px; padding: 14px; background: linear-gradient(135deg, #f8fafc, #f0f5fa); border: 1.5px solid #d2dce6; border-radius: 12px;">
+        <div style="display: flex; gap: 6px; margin-bottom: 8px;">
+            <button id="explainCopyBtn" type="button" onclick="copyExplanation()" style="flex: 1; padding: 8px 10px; background: #1e7a3a; color: white; border: none; border-radius: 6px; font-weight: 700; font-size: 11px; text-transform: uppercase; letter-spacing: 0.5px; cursor: pointer;">Copy to Clipboard</button>
+            <button type="button" onclick="toggleExplanation()" style="padding: 8px 12px; background: white; color: #6b7c8d; border: 1.5px solid #d2dce6; border-radius: 6px; font-weight: 700; font-size: 11px; text-transform: uppercase; letter-spacing: 0.5px; cursor: pointer;">Close</button>
+        </div>
+        <pre id="explainText" style="font-family: 'Courier New', monospace; font-size: 11px; line-height: 1.5; color: #1a1a1a; background: white; padding: 12px; border-radius: 8px; border: 1px solid #e1e8ed; white-space: pre-wrap; margin: 0; max-height: 60vh; overflow-y: auto;"></pre>
+    </div>
     <div class="footer-note" style="font-size: 9px; color: #999; text-align: center; margin-top: 20px; line-height: 1.5;">
         <strong style="color:#666;">Disclaimer:</strong> This calculator is a guide only and does not override the RBD Enterprise Agreement 2025 or RBD Handbook Rev 8.0. Additional allowances can be selected under Extra Allowances. Some entitlements such as call-in, shift work, and overtime meal escalations may not be reflected. Always refer to the EA for definitive entitlements.
     </div>
@@ -1981,6 +1993,207 @@
         a.click();
         document.body.removeChild(a);
         URL.revokeObjectURL(url);
+    }
+    // ------------------------------------------------------------------
+    // EXPLAIN — generates a plain-text walk-through of how each pay code
+    // was computed. Useful for sending to team members when their
+    // timesheet looks wrong, so they can see the EA-clause-by-EA-clause
+    // reasoning behind each total.
+    // ------------------------------------------------------------------
+    function generateExplanation() {
+        const fmtTime = function(t) { return t || '(blank)'; };
+        const fmtHM = function(min) {
+            if (min == null || min < 0) return '0m';
+            const h = Math.floor(min / 60), m = min % 60;
+            return (h > 0 ? h + 'h ' : '') + m + 'm';
+        };
+        const lw = (document.getElementById('leftWorkshop')   || {}).value || '';
+        const as = (document.getElementById('arriveSite')     || {}).value || '';
+        const ls = (document.getElementById('leaveSite')      || {}).value || '';
+        const aw = (document.getElementById('arriveWorkshop') || {}).value || '';
+        const lwMin = timeToMin(lw), asMin = timeToMin(as), lsMin = timeToMin(ls), awMin = timeToMin(aw);
+        const startSite  = flags.Start === 'Site';
+        const finishSite = flags.Fin   === 'Site';
+        const dayLabel   = ({ Weekday: 'Weekday', Weekend: 'Weekend', PH: 'Public Holiday' }[flags.Day] || flags.Day) + (flags.RDO ? ' (RDO worked)' : '');
+        const startLbl   = startSite  ? 'Site (Start Site)'      : 'Workshop (Start Workshop)';
+        const finishLbl  = finishSite ? 'Site (Finish Site)'     : 'Workshop (Finish Workshop)';
+        const lines = [];
+        const hr = function() { lines.push('-'.repeat(54)); };
+        // ---- Header ----
+        lines.push('RBD TIMESHEET: EXPLANATION');
+        lines.push('Generated: ' + new Date().toLocaleString('en-AU', { dateStyle: 'medium', timeStyle: 'short' }));
+        const projName = (document.getElementById('projectName') || {}).value || '';
+        if (projName) lines.push('Project: ' + projName);
+        lines.push('');
+        // ---- Setup ----
+        hr(); lines.push('DAY SETUP'); hr();
+        lines.push('  Day type:    ' + dayLabel);
+        lines.push('  Started at:  ' + startLbl);
+        lines.push('  Finished at: ' + finishLbl);
+        lines.push('  Vehicle:     ' + (flags.Co ? 'Company Car' : 'Own Vehicle (Fares Allowance applies)'));
+        if (flags.Inc1) {
+            let i1 = 'Yes';
+            if (flags.FirstDay) i1 += ' (First Day of trip)';
+            else if (flags.LastDay) i1 += ' (Last Day of trip)';
+            lines.push('  Incidentals-1: ' + i1);
+        }
+        if (flags.UnnotifiedOT) lines.push('  Unnotified OT: Yes (Cl 60.1.a triggers $15.50 meal allowance)');
+        if (flags.Callout)      lines.push('  Callout: Yes (Cl 63.a recall — bundled work+travel at OT)');
+        if (typeof isPenaltyDay === 'function' && isPenaltyDay() && flags.Notified24h) {
+            lines.push('  24h+ Notice: Yes (Cl 62.3.b — 2h minimum applies)');
+        }
+        lines.push('');
+        // ---- Time entries ----
+        hr(); lines.push('TIME ENTRIES'); hr();
+        lines.push('  ' + (typeof getStartLabel === 'function' ? getStartLabel() : 'Left Workshop/Accom') + ' ' + fmtTime(lw));
+        lines.push('  Arrived on Site:           ' + fmtTime(as));
+        lines.push('  Left Site:                 ' + fmtTime(ls));
+        lines.push('  ' + (typeof getFinishLabel === 'function' ? getFinishLabel() : 'Arrived at Workshop/Accom') + ' ' + fmtTime(aw));
+        lines.push('');
+        // ---- Paid work hours ----
+        hr(); lines.push('PAID WORK HOURS'); hr();
+        const paidStartMin = startSite  ? asMin : lwMin;
+        const paidEndMin   = finishSite ? lsMin : awMin;
+        const paidStartLbl = startSite  ? 'Arrived on Site' : (typeof getStartLabel === 'function' ? getStartLabel().replace(':', '') : 'Left Workshop/Accom');
+        const paidEndLbl   = finishSite ? 'Left Site'       : (typeof getFinishLabel === 'function' ? getFinishLabel().replace(':', '') : 'Arrived at Workshop/Accom');
+        const span = (typeof diffMins === 'function') ? diffMins(paidStartMin, paidEndMin) : Math.max(0, paidEndMin - paidStartMin);
+        lines.push('  Paid work begins at: ' + (startSite ? as : lw) + '  (' + paidStartLbl + ', because ' + (startSite ? 'Start = Site' : 'Start = Workshop') + ')');
+        lines.push('  Paid work ends at:   ' + (finishSite ? ls : aw) + '  (' + paidEndLbl + ', because ' + (finishSite ? 'Finish = Site' : 'Finish = Workshop') + ')');
+        lines.push('  Span of work:        ' + fmtHM(span));
+        let mealNote;
+        if (span < 300) mealNote = '0m  (shift < 5h, no meal break per Cl 60.a/b)';
+        else if (span >= 720) mealNote = '0m  (shift >= 12h, meal break paid per Cl 60.a)';
+        else mealNote = '30m unpaid  (5h <= span < 12h, Cl 60.a)';
+        lines.push('  Meal break:          ' + mealNote);
+        const netWork = (span < 300 || span >= 720) ? span : Math.max(0, span - 30);
+        lines.push('  Net work hours:      ' + fmtHM(netWork) + '  (= span - meal)');
+        lines.push('');
+        // ---- Travel ----
+        hr(); lines.push('TRAVEL'); hr();
+        const morningH = parseInt((document.getElementById('manualHours') || {}).value || '0', 10);
+        const morningM = parseInt((document.getElementById('manualMinutes') || {}).value || '0', 10);
+        const morningTravel = morningH * 60 + morningM;
+        const returnH = parseInt((document.getElementById('returnHours') || {}).value || '0', 10);
+        const returnM = parseInt((document.getElementById('returnMinutes') || {}).value || '0', 10);
+        const returnTravel = returnH * 60 + returnM;
+        lines.push('  Morning leg (origin -> site):   ' + fmtHM(morningTravel));
+        if (startSite) {
+            const morningOB = Math.max(0, morningTravel - 30);
+            if (morningOB === 0) lines.push('    -> Within 30-min Travel Boundary (Cl 64.1.a). No TT paid; covered by Fares Allowance.');
+            else                 lines.push('    -> Outside-boundary portion: ' + fmtHM(morningOB) + '  (= ' + fmtHM(morningTravel) + ' - 30m boundary)');
+        } else {
+            lines.push('    -> Not paid as separate travel (Start = Workshop, included in paid workday).');
+        }
+        lines.push('  Return leg  (last site -> home): ' + fmtHM(returnTravel));
+        if (finishSite) {
+            const returnOB = Math.max(0, returnTravel - 30);
+            if (returnOB === 0) lines.push('    -> Within 30-min Travel Boundary. No TT paid.');
+            else                 lines.push('    -> Outside-boundary portion: ' + fmtHM(returnOB) + '  (= ' + fmtHM(returnTravel) + ' - 30m boundary)');
+            const totalDay = netWork + (startSite ? Math.max(0, morningTravel - 30) : 0) + Math.max(0, returnTravel - 30);
+            lines.push('    -> Day total elapsed (work + outside-boundary travel) = ' + fmtHM(totalDay));
+            if (totalDay > 480) lines.push('       Day exceeds 8h, so return = TT+ (1.5x rate, Cl 64.3.c.ii).');
+            else                lines.push('       Day <= 8h, so return = TT (single rate, Cl 64.3.c.i).');
+        } else {
+            lines.push('    -> Not paid as separate travel (Finish = Workshop, included in paid workday).');
+        }
+        lines.push('');
+        // ---- Pay codes ----
+        hr(); lines.push('PAY CODES (FROM DAILY TIMESHEET)'); hr();
+        const r = window._lastResults || {};
+        const codes = ['NT', 'NT (RDO, AL or LWOP)', 'NT (Public Holiday)', 'TH', 'DT', 'TT (Morning)', 'TT+ (Morning)', 'TT (Return)', 'TT+ (Return)', 'TAT', 'Fares (FTR)', 'Meal Allow ($15.50)'];
+        codes.forEach(function(code) {
+            const v = r[code];
+            if (v == null || v < 0.001) return;
+            const unit = (code === 'TAT' || code === 'Fares (FTR)' || code === 'Meal Allow ($15.50)') ? 'Unit' : 'hrs';
+            lines.push('  ' + code + ': ' + v.toFixed(2) + ' ' + unit);
+        });
+        lines.push('');
+        // ---- Notes ----
+        const notes = window._lastNotes || [];
+        if (notes.length) {
+            hr(); lines.push('NOTES'); hr();
+            notes.forEach(function(n) {
+                // Strip any HTML tags from the note before plain-text rendering
+                const clean = n.replace(/<[^>]+>/g, '');
+                lines.push('  - ' + clean);
+            });
+            lines.push('');
+        }
+        // ---- Allowances ----
+        const ticked = EXTRA_ALLOWANCES.filter(function(a) {
+            const cb = document.getElementById('allow_' + a.id);
+            return cb && cb.checked;
+        });
+        if (ticked.length) {
+            hr(); lines.push('EXTRA ALLOWANCES (TICKED)'); hr();
+            ticked.forEach(function(a) {
+                let val = '';
+                if (a.unit === 'km') {
+                    const km = (document.getElementById('km_' + a.id) || {}).value || '0';
+                    val = km + ' km';
+                } else if (a.unit === 'custom_hr') {
+                    const hr = (document.getElementById('hrs_' + a.id) || {}).value || '0';
+                    val = hr + ' hrs';
+                } else if (a.unit === 'hr') {
+                    val = '(split into NT/OT lines in the timesheet)';
+                } else {
+                    val = '1 Unit';
+                }
+                lines.push('  - ' + a.name + ': ' + val);
+            });
+            lines.push('');
+        }
+        hr();
+        lines.push('Disclaimer: this calculator is a guide only. Always refer to the');
+        lines.push('RBD Enterprise Agreement 2025 / RBD Handbook Rev 8.0 for definitive');
+        lines.push('entitlements.');
+        lines.push('');
+        lines.push('Time entries generated from vehicle tracker.');
+        return lines.join('\n');
+    }
+    function toggleExplanation() {
+        const panel = document.getElementById('explainPanel');
+        const text  = document.getElementById('explainText');
+        if (!panel || !text) return;
+        const isOpen = panel.style.display !== 'none';
+        if (isOpen) {
+            panel.style.display = 'none';
+        } else {
+            text.textContent = generateExplanation();
+            panel.style.display = 'block';
+            // Scroll panel into view so the user sees it.
+            panel.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }
+    }
+    function copyExplanation() {
+        const text = document.getElementById('explainText');
+        const btn  = document.getElementById('explainCopyBtn');
+        if (!text || !btn) return;
+        const original = btn.textContent;
+        const txt = text.textContent;
+        const done = function() {
+            btn.textContent = 'Copied!';
+            btn.style.background = '#0f5d2c';
+            setTimeout(function() { btn.textContent = original; btn.style.background = '#1e7a3a'; }, 1600);
+        };
+        if (navigator.clipboard && navigator.clipboard.writeText) {
+            navigator.clipboard.writeText(txt).then(done, function() {
+                // Fallback if clipboard write fails
+                fallbackCopy(txt); done();
+            });
+        } else {
+            fallbackCopy(txt); done();
+        }
+    }
+    function fallbackCopy(text) {
+        const ta = document.createElement('textarea');
+        ta.value = text;
+        ta.style.position = 'fixed';
+        ta.style.left = '-9999px';
+        document.body.appendChild(ta);
+        ta.select();
+        try { document.execCommand('copy'); } catch (e) {}
+        document.body.removeChild(ta);
     }
     // ------------------------------------------------------------------
     // GOOGLE MAPS — Auto-fill Travel Hrs/Mins from Distance Matrix
