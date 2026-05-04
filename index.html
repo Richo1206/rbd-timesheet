@@ -643,6 +643,13 @@
          main output. -->
     <button class="no-print" style="width:100%; margin-top:6px; padding:11px; background:white; color:#1e7a3a; border:1.5px solid #1e7a3a; border-radius:10px; font-weight:700; cursor:pointer; font-size:13px; transition:transform 0.1s, background 0.15s;" onclick="this.style.transform='scale(0.98)'; setTimeout(()=>this.style.transform='',100); downloadSummary()">Download Text File Summary</button>
     <button id="explainBtn" class="no-print" style="width:100%; margin-top:6px; padding:11px; background:white; color:#1e7a3a; border:1.5px solid #1e7a3a; border-radius:10px; font-weight:700; cursor:pointer; font-size:13px; transition:transform 0.1s, background 0.15s;" onclick="this.style.transform='scale(0.98)'; setTimeout(()=>this.style.transform='',100); toggleExplanation()">Explain Results</button>
+    <!--@GH_ONLY_BEGIN-->
+    <!-- Email Worker — opens default email client with a pre-populated
+         template + Explain output. GitHub-only feature (stripped from the
+         Production build by build_production.py) until the workflow has
+         been validated end-to-end. -->
+    <button id="emailBtn" class="no-print" style="width:100%; margin-top:6px; padding:11px; background:white; color:#1e7a3a; border:1.5px solid #1e7a3a; border-radius:10px; font-weight:700; cursor:pointer; font-size:13px; transition:transform 0.1s, background 0.15s;" onclick="this.style.transform='scale(0.98)'; setTimeout(()=>this.style.transform='',100); emailWorker()">Email Worker</button>
+    <!--@GH_ONLY_END-->
     <!-- Explanation panel — hidden by default. Built dynamically by
          generateExplanation() and shown when "Explain Results" is tapped.
          Includes a Copy-to-clipboard button so the user can paste into
@@ -2068,6 +2075,34 @@
         const netWork = (span < 300 || span >= 720) ? span : Math.max(0, span - 30);
         lines.push('  Net work hours:      ' + fmtHM(netWork) + '  (= span - meal)');
         lines.push('');
+        // ---- Route (Google Maps inputs) ----
+        // Only render this section when there's actually a route configured,
+        // so manual-only days don't get an empty Route block.
+        const officeAddr = { Dev: 'Devonport Office (3 Bay Drive, Quoiba, TAS 7310)',
+                             Hob: 'Hobart Office (6 Lampton Avenue, Derwent Park, TAS 7009)' };
+        const customOriginVal = (document.getElementById('customOrigin') || {}).value || '';
+        const destinationVal  = (document.getElementById('destination')  || {}).value || '';
+        const customReturnVal = (document.getElementById('customReturn') || {}).value || '';
+        const officeText  = (flags.Office === 'Custom') ? ('Custom: ' + (customOriginVal || '(not set)'))
+                          : (officeAddr[flags.Office] || '(not selected)');
+        const returnText  = (flags.ReturnOffice === 'Custom') ? ('Custom: ' + (customReturnVal || '(not set)'))
+                          : (officeAddr[flags.ReturnOffice] || '(not selected)');
+        const hasRoute = !!(flags.Office || destinationVal || flags.ReturnOffice);
+        if (hasRoute) {
+            hr(); lines.push('ROUTE (FROM GOOGLE MAPS)'); hr();
+            if (flags.Office)        lines.push('  Origin:        ' + officeText);
+            if (destinationVal)      lines.push('  Destination:   ' + destinationVal);
+            // Multi-site chain — list any extra sites filled in
+            for (let i = 2; i <= 5; i++) {
+                const w = document.getElementById('siteWrap' + i);
+                const s = document.getElementById('site' + i);
+                if (w && !w.classList.contains('hidden') && s && s.value.trim()) {
+                    lines.push('  Site ' + i + ':        ' + s.value.trim());
+                }
+            }
+            if (flags.ReturnOffice)  lines.push('  Returning to:  ' + returnText);
+            lines.push('');
+        }
         // ---- Travel ----
         hr(); lines.push('TRAVEL'); hr();
         const morningH = parseInt((document.getElementById('manualHours') || {}).value || '0', 10);
@@ -2076,10 +2111,15 @@
         const returnH = parseInt((document.getElementById('returnHours') || {}).value || '0', 10);
         const returnM = parseInt((document.getElementById('returnMinutes') || {}).value || '0', 10);
         const returnTravel = returnH * 60 + returnM;
+        // Fares Allowance only applies when Company Car is OFF AND not Inc-1.
+        // We use the actual calculated result so the explanation matches the
+        // timesheet (rather than guessing eligibility from flags alone).
+        const faresPaid = (window._lastResults && window._lastResults['Fares (FTR)'] > 0.001);
+        const farePostfix = faresPaid ? '  (covered by daily Fares Allowance)' : '';
         lines.push('  Morning leg (origin -> site):   ' + fmtHM(morningTravel));
         if (startSite) {
             const morningOB = Math.max(0, morningTravel - 30);
-            if (morningOB === 0) lines.push('    -> Within 30-min Travel Boundary (Cl 64.1.a). No TT paid; covered by Fares Allowance.');
+            if (morningOB === 0) lines.push('    -> Within 30-min Travel Boundary (Cl 64.1.a). No TT paid.' + farePostfix);
             else                 lines.push('    -> Outside-boundary portion: ' + fmtHM(morningOB) + '  (= ' + fmtHM(morningTravel) + ' - 30m boundary)');
         } else {
             lines.push('    -> Not paid as separate travel (Start = Workshop, included in paid workday).');
@@ -2195,6 +2235,44 @@
         try { document.execCommand('copy'); } catch (e) {}
         document.body.removeChild(ta);
     }
+    //@GH_ONLY_BEGIN
+    // Email Worker — opens default email client with a pre-populated
+    // discrepancy email + the Explain output in the body. Date is pulled
+    // from the Project Information field if set. The recipient address is
+    // intentionally left blank so the sender adds it explicitly.
+    //
+    // Note on mailto: long bodies (~2000+ chars) can be truncated by some
+    // email clients, especially on mobile. If that becomes a problem in
+    // testing, switch to a copy-to-clipboard + open-blank-email approach.
+    function emailWorker() {
+        const explanation = generateExplanation();
+        const projDay     = (document.getElementById('projectDay')  || {}).value || '';
+        const projDateRaw = (document.getElementById('projectDate') || {}).value || '';
+        const projDate    = projDateRaw
+            ? new Date(projDateRaw + 'T00:00:00').toLocaleDateString('en-AU', {
+                weekday: 'long', day: 'numeric', month: 'long', year: 'numeric'
+              })
+            : '';
+        const dateLabel = projDate || projDay || '[date]';
+        const subject = 'Timesheet adjustment for ' + dateLabel;
+        const body =
+            'Hi [Name],\n\n' +
+            'A discrepancy has been found between vehicle tracking data and ' +
+            'your AroFlo timesheet for ' + dateLabel + '. The breakdown ' +
+            'below shows how the day calculates based on the tracker data:\n\n' +
+            explanation + '\n\n' +
+            'Your timesheet has been adjusted to the figures above. If you ' +
+            'believe this is an error (for example the tracker missed a stop ' +
+            'or the times don\'t reflect what actually happened), please ' +
+            'contact the office ASAP so we can sort it out.\n\n' +
+            'Thanks,\n' +
+            '[Your name]\n' +
+            'RBD Electrical';
+        const mailto = 'mailto:?subject=' + encodeURIComponent(subject) +
+                       '&body=' + encodeURIComponent(body);
+        window.location.href = mailto;
+    }
+    //@GH_ONLY_END
     // ------------------------------------------------------------------
     // GOOGLE MAPS — Auto-fill Travel Hrs/Mins from Distance Matrix
     //
