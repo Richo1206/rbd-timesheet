@@ -2217,6 +2217,35 @@
         lines.push('NOTE: Time entries generated from vehicle tracker.');
         return lines.join('\n');
     }
+    // Render the plain-text explanation as HTML for the on-screen panel,
+    // wrapping the PAY CODES and EXTRA ALLOWANCES sections in <strong>
+    // tags so the key payroll output blocks stand out visually. <strong>
+    // works inside <pre> — the surrounding whitespace and line breaks
+    // are preserved, the marked content just renders bold.
+    //
+    // Escape HTML special chars first so any user-supplied content (e.g.
+    // a Custom origin address with an ampersand) renders literally rather
+    // than being interpreted as markup.
+    function explanationAsHtml(plainText) {
+        const escaped = plainText
+            .replace(/&/g, '&amp;')
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;');
+        // Match the section block: top dashes line + section title + bottom
+        // dashes line + content lines, up to the trailing blank line. The
+        // [\s\S]*? non-greedy match stops at the next blank-line boundary.
+        const sections = ['PAY CODES \\(FROM DAILY TIMESHEET\\)',
+                          'EXTRA ALLOWANCES \\(SELECTED\\)'];
+        let html = escaped;
+        sections.forEach(function(name) {
+            const re = new RegExp(
+                '(-{20,}\\n' + name + '\\n-{20,}\\n[\\s\\S]*?)(\\n\\n|$)',
+                'g'
+            );
+            html = html.replace(re, '<strong>$1</strong>$2');
+        });
+        return html;
+    }
     function toggleExplanation() {
         const panel = document.getElementById('explainPanel');
         const text  = document.getElementById('explainText');
@@ -2225,7 +2254,11 @@
         if (isOpen) {
             panel.style.display = 'none';
         } else {
-            text.textContent = generateExplanation();
+            const plain = generateExplanation();
+            // Cache the plain text on the element so Copy can grab it
+            // without re-running the build.
+            text.dataset.plainText = plain;
+            text.innerHTML = explanationAsHtml(plain);
             panel.style.display = 'block';
             // Scroll panel into view so the user sees it.
             panel.scrollIntoView({ behavior: 'smooth', block: 'start' });
@@ -2236,7 +2269,11 @@
         const btn  = document.getElementById('explainCopyBtn');
         if (!text || !btn) return;
         const original = btn.textContent;
-        const txt = text.textContent;
+        // Use the cached plain-text version so <strong> tags from the
+        // on-screen rendering don't bleed into the clipboard. textContent
+        // would also work (browsers strip tags), but the cache is cheaper
+        // and avoids any whitespace surprises from the DOM layout.
+        const txt = text.dataset.plainText || text.textContent;
         const done = function() {
             btn.textContent = 'Copied!';
             btn.style.background = '#0f5d2c';
@@ -2280,7 +2317,11 @@
               })
             : '';
         const dateLabel = projDate || projDay || '[date]';
-        const subject = 'Timesheet adjustment for ' + dateLabel;
+        // If the user has set a real date in Project Information, include
+        // it in the subject. Otherwise leave the subject date-less so the
+        // user doesn't need to type the date in two places.
+        const realDate = projDate || projDay;
+        const subject = realDate ? ('Timesheet adjustment for ' + realDate) : 'Timesheet adjustment';
         // Body order: greeting -> intro -> adjustment notice -> explanation
         // (which includes its own disclaimer + tracker NOTE) -> sign-off.
         const body =
