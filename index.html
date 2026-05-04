@@ -2160,35 +2160,61 @@
             lines.push('');
         }
         // ---- Allowances ----
+        // Use the cached per-day NT/OT splits (computed by calculate())
+        // so per-hour allowances render with their actual hours, matching
+        // what would appear on AroFlo. Mirrors downloadSummary()'s logic.
         const ticked = EXTRA_ALLOWANCES.filter(function(a) {
             const cb = document.getElementById('allow_' + a.id);
             return cb && cb.checked;
         });
         if (ticked.length) {
-            hr(); lines.push('EXTRA ALLOWANCES (TICKED)'); hr();
+            hr(); lines.push('EXTRA ALLOWANCES (SELECTED)'); hr();
+            const aNT  = window._lastAllowNT || 0;
+            const aOT  = window._lastAllowOT || 0;
+            const sNT  = window._lastSiteNT  || 0;
+            const sOT  = window._lastSiteOT  || 0;
+            const sTH  = window._lastSupTH   || 0;
+            const sDT  = window._lastSupDT   || 0;
+            const sTT  = window._lastSupTT   || 0;
+            const sTTP = window._lastSupTTP  || 0;
+            const hvCapActive = !!window._lastHvCapActive;
             ticked.forEach(function(a) {
-                let val = '';
-                if (a.unit === 'km') {
+                if (a.id === 'hvTerm' && hvCapActive) return;  // HV cap (Cl 50.c)
+                const note = a.summaryNote ? ' (' + a.summaryNote + ')' : '';
+                if (a.unit === 'hr') {
+                    if (a.includeTravel) {
+                        // Supervisor: NT / TH / DT / TT / TT+
+                        if (aNT  > 0.001) lines.push('  - ' + a.name + ' (NT)'  + note + ': ' + aNT.toFixed(2)  + ' hrs');
+                        if (sTH  > 0.001) lines.push('  - ' + a.name + ' (TH)'  + note + ': ' + sTH.toFixed(2)  + ' hrs');
+                        if (sDT  > 0.001) lines.push('  - ' + a.name + ' (DT)'  + note + ': ' + sDT.toFixed(2)  + ' hrs');
+                        if (sTT  > 0.001) lines.push('  - ' + a.name + ' (TT)'  + note + ': ' + sTT.toFixed(2)  + ' hrs');
+                        if (sTTP > 0.001) lines.push('  - ' + a.name + ' (TT+)' + note + ': ' + sTTP.toFixed(2) + ' hrs');
+                    } else if (a.siteOnly) {
+                        // Site-only allowances: NT/OT split from site hours
+                        if (sNT > 0.001) lines.push('  - ' + a.name + ' (NT)' + note + ': ' + sNT.toFixed(2) + ' hrs');
+                        if (sOT > 0.001) lines.push('  - ' + a.name + ' (OT)' + note + ': ' + sOT.toFixed(2) + ' hrs');
+                    } else {
+                        // Default per-hour: NT/OT split from day hours
+                        if (aNT > 0.001) lines.push('  - ' + a.name + ' (NT)' + note + ': ' + aNT.toFixed(2) + ' hrs');
+                        if (aOT > 0.001) lines.push('  - ' + a.name + ' (OT)' + note + ': ' + aOT.toFixed(2) + ' hrs');
+                    }
+                } else if (a.unit === 'km') {
                     const km = (document.getElementById('km_' + a.id) || {}).value || '0';
-                    val = km + ' km';
+                    lines.push('  - ' + a.name + note + ': ' + km + ' km');
                 } else if (a.unit === 'custom_hr') {
-                    const hr = (document.getElementById('hrs_' + a.id) || {}).value || '0';
-                    val = hr + ' hrs';
-                } else if (a.unit === 'hr') {
-                    val = '(split into NT/OT lines in the timesheet)';
+                    const h = (document.getElementById('hrs_' + a.id) || {}).value || '0';
+                    lines.push('  - ' + a.name + note + ': ' + h + ' hrs');
                 } else {
-                    val = '1 Unit';
+                    lines.push('  - ' + a.name + note + ': 1 Unit');
                 }
-                lines.push('  - ' + a.name + ': ' + val);
             });
             lines.push('');
         }
         hr();
-        lines.push('Disclaimer: this calculator is a guide only. Always refer to the');
-        lines.push('RBD Enterprise Agreement 2025 / RBD Handbook Rev 8.0 for definitive');
-        lines.push('entitlements.');
+        lines.push('Disclaimer: Always refer to the RBD Enterprise Agreement 2025 /');
+        lines.push('RBD Handbook Rev 8.0 for definitive entitlements.');
         lines.push('');
-        lines.push('Time entries generated from vehicle tracker.');
+        lines.push('NOTE: Time entries generated from vehicle tracker.');
         return lines.join('\n');
     }
     function toggleExplanation() {
@@ -2255,16 +2281,17 @@
             : '';
         const dateLabel = projDate || projDay || '[date]';
         const subject = 'Timesheet adjustment for ' + dateLabel;
+        // Body order: greeting -> intro -> adjustment notice -> explanation
+        // (which includes its own disclaimer + tracker NOTE) -> sign-off.
         const body =
             'Hi [Name],\n\n' +
             'A discrepancy has been found between vehicle tracking data and ' +
             'your AroFlo timesheet for ' + dateLabel + '. The breakdown ' +
-            'below shows how the day calculates based on the tracker data:\n\n' +
-            explanation + '\n\n' +
-            'Your timesheet has been adjusted to the figures above. If you ' +
-            'believe this is an error (for example the tracker missed a stop ' +
-            'or the times don\'t reflect what actually happened), please ' +
+            'below shows how the day calculates based on the tracker data.\n\n' +
+            'Your timesheet has been adjusted to the figures below. If you ' +
+            'believe this is an error or something has been missed, please ' +
             'contact the office ASAP so we can sort it out.\n\n' +
+            explanation + '\n\n' +
             'Thanks,\n' +
             '[Your name]\n' +
             'RBD Electrical';
