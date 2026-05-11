@@ -495,10 +495,17 @@
             <li><strong>Weekday / Weekend / Pub Holiday</strong>: select the day type. Weekday pays NT then OT. Weekend/PH pays double time for all work hours with a 4-hour minimum (Cl 62.3.a), or 2-hour minimum if you were notified 24h+ in advance (Cl 62.3.b). PH also includes 8 hours NT (Public Holiday) entitlement: applicable only on a day you were rostered to work (s116 FW Act).</li>
             <li><strong>Company Car</strong>: select if a company vehicle was provided or offered. If unselected, Fares Allowance (FTR) applies. Selecting Company Car also makes TK1 and TK2 own-vehicle km allowances ineligible (Cl 64.3.b: the $0.57/km is not paid when the employee travels in company transport). The calculator enforces this by disabling the TK1 and TK2 checkboxes while Company Car is on.</li>
             <li><strong>Incidentals-1</strong>: select when staying at accommodation on a distant job (>20 min from urban area, employer pays for accom without meals). All accom-to-site travel is paid. TAT and Fares do not apply for accom↔site legs. First/Last Day tick preserves TAT/Fares for the standard workshop↔site leg (Cl 64.5.b).</li>
-            <li><strong>Other ▼</strong>: expands to reveal the less-common flags below (Unnotified OT, RDO, Callout).</li>
+            <li><strong>Other ▼</strong>: expands to reveal the less-common flags below (Unnotified OT, RDO, Callout, Shift).</li>
             <li><strong>Unnotified OT</strong>: select if you were required to work 2+ hours overtime without being notified the previous day. Triggers the $15.50 meal allowance (any day, Cl 60.1.a).</li>
             <li><strong>RDO</strong>: select when working a scheduled Rostered Day Off. Treats the day as a Saturday-equivalent penalty day (Cl 62.3.a). All work hours are paid at DT rate, with a 4-hour minimum (or 2-hour with 24h+ notice).</li>
             <li><strong>Callout</strong>: select when recalled to site after hours (Cl 63.a). All work + travel is bundled at the appropriate OT rate with a 4-hour minimum. TT/TT+/TAT/Fares are suppressed: travel is already at OT. Not modelled: Cl 63.e/f on-call-roster variants (3h / 2h mins) and the Cl 63.a.iii TK1 $0.57/km own-vehicle allowance; enter these manually via Extra Allowances.</li>
+            <li><strong>Shift</strong>: select when rostered for continuous shift work (Cl 56.2.a). The calculator auto-classifies the shift from the <em>finish</em> time entered above:
+                <ul>
+                    <li>Finish after 6pm and at or before midnight → <strong>Afternoon shift</strong> → +15% loading on NT hours</li>
+                    <li>Finish after midnight and at or before 8am → <strong>Night shift</strong> → +30% loading on NT hours</li>
+                    <li>Finish 8:01am–6pm → not a shift; no loading</li>
+                </ul>
+                The loading attaches to <strong>NT (ordinary) hours only</strong> — Cl 62.2.b prevents OT/weekend/PH rates from stacking with the shift premium. The matching Extra Allowance row auto-ticks; the other is cleared. On weekend / Public Holiday / RDO / Callout days the toggle goes inert (penalty rates already substitute for the loading). One-off shifts &lt;5 consecutive days fall under Cl 56.2.d casual rates (T+½ first 2h, T×2 after) — not auto-calculated; escalate to payroll if applicable. The finish time used for classification is <em>Left Site</em> in Finish Site mode, or <em>Arrived at Workshop/Accom</em> in Finish Workshop mode (Cl 56 keys off when ordinary work ends, not when the worker arrives home).</li>
             <li><strong>Scheduled (24h+ notice)</strong>. When working a weekend/PH/RDO that was planned 24h+ in advance, minimum drops from 4h to 2h (Cl 62.3.b).</li>
         </ul>
         <strong>Key EA rules:</strong>
@@ -571,6 +578,7 @@
         <div id="btnUnnotifiedOT" class="toggle-btn" onclick="toggle('UnnotifiedOT')">Unnotified OT</div>
         <div id="btnRDO" class="toggle-btn" onclick="toggle('RDO')">RDO</div>
         <div id="btnCallout" class="toggle-btn" onclick="toggle('Callout')">Callout</div>
+        <div id="btnShift" class="toggle-btn" onclick="toggle('Shift')">Shift</div>
     </div>
     <div id="notified24hRow" class="day-toggle-section hidden" style="border-top:none; padding-top:0; grid-template-columns: 1fr;">
         <div id="btnNotified24h" class="toggle-btn" onclick="toggle('Notified24h')">Scheduled (24h+ notice, 2h min)</div>
@@ -685,6 +693,7 @@
         Notified24h: false,  // Sat/Sun/RDO/PH: 24h+ notice reduces min to 2h (Cl 62.3.b)
         RDO: false,          // overlay: working a scheduled RDO (Cl 62.3.a) — DT + 4h/2h min
         Callout: false,      // overlay: Cl 63.a recall to site — bundled work+travel at OT, 4h min
+        Shift: false,        // overlay: Cl 56.2.a continuous shift — auto-classify aft (15%) / night (30%) from finish time
         Office: null,        // 'Dev' | 'Hob' | 'Custom' — morning origin
         ReturnOffice: null   // 'Dev' | 'Hob' | 'Custom' — return destination (only when TK1 selected)
     };
@@ -721,6 +730,17 @@
         { id: 'hvPrep', name: 'HV Prep & Documentation', rate: 100.00, unit: 'day', group: 'High Voltage', hideRate: true },
         // Other
         { id: 'onCall', name: 'On Call Allowance', rate: 45.71, unit: 'day', group: 'Other' },
+        // Shift loadings (Cl 56.2.a) — NT-only, auto-classified by Shift toggle.
+        // hideRate: the AroFlo Per-Hour figure ($16.73/$33.45) is a reference rate
+        // for one specific grade — actual loading is calculated in Xero as
+        // 0.15x / 0.30x of each employee's ordinary earnings rate. Showing
+        // a single dollar figure here would be misleading across grades.
+        // shiftAllowance: flagged so the rendering pipeline knows to:
+        //   • gate visibility/enable on flags.Shift
+        //   • render an NT-only line (no OT/site split — loading is NT only
+        //     per Cl 62.2.b, OT rates substitute for shift premiums)
+        { id: 'shiftAft15', name: 'Afternoon Shift Allowance 15% (NT)', rate: 16.73, rateLabel: '+15% / hr', unit: 'hr', group: 'Other', hideRate: false, shiftAllowance: 'afternoon', ntOnly: true },
+        { id: 'shiftNgt30', name: 'Night Shift Allowance 30% (NT)',     rate: 33.45, rateLabel: '+30% / hr', unit: 'hr', group: 'Other', hideRate: false, shiftAllowance: 'night',     ntOnly: true },
     ];
     function buildAllowancePanel() {
         let panel = document.getElementById('allowPanel');
@@ -728,7 +748,7 @@
         html += '<div id="infoAllow" class="info-panel">';
         html += '<strong>How to use:</strong> Select any additional allowances that apply to the day. These appear in the summary alongside the auto-calculated time codes.';
         html += '<ul>';
-        html += '<li><strong>Per-hour allowances</strong> (Industrial, Site, Firmus, Supervisor): automatically split into NT and OT hours based on the day\'s calculation. Supervisor allowances include travel time (Cl 49.c).</li>';
+        html += '<li><strong>Per-hour allowances</strong> (Industrial, Site, Firmus, Supervisor): automatically split into NT and OT hours based on the day\'s calculation. Supervisor allowances include travel time (Cl 49.c). <em>Shift loadings (Afternoon 15% / Night 30%)</em> render NT-only — Cl 62.2.b means OT rates substitute for the loading rather than stacking.</li>';
         html += '<li><strong>Manual-entry allowances</strong> (HSM, Inclement Weather): enter the number of hours that apply. Also split into NT and OT.</li>';
         html += '<li><strong>Per-day/night allowances</strong> (Living Away, Incidentals 1/2/3, HV, On Call): tick the box and 1 Unit is added to the summary.</li>';
         html += '<li><strong>Per-km allowances</strong> (TK1, TK2, Kms Company Car): enter the kilometres travelled, or let the Google Maps tool auto-fill them (see below).</li>';
@@ -749,6 +769,7 @@
         html += '<li>Auto-filled values can always be overwritten manually. Once you type a km value it won\'t be clobbered by a later auto-calculate.</li>';
         html += '</ul>';
         html += '<strong>Note:</strong> TAT, Fares, and Meal Allowance (Overtime) are already auto-calculated by the timesheet above: they are not duplicated here.';
+        html += '<br><br><strong>Shift loadings (Cl 56.2.a):</strong> the Afternoon (+15%) and Night (+30%) rows under <em>Other</em> are driven by the <strong>Shift</strong> toggle (under the Other ▼ panel above). When the toggle is off, both rows are greyed out and unticked. When the toggle is on, the calculator auto-classifies the shift from the finish time and ticks the matching row. The loading attaches to NT hours only — Cl 62.2.b prevents OT/weekend/PH rates from stacking. The dollar rate shown ($16.73 / $33.45) is an AroFlo reference for one grade; the actual loading is calculated in Xero as 0.15x / 0.30x of each employee\'s ordinary earnings rate, so super and STP categorisation are handled automatically.';
         html += '</div>';
         let currentGroup = '';
         let firstGroup = true;
@@ -772,8 +793,16 @@
                 html += '<input type="number" class="allow-input" id="hrs_' + a.id + '" placeholder="hrs" oninput="calculate()">';
             }
             if (!a.hideRate) {
-                let unitLabel = a.unit === 'custom_hr' ? 'hr' : a.unit;
-                html += '<span class="allow-rate">$' + a.rate.toFixed(2) + '/' + unitLabel + '</span>';
+                if (a.rateLabel) {
+                    // Custom rate label — used for shift loadings where the
+                    // "real" rate is a percentage of each employee's ordinary
+                    // rate (calculated in Xero), not the AroFlo per-hour
+                    // reference figure.
+                    html += '<span class="allow-rate">' + a.rateLabel + '</span>';
+                } else {
+                    let unitLabel = a.unit === 'custom_hr' ? 'hr' : a.unit;
+                    html += '<span class="allow-rate">$' + a.rate.toFixed(2) + '/' + unitLabel + '</span>';
+                }
             }
             html += '</div>';
             // Inline hint under Km's (Company Car) — only visible when that
@@ -1085,9 +1114,11 @@
         // refresh the 24h-notice row visibility.
         if (id === 'RDO') syncNoticeRow();
         // Keep the "Other" header indicator in sync with its contents.
-        if (['UnnotifiedOT', 'RDO', 'Callout'].indexOf(id) !== -1) syncOtherHeader();
+        if (['UnnotifiedOT', 'RDO', 'Callout', 'Shift'].indexOf(id) !== -1) syncOtherHeader();
         // Company Car flag gates the km allowances — refresh the mutex.
         if (id === 'Co') syncAllowanceBoundUI();
+        // Shift toggle controls the Extra Allowances shift entries (enable/auto-tick).
+        if (id === 'Shift') syncShiftAllowanceUI();
         calculate();
     }
     function toggleOther() {
@@ -1100,7 +1131,7 @@
         const btn   = document.getElementById('btnOther');
         const arrow = document.getElementById('btnOtherArrow');
         const isOpen = !panel.classList.contains('hidden');
-        const anyActive = flags.UnnotifiedOT || flags.RDO || flags.Callout;
+        const anyActive = flags.UnnotifiedOT || flags.RDO || flags.Callout || flags.Shift;
         // Rebuild the button label: "Other" + rotating arrow + optional dot.
         btn.innerHTML = 'Other <span id="btnOtherArrow" style="display:inline-block; transition: transform 0.2s ease;">\u25BC</span>' +
             (anyActive && !isOpen ? ' \u2022' : '');
@@ -1554,6 +1585,23 @@
             results["Meal Allow ($15.50)"] = 1;
         }
         // ----------------------------------------------------------
+        // 6b) SHIFT ALLOWANCE (Cl 56.2.a — continuous shift work)
+        //     Refresh the Extra Allowances shift entries every recalc so
+        //     the auto-tick keeps tracking the current finish time + day
+        //     type. The actual loading dollar value is calculated in
+        //     Xero from the per-employee ordinary-earnings-rate multiplier
+        //     (0.15x or 0.30x). The on-screen line just shows hours.
+        //
+        //     Cl 62.2.b: OT, weekend, Sunday, PH rates SUBSTITUTE for the
+        //     shift premium — they don't stack. So:
+        //       • Day Type Weekend or PH → loading suppressed
+        //       • RDO overlay (DT-rate day per Cl 62.3.a) → suppressed
+        //       • Callout overlay (Cl 63.a OT bundle) → suppressed
+        //       • OT hours within an otherwise-shift weekday → still
+        //         suppressed for the OT portion (handled by ntOnly render).
+        // ----------------------------------------------------------
+        syncShiftAllowanceUI();
+        // ----------------------------------------------------------
         // 7) Render
         // ----------------------------------------------------------
         // Project info header
@@ -1624,12 +1672,28 @@
         html += stgCell('Incidentals-1',  flags.Inc1);
         html += stgCell(null);
         html += '</tr>';
-        // Other flags — 3 items
+        // Other flags — 3 items per row
         html += '<tr>';
         html += stgCell('Unnotified OT',  flags.UnnotifiedOT);
         html += stgCell('RDO (worked)',   flags.RDO);
         html += stgCell('Callout',        flags.Callout);
         html += '</tr>';
+        // Shift row — labels with the auto-classified type so the printed
+        // summary tells payroll which loading is going to fire (or why it
+        // was suppressed).
+        if (flags.Shift) {
+            const _shiftCls = classifyShift();
+            let _shiftLabel = 'Shift';
+            if (_shiftCls === 'afternoon') _shiftLabel = 'Shift — Afternoon (+15%)';
+            else if (_shiftCls === 'night') _shiftLabel = 'Shift — Night (+30%)';
+            else if (_shiftCls === 'suppressed') _shiftLabel = 'Shift — suppressed (penalty/OT day)';
+            else if (_shiftCls === 'none') _shiftLabel = 'Shift — finish in 6am–6pm window (no loading)';
+            html += '<tr>';
+            html += stgCell(_shiftLabel, true);
+            html += stgCell(null);
+            html += stgCell(null);
+            html += '</tr>';
+        }
         // Inc-1 trip day (only when relevant)
         if (flags.Inc1) {
             html += '<tr>';
@@ -1734,6 +1798,25 @@
         if (flags.Callout) {
             notes.push("Callout (Cl 63.a): bundled work+travel at OT rate, 4h min, TT/TT+/TAT/Fares suppressed. On-call roster variants (Cl 63.e/f) and TK1 km allowance (Cl 63.a.iii) not auto-calculated.");
         }
+        // Shift status note — surface what the auto-classifier decided
+        // so the user can sanity-check before submitting.
+        if (flags.Shift) {
+            const shiftCls = classifyShift();
+            if (shiftCls === 'afternoon') {
+                notes.push("Shift (Cl 56.2.a): afternoon shift detected (finish after 6pm) — +15% loading on NT hours. Loading not paid on OT/travel per Cl 62.2.b.");
+            } else if (shiftCls === 'night') {
+                notes.push("Shift (Cl 56.2.a): night shift detected (finish after midnight, ≤ 8am) — +30% loading on NT hours. Loading not paid on OT/travel per Cl 62.2.b.");
+            } else if (shiftCls === 'suppressed') {
+                let reason = (flags.Day === 'Weekend') ? "weekend rates" :
+                             (flags.Day === 'PH')      ? "public holiday rates" :
+                             flags.RDO                 ? "RDO day rates" :
+                             flags.Callout             ? "callout OT rates" : "OT rates";
+                notes.push("Shift toggle on, but loading suppressed: " + reason + " substitute for the shift premium (Cl 56.2.c / 62.2.b).");
+            } else if (shiftCls === 'none') {
+                notes.push("Shift toggle on, but finish time falls inside the ordinary day window (6am–6pm) — no loading applied. For a shift to attract loading, the rostered ordinary hours must finish after 6pm (afternoon) or by 8am (night) per Cl 56 / Cl 5.");
+            }
+            notes.push("Casual shift carve-out (Cl 56.2.d): if this isn't part of a 5+ day consecutive shift roster, the casual rates T+½ first 2h then T×2 may apply instead — escalate to payroll. Permanent night (Cl 56.2.e, >4 wks): same 30% as regular night, no extra logic.");
+        }
         if (results["NT (RDO, AL or LWOP)"] > 0.001) notes.push("Less than 8 hours NT worked. Remaining hours must be covered by RDO, Annual Leave, or LWOP. Note: LWOP is only allowed if approved by management.");
         if (notes.length) {
             html += `<div class="notes">${notes.join('<br>')}</div>`;
@@ -1786,6 +1869,14 @@
                         if (supDT > 0.001)  allowanceHtml += '<div class="code-row"><span>' + a.name + ' (DT)' + hrNoteSup + '</span><span>' + supDT.toFixed(2) + ' hrs</span></div>';
                         if (supTT > 0.001)  allowanceHtml += '<div class="code-row"><span>' + a.name + ' (TT)' + hrNoteSup + '</span><span>' + supTT.toFixed(2) + ' hrs</span></div>';
                         if (supTTP > 0.001) allowanceHtml += '<div class="code-row"><span>' + a.name + ' (TT+)' + hrNoteSup + '</span><span>' + supTTP.toFixed(2) + ' hrs</span></div>';
+                    } else if (a.ntOnly) {
+                        // NT-only allowance (shift loadings, Cl 56.2.a).
+                        // Cl 62.2.b prevents OT from carrying the loading, and
+                        // the EA wording "shifts worked" means it never
+                        // attaches to travel. So we render a single NT line —
+                        // the name already includes "(NT)" so we don't double-tag.
+                        let hrNote = a.summaryNote ? ' <span style="font-size:10px;color:#888;font-style:italic;">(' + a.summaryNote + ')</span>' : '';
+                        if (allowNT > 0.001) allowanceHtml += '<div class="code-row"><span>' + a.name + hrNote + '</span><span>' + allowNT.toFixed(2) + ' hrs</span></div>';
                     } else {
                         let nt = a.siteOnly ? siteNT : allowNT;
                         let ot = a.siteOnly ? siteOT : allowOT;
@@ -1910,6 +2001,15 @@
         lines.push('• Incidentals-1: ' + inc1Label);
         lines.push('• Unnotified OT: ' + (flags.UnnotifiedOT ? 'Yes' : 'No'));
         if (flags.Callout) lines.push('• Callout (Cl 63.a recall): Yes');
+        if (flags.Shift) {
+            const _dlShiftCls = classifyShift();
+            let _dlShiftLabel = 'Yes';
+            if (_dlShiftCls === 'afternoon')      _dlShiftLabel = 'Yes — Afternoon (+15% on NT)';
+            else if (_dlShiftCls === 'night')     _dlShiftLabel = 'Yes — Night (+30% on NT)';
+            else if (_dlShiftCls === 'suppressed') _dlShiftLabel = 'Yes — suppressed (penalty/OT day, Cl 56.2.c / 62.2.b)';
+            else if (_dlShiftCls === 'none')      _dlShiftLabel = 'Yes — no loading (finish in 6am–6pm ordinary window)';
+            lines.push('• Shift (Cl 56.2.a): ' + _dlShiftLabel);
+        }
         if (isPenaltyDay()) {
             lines.push('• 24h+ Notice (2h min): ' + (flags.Notified24h ? 'Yes' : 'No'));
         }
@@ -1955,6 +2055,10 @@
                         if (sDT > 0.001) extraLines.push('• ' + a.name + ' (DT)' + dlNote + ': ' + sDT.toFixed(2) + ' hrs');
                         if (sTT > 0.001) extraLines.push('• ' + a.name + ' (TT)' + dlNote + ': ' + sTT.toFixed(2) + ' hrs');
                         if (sTTP > 0.001) extraLines.push('• ' + a.name + ' (TT+)' + dlNote + ': ' + sTTP.toFixed(2) + ' hrs');
+                    } else if (a.ntOnly) {
+                        // NT-only allowance (shift loadings, Cl 56.2.a). Name
+                        // already carries "(NT)" so we don't tag again.
+                        if (aNT > 0.001) extraLines.push('• ' + a.name + dlNote + ': ' + aNT.toFixed(2) + ' hrs');
                     } else {
                         let nt = a.siteOnly ? sNT : aNT;
                         let ot = a.siteOnly ? sOT : aOT;
@@ -2046,6 +2150,15 @@
         }
         if (flags.UnnotifiedOT) lines.push('  Unnotified OT: Yes (Cl 60.1.a triggers $15.50 meal allowance)');
         if (flags.Callout)      lines.push('  Callout: Yes (Cl 63.a recall — bundled work+travel at OT)');
+        if (flags.Shift) {
+            const _exShiftCls = (typeof classifyShift === 'function') ? classifyShift() : 'none';
+            let _exShiftLine = 'Yes';
+            if (_exShiftCls === 'afternoon')      _exShiftLine = 'Yes — Afternoon shift (Cl 56.2.a: +15% loading on NT, auto-classified from finish time)';
+            else if (_exShiftCls === 'night')     _exShiftLine = 'Yes — Night shift (Cl 56.2.a: +30% loading on NT, auto-classified from finish time)';
+            else if (_exShiftCls === 'suppressed') _exShiftLine = 'Yes — loading suppressed (Cl 56.2.c / 62.2.b: penalty/OT rates substitute for shift premium on this day type)';
+            else if (_exShiftCls === 'none')      _exShiftLine = 'Yes — no loading (finish time falls inside 6am–6pm ordinary day window)';
+            lines.push('  Shift: ' + _exShiftLine);
+        }
         if (typeof isPenaltyDay === 'function' && isPenaltyDay() && flags.Notified24h) {
             lines.push('  24h+ Notice: Yes (Cl 62.3.b — 2h minimum applies)');
         }
@@ -2148,6 +2261,50 @@
             lines.push('  ' + code + ': ' + v.toFixed(2) + ' ' + unit);
         });
         lines.push('');
+        // ---- Shift Loading explanation (Cl 56.2.a) ----
+        // Walk through the auto-classification + loading calc so a reviewer
+        // can audit it the same way they'd audit TT or NT. Only emitted when
+        // the Shift toggle is on; we also explain the suppressed/none cases
+        // so the worker can see why a tick didn't translate to a loading.
+        if (flags.Shift) {
+            const _shCls = (typeof classifyShift === 'function') ? classifyShift() : 'none';
+            const _shFinSrc = (flags.Fin === 'Work') ? 'Arrived at Workshop/Accom' : 'Left Site';
+            const _shFinTime = (flags.Fin === 'Work') ? (aw || '(blank)') : (ls || '(blank)');
+            const _shNT = (window._lastResults && window._lastResults.NT) ? window._lastResults.NT : 0;
+            hr(); lines.push('SHIFT LOADING (Cl 56.2.a)'); hr();
+            lines.push('  Shift toggle: ON');
+            lines.push('  Day type: ' + dayLabel);
+            lines.push('  Finish time used for classification: ' + _shFinTime + '  (= ' + _shFinSrc + ', because Finish = ' + (flags.Fin === 'Work' ? 'Workshop' : 'Site') + ')');
+            if (_shCls === 'afternoon') {
+                lines.push('  Classification: AFTERNOON SHIFT  (finish > 6pm and <= midnight per Cl 5)');
+                lines.push('  Loading: +15% on NT hours only (Cl 56.2.a)');
+                lines.push('  Loading hours = NT hours = ' + _shNT.toFixed(2) + ' hrs');
+                lines.push('  In AroFlo: enter under Expenses as "Afternoon Shift Allowance 15% (NT)" / Per hour.');
+                lines.push('  Loading does NOT apply to OT or travel (Cl 62.2.b — OT rates substitute for shift premium).');
+            } else if (_shCls === 'night') {
+                lines.push('  Classification: NIGHT SHIFT  (finish > midnight and <= 8am per Cl 5)');
+                lines.push('  Loading: +30% on NT hours only (Cl 56.2.a)');
+                lines.push('  Loading hours = NT hours = ' + _shNT.toFixed(2) + ' hrs');
+                lines.push('  In AroFlo: enter under Expenses as "Night Shift Allowance 30% (NT)" / Per hour.');
+                lines.push('  Loading does NOT apply to OT or travel (Cl 62.2.b — OT rates substitute for shift premium).');
+            } else if (_shCls === 'suppressed') {
+                let _why = (flags.Day === 'Weekend') ? 'weekend rates (Cl 56.2.b: Sat/Sun at double time)'
+                         : (flags.Day === 'PH')      ? 'public holiday rates (Cl 56.2.b: PH at double time + entitlement)'
+                         : flags.RDO                 ? 'RDO penalty rates (Cl 62.3.a: DT + 4h min)'
+                         : flags.Callout             ? 'callout OT rates (Cl 63.a: bundled OT, 4h min)'
+                         : 'OT rates';
+                lines.push('  Classification: SUPPRESSED');
+                lines.push('  Reason: ' + _why + ' substitute for the shift premium per Cl 56.2.c / 62.2.b.');
+                lines.push('  No loading applied — penalty/OT pay already absorbs it.');
+            } else if (_shCls === 'none') {
+                lines.push('  Classification: NOT A SHIFT');
+                lines.push('  Reason: finish time falls inside the ordinary day window (6am–6pm).');
+                lines.push('  For a shift to attract loading, ordinary hours must finish after 6pm (afternoon) or by 8am (night).');
+            }
+            lines.push('  Casual carve-out (Cl 56.2.d): if this is not part of a 5+ day consecutive shift roster,');
+            lines.push('    the casual rates T+1/2 (first 2h) + T*2 (after) may apply instead. Escalate to payroll.');
+            lines.push('');
+        }
         // ---- Notes ----
         const notes = window._lastNotes || [];
         if (notes.length) {
@@ -2193,6 +2350,12 @@
                         // Site-only allowances: NT/OT split from site hours
                         if (sNT > 0.001) lines.push('  - ' + a.name + ' (NT)' + note + ': ' + sNT.toFixed(2) + ' hrs');
                         if (sOT > 0.001) lines.push('  - ' + a.name + ' (OT)' + note + ': ' + sOT.toFixed(2) + ' hrs');
+                    } else if (a.ntOnly) {
+                        // NT-only (shift loadings, Cl 56.2.a — loading
+                        // attaches to ordinary hours only, OT/weekend/PH
+                        // substitutes per Cl 62.2.b). Name already carries
+                        // "(NT)" so we don't tag again.
+                        if (aNT > 0.001) lines.push('  - ' + a.name + note + ': ' + aNT.toFixed(2) + ' hrs');
                     } else {
                         // Default per-hour: NT/OT split from day hours
                         if (aNT > 0.001) lines.push('  - ' + a.name + ' (NT)' + note + ': ' + aNT.toFixed(2) + ' hrs');
@@ -2496,6 +2659,91 @@
                 backgroundFetchReturnLeg();
             }
         }
+    }
+    // ---------------------------------------------------------------
+    // Shift work helpers (Cl 56 + Cl 62.2.b)
+    //
+    //   classifyShift() inspects the current Day Type, Callout/RDO state,
+    //   and finish time, and returns one of:
+    //     'afternoon'  — afternoon shift, 15% loading on NT
+    //     'night'      — night shift, 30% loading on NT
+    //     'none'       — finish time falls inside ordinary day window
+    //                    (6am–6pm), no loading
+    //     'suppressed' — weekend/PH/Callout/RDO — Cl 56.2.c / 62.2.b
+    //                    cause penalty/OT rates to substitute for the
+    //                    shift premium (loading not paid)
+    //
+    //   Finish time source depends on Finish mode (Cl 56 keys off when
+    //   ordinary hours of work END, not when the worker arrives home):
+    //     • Finish Site mode     → Left Site time (LS)
+    //     • Finish Workshop mode → Arrived at Workshop time (AW)
+    //
+    //   The classification is identical whether Shift toggle is ticked
+    //   or not — the toggle just controls whether the result is APPLIED
+    //   (loading added to the timesheet) and the auto-tick of the
+    //   matching Extra Allowance entry.
+    // ---------------------------------------------------------------
+    function classifyShift() {
+        // Cl 56.2.c — weekend/PH penalty rates substitute for shift premium.
+        // Cl 62.2.b — OT rates substitute for shift premium. RDO and Callout
+        // both bundle pay at OT rate, so loading is suppressed in those cases.
+        if (flags.Day !== 'Weekday' || flags.RDO || flags.Callout) {
+            return 'suppressed';
+        }
+        // Finish time source — depends on which way the day ends.
+        const finishId = (flags.Fin === 'Work') ? 'arriveWorkshop' : 'leaveSite';
+        const finishVal = (document.getElementById(finishId) || {}).value || '';
+        if (!finishVal) return 'none';
+        const finMin = timeToMin(finishVal);
+        // Cl 5 — Afternoon = finish > 6pm and ≤ midnight; Night = finish > midnight and ≤ 8am.
+        // 1080 = 18:00, 1440 = 24:00, 480 = 08:00
+        // We treat 00:00 (midnight exactly) as afternoon ("at or before midnight"),
+        // and anything in (00:00, 08:00] as night. The input value is in 0–1439
+        // (clock minutes since midnight), so we check both ranges directly:
+        //   afternoon → finMin > 1080 (i.e. after 6pm); also 00:00 entered as
+        //               midnight has finMin === 0 but in practice users entering
+        //               midnight do so as either 23:59 or 00:00 depending on UI
+        //               — treat 00:00 as the boundary AT midnight → afternoon.
+        if (finMin > 1080) return 'afternoon';           // 18:01 → 23:59
+        if (finMin === 0) return 'afternoon';            // exactly midnight = "at or before midnight" (Cl 5)
+        if (finMin > 0 && finMin <= 480) return 'night'; // 00:01 → 08:00
+        return 'none';
+    }
+    // Sync the Extra Allowances shift entries to match the Shift flag:
+    //   • Both rows are visually disabled when flags.Shift is off
+    //   • When flags.Shift is on AND classification is afternoon/night,
+    //     auto-tick the matching row (and untick the other one).
+    //   • When classification is 'suppressed' or 'none' (e.g. weekend or
+    //     finish ≤ 6pm) we leave the rows enabled-looking but unticked.
+    //     The on-screen Daily Timesheet will explain why nothing fires.
+    function syncShiftAllowanceUI() {
+        const aftCb = document.getElementById('allow_shiftAft15');
+        const ngtCb = document.getElementById('allow_shiftNgt30');
+        if (!aftCb || !ngtCb) return;
+        const cls = classifyShift();
+        const shiftOn = !!flags.Shift;
+        // Gate availability — when Shift toggle is off, untick + disable.
+        if (!shiftOn) {
+            aftCb.checked = false;
+            ngtCb.checked = false;
+            aftCb.disabled = true;
+            ngtCb.disabled = true;
+            const aftRow = aftCb.closest ? aftCb.closest('.allow-item') : null;
+            const ngtRow = ngtCb.closest ? ngtCb.closest('.allow-item') : null;
+            if (aftRow) { aftRow.classList.add('disabled'); aftRow.title = 'Disabled: enable the Shift toggle (under "Other") to claim shift loading.'; }
+            if (ngtRow) { ngtRow.classList.add('disabled'); ngtRow.title = 'Disabled: enable the Shift toggle (under "Other") to claim shift loading.'; }
+            return;
+        }
+        // Shift toggle is on — enable both rows, auto-tick the matching one.
+        aftCb.disabled = false;
+        ngtCb.disabled = false;
+        const aftRow = aftCb.closest ? aftCb.closest('.allow-item') : null;
+        const ngtRow = ngtCb.closest ? ngtCb.closest('.allow-item') : null;
+        if (aftRow) { aftRow.classList.remove('disabled'); aftRow.title = ''; }
+        if (ngtRow) { ngtRow.classList.remove('disabled'); ngtRow.title = ''; }
+        // Auto-tick (and clear the other side so users can't double-claim).
+        aftCb.checked = (cls === 'afternoon');
+        ngtCb.checked = (cls === 'night');
     }
     // Helper — build an origin / destination spec from the current field
     // state (mirrors the logic in calculateRouteTime so we can reuse it for
@@ -2828,6 +3076,12 @@
         const tk1Ticked = !!(tk1Cb && tk1Cb.checked);
         const returnVisible = !!flags.ReturnOffice;
         let returnOriginSpec = null, returnDestSpec = null;
+        // When the return spec is incomplete (e.g. user picked Custom but
+        // hasn't typed the address yet), skip JUST the return leg rather
+        // than bailing on the whole calc. Morning + between-site legs are
+        // independent and the user shouldn't have to fully complete the
+        // return section before seeing morning Travel Hrs/Mins populate.
+        let returnSkipped = false;
         if (returnVisible) {
             // Return origin is always the last active site in the chain:
             //   • With extras (TK2) → the last extra site
@@ -2835,11 +3089,15 @@
             returnOriginSpec = (extraSiteSpecs.length > 0)
                 ? extraSiteSpecs[extraSiteSpecs.length - 1]
                 : destinationSpec;
-            if (!flags.ReturnOffice) { warn('Return section: please select where you are returning to.'); return; }
             if (flags.ReturnOffice === 'Custom') {
                 const crText = document.getElementById('customReturn').value.trim();
-                if (!crText) { warn('Return section: please enter a custom return address.'); return; }
-                returnDestSpec = specFromInputAndPlace(crText, selectedPlaces.customReturn);
+                if (!crText) {
+                    // Custom selected but address not yet typed — skip return
+                    // leg silently. Morning leg still fetches.
+                    returnSkipped = true;
+                } else {
+                    returnDestSpec = specFromInputAndPlace(crText, selectedPlaces.customReturn);
+                }
             } else {
                 returnDestSpec = OFFICES[flags.ReturnOffice];
             }
@@ -2873,9 +3131,11 @@
                 const leg = await distanceMatrixLeg(activeSites[i], activeSites[i + 1], matrixOptions, label);
                 betweenLegs.push(leg);
             }
-            // 3. Return leg (if visible)
+            // 3. Return leg — only when we have a complete spec. Skipped
+            //    silently when Custom return is selected but the address
+            //    field is still blank (returnSkipped flag set above).
             let returnLeg = null;
-            if (returnVisible) {
+            if (returnVisible && !returnSkipped && returnDestSpec) {
                 returnLeg = await distanceMatrixLeg(returnOriginSpec, returnDestSpec, matrixOptions, 'return leg');
             }
             // Cache + apply km autofill.
