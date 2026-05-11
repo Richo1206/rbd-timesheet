@@ -495,11 +495,11 @@
       <li><strong>Weekday / Weekend / Pub Holiday</strong>: select the day type. Weekday pays NT then OT. Weekend/PH pays double time for all work hours with a 4-hour minimum (Cl 62.3.a), or 2-hour minimum if you were notified 24h+ in advance (Cl 62.3.b). PH also includes 8 hours NT (Public Holiday) entitlement: applicable only on a day you were rostered to work (s116 FW Act).</li>
       <li><strong>Company Car</strong>: select if a company vehicle was provided or offered. If unselected, Fares Allowance (FTR) applies. Selecting Company Car also makes TK1 and TK2 own-vehicle km allowances ineligible (Cl 64.3.b: the $0.57/km is not paid when the employee travels in company transport). The calculator enforces this by disabling the TK1 and TK2 checkboxes while Company Car is on.</li>
       <li><strong>Incidentals-1</strong>: select when staying at accommodation on a distant job (>20 min from urban area, employer pays for accom without meals). All accom-to-site travel is paid. TAT and Fares do not apply for accom↔site legs. First/Last Day tick preserves TAT/Fares for the standard workshop↔site leg (Cl 64.5.b).</li>
-      <li><strong>Other ▼</strong>: expands to reveal the less-common flags below (Unnotified OT, RDO, Callout, Shift).</li>
+      <li><strong>Other ▼</strong>: expands to reveal the less-common flags below (Unnotified OT, RDO, Callout, Rostered Shift).</li>
       <li><strong>Unnotified OT</strong>: select if you were required to work 2+ hours overtime without being notified the previous day. Triggers the $15.50 meal allowance (any day, Cl 60.1.a).</li>
       <li><strong>RDO</strong>: select when working a scheduled Rostered Day Off. Treats the day as a Saturday-equivalent penalty day (Cl 62.3.a). All work hours are paid at DT rate, with a 4-hour minimum (or 2-hour with 24h+ notice).</li>
       <li><strong>Callout</strong>: select when recalled to site after hours (Cl 63.a). All work + travel is bundled at the appropriate OT rate with a 4-hour minimum. TT/TT+/TAT/Fares are suppressed: travel is already at OT. Not modelled: Cl 63.e/f on-call-roster variants (3h / 2h mins) and the Cl 63.a.iii TK1 $0.57/km own-vehicle allowance; enter these manually via Extra Allowances.</li>
-      <li><strong>Shift</strong>: select when rostered for continuous shift work (Cl 56.2.a). The calculator auto-classifies the shift from the <em>finish</em> time entered above:
+      <li><strong>Rostered Shift</strong>: select when rostered for continuous shift work (Cl 56.2.a). The calculator auto-classifies the shift from the <em>finish</em> time entered above:
         <ul>
           <li>Finish after 6pm and at or before midnight → <strong>Afternoon shift</strong> → +15% loading on NT hours</li>
           <li>Finish after midnight and at or before 8am → <strong>Night shift</strong> → +30% loading on NT hours</li>
@@ -575,7 +575,7 @@
     <div id="btnOther" class="toggle-btn" onclick="toggleOther()">Other <span id="btnOtherArrow" style="display:inline-block; transition: transform 0.2s ease;">&#x25BC;</span></div>
   </div>
   <div id="otherPanel" class="day-toggle-section hidden" style="border-top:none; padding-top:0; grid-template-columns: 1fr 1fr;">
-    <div id="btnShift" class="toggle-btn" onclick="toggle('Shift')">Shift Work</div>
+    <div id="btnShift" class="toggle-btn" onclick="toggle('Shift')">Rostered Shift</div>
     <div id="btnCallout" class="toggle-btn" onclick="toggle('Callout')">Callout</div>
     <div id="btnUnnotifiedOT" class="toggle-btn" onclick="toggle('UnnotifiedOT')">Unnotified OT</div>
     <div id="btnRDO" class="toggle-btn" onclick="toggle('RDO')">Rostered Day Off</div>
@@ -769,7 +769,7 @@
     html += '<li>Auto-filled values can always be overwritten manually. Once you type a km value it won\'t be clobbered by a later auto-calculate.</li>';
     html += '</ul>';
     html += '<strong>Note:</strong> TAT, Fares, and Meal Allowance (Overtime) are already auto-calculated by the timesheet above: they are not duplicated here.';
-    html += '<br><br><strong>Shift loadings (Cl 56.2.a):</strong> the Afternoon (+15%) and Night (+30%) rows under <em>Other</em> are driven by the <strong>Shift</strong> toggle (under the Other ▼ panel above). When the toggle is off, both rows are greyed out and unticked. When the toggle is on, the calculator auto-classifies the shift from the finish time and ticks the matching row. The loading attaches to NT hours only: Cl 62.2.b prevents OT/weekend/PH rates from stacking. The dollar rate shown ($16.73 / $33.45) is an AroFlo reference for one grade; the actual loading is calculated in Xero as 0.15x / 0.30x of each employee\'s ordinary earnings rate, so super and STP categorisation are handled automatically.';
+    html += '<br><br><strong>Shift loadings (Cl 56.2.a):</strong> the Afternoon (+15%) and Night (+30%) rows under <em>Other</em> are driven by the <strong>Rostered Shift</strong> toggle (under the Other ▼ panel above). When the toggle is off, both rows are greyed out and unticked. When the toggle is on, the calculator auto-classifies the shift from the finish time and ticks the matching row. The loading attaches to NT hours only: Cl 62.2.b prevents OT/weekend/PH rates from stacking. The dollar rate shown ($16.73 / $33.45) is an AroFlo reference for one grade; the actual loading is calculated in Xero as 0.15x / 0.30x of each employee\'s ordinary earnings rate, so super and STP categorisation are handled automatically.';
     html += '</div>';
     let currentGroup = '';
     let firstGroup = true;
@@ -1697,11 +1697,11 @@
     // was suppressed).
     if (flags.Shift) {
       const _shiftCls = classifyShift();
-      let _shiftLabel = 'Shift';
-      if (_shiftCls === 'afternoon') _shiftLabel = 'Shift: Afternoon (+15%)';
-      else if (_shiftCls === 'night') _shiftLabel = 'Shift: Night (+30%)';
-      else if (_shiftCls === 'suppressed') _shiftLabel = 'Shift: suppressed (penalty/OT day)';
-      else if (_shiftCls === 'none') _shiftLabel = 'Shift: finish in 6am to 6pm window (no loading)';
+      let _shiftLabel = 'Rostered Shift';
+      if (_shiftCls === 'afternoon') _shiftLabel = 'Rostered Shift: Afternoon (+15%)';
+      else if (_shiftCls === 'night') _shiftLabel = 'Rostered Shift: Night (+30%)';
+      else if (_shiftCls === 'suppressed') _shiftLabel = 'Rostered Shift: suppressed (penalty/OT day)';
+      else if (_shiftCls === 'none') _shiftLabel = 'Rostered Shift: finish in 6am to 6pm window (no loading)';
       html += '<tr>';
       html += stgCell(_shiftLabel, true);
       html += stgCell(null);
@@ -1817,17 +1817,17 @@
     if (flags.Shift) {
       const shiftCls = classifyShift();
       if (shiftCls === 'afternoon') {
-        notes.push("Shift (Cl 56.2.a): afternoon shift detected (finish after 6pm): +15% loading on NT hours. Loading not paid on OT/travel per Cl 62.2.b.");
+        notes.push("Rostered Shift (Cl 56.2.a): afternoon shift detected (finish after 6pm): +15% loading on NT hours. Loading not paid on OT/travel per Cl 62.2.b.");
       } else if (shiftCls === 'night') {
-        notes.push("Shift (Cl 56.2.a): night shift detected (finish after midnight, ≤ 8am): +30% loading on NT hours. Loading not paid on OT/travel per Cl 62.2.b.");
+        notes.push("Rostered Shift (Cl 56.2.a): night shift detected (finish after midnight, ≤ 8am): +30% loading on NT hours. Loading not paid on OT/travel per Cl 62.2.b.");
       } else if (shiftCls === 'suppressed') {
         let reason = (flags.Day === 'Weekend') ? "weekend rates" :
                (flags.Day === 'PH')   ? "public holiday rates" :
                flags.RDO         ? "RDO day rates" :
                flags.Callout       ? "callout OT rates": "OT rates";
-        notes.push("Shift toggle on, but loading suppressed: " + reason + " substitute for the shift premium (Cl 56.2.c / 62.2.b).");
+        notes.push("Rostered Shift toggle on, but loading suppressed: " + reason + " substitute for the shift premium (Cl 56.2.c / 62.2.b).");
       } else if (shiftCls === 'none') {
-        notes.push("Shift toggle on, but finish time falls inside the ordinary day window (6am to 6pm): no loading applied. For a shift to attract loading, the rostered ordinary hours must finish after 6pm (afternoon) or by 8am (night) per Cl 56 / Cl 5.");
+        notes.push("Rostered Shift toggle on, but finish time falls inside the ordinary day window (6am to 6pm): no loading applied. For a shift to attract loading, the rostered ordinary hours must finish after 6pm (afternoon) or by 8am (night) per Cl 56 / Cl 5.");
       }
       notes.push("Casual shift carve-out (Cl 56.2.d): if this isn't part of a 5+ day consecutive shift roster, the casual rates T+½ first 2h then T×2 may apply instead. Escalate to payroll. Permanent night (Cl 56.2.e, >4 wks): same 30% as regular night, no extra logic.");
     }
@@ -2024,7 +2024,7 @@
       else if (_dlShiftCls === 'night')   _dlShiftLabel = 'Yes: Night (+30% on NT)';
       else if (_dlShiftCls === 'suppressed') _dlShiftLabel = 'Yes: suppressed (penalty/OT day, Cl 56.2.c / 62.2.b)';
       else if (_dlShiftCls === 'none')   _dlShiftLabel = 'Yes: no loading (finish in 6am to 6pm ordinary window)';
-      lines.push('• Shift (Cl 56.2.a): ' + _dlShiftLabel);
+      lines.push('• Rostered Shift (Cl 56.2.a): ' + _dlShiftLabel);
     }
     if (isPenaltyDay()) {
       lines.push('• 24h+ Notice (2h min): ' + (flags.Notified24h ? 'Yes': 'No'));
@@ -2277,7 +2277,7 @@
       else if (_exShiftCls === 'night')   _exShiftLine = 'Yes (Night shift, Cl 56.2.a: +30% on NT hours, auto-classified from finish time)';
       else if (_exShiftCls === 'suppressed') _exShiftLine = 'Yes BUT suppressed (Cl 56.2.c / 62.2.b: penalty or OT rates substitute for the shift premium today)';
       else if (_exShiftCls === 'none')   _exShiftLine = 'Yes BUT no loading (finish time is inside the ordinary 6am to 6pm window, so it isn\'t a shift)';
-      lines.push('  ' + pad('Shift:') + _exShiftLine);
+      lines.push('  ' + pad('Rostered Shift:') + _exShiftLine);
     }
     if (typeof isPenaltyDay === 'function' && isPenaltyDay() && flags.Notified24h) {
       lines.push('  ' + pad('24h+ Notice:') + 'Yes (Cl 62.3.b: minimum drops from 4h to 2h on weekend/PH/RDO days)');
@@ -2383,7 +2383,7 @@
       const _shFinSrc = (flags.Fin === 'Work') ? 'Arrived at Workshop/Accom': 'Left Site';
       const _shFinTime = (flags.Fin === 'Work') ? (aw || '(blank)'): (ls || '(blank)');
       const _shNT = (window._lastResults && window._lastResults.NT) ? window._lastResults.NT: 0;
-      hr(); lines.push('SHIFT LOADING (Cl 56.2.a)'); hr();
+      hr(); lines.push('ROSTERED SHIFT LOADING (Cl 56.2.a)'); hr();
       lines.push('  What this section does: when you are rostered for shift work,');
       lines.push('  Cl 56.2.a adds a percentage loading on top of your NT hours.');
       lines.push('  The calculator picks the loading by looking at when ordinary');
@@ -2392,7 +2392,7 @@
       lines.push('    Finish 12:01am to 8am       = Night shift,     +30% loading');
       lines.push('    Finish 8:01am to 6pm        = not a shift, no loading');
       lines.push('');
-      lines.push('  ' + pad('Shift toggle:', 28)  + 'ON');
+      lines.push('  ' + pad('Rostered Shift toggle:', 28) + 'ON');
       lines.push('  ' + pad('Day type:', 28)      + dayLabel);
       lines.push('  ' + pad('Finish time used:', 28) + _shFinTime + '   (read from "' + _shFinSrc + '" because Finish = ' + (flags.Fin === 'Work' ? 'Workshop': 'Site') + ')');
       lines.push('');
@@ -2445,7 +2445,7 @@
         lines.push('  rostered ordinary hours must finish either:');
         lines.push('    after 6pm and at or before midnight (afternoon shift), OR');
         lines.push('    after midnight and at or before 8am   (night shift).');
-        lines.push('  Tip: the Shift toggle decides based on the FINISH time only, not');
+        lines.push('  Tip: the Rostered Shift toggle decides based on the FINISH time only, not');
         lines.push('  on when you started. A late start to a 4pm finish is still a day');
         lines.push('  shift (no loading).');
       }
@@ -2834,8 +2834,8 @@
       ngtCb.disabled = true;
       const aftRow = aftCb.closest ? aftCb.closest('.allow-item'): null;
       const ngtRow = ngtCb.closest ? ngtCb.closest('.allow-item'): null;
-      if (aftRow) { aftRow.classList.add('disabled'); aftRow.title = 'Disabled: enable the Shift toggle (under "Other") to claim shift loading.'; }
-      if (ngtRow) { ngtRow.classList.add('disabled'); ngtRow.title = 'Disabled: enable the Shift toggle (under "Other") to claim shift loading.'; }
+      if (aftRow) { aftRow.classList.add('disabled'); aftRow.title = 'Disabled: enable the Rostered Shift toggle (under "Other") to claim shift loading.'; }
+      if (ngtRow) { ngtRow.classList.add('disabled'); ngtRow.title = 'Disabled: enable the Rostered Shift toggle (under "Other") to claim shift loading.'; }
       return;
     }
     // Shift toggle is on — enable both rows, auto-tick the matching one.
