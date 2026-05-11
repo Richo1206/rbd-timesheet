@@ -1,0 +1,1082 @@
+<!DOCTYPE html>
+<!--
+  RBD Cost Calculator
+  ====================
+  Pre/post-job costing tool for project managers. Companion to
+  RBD_Timesheet_Calculator.html.
+
+  GitHub-only utility: not part of the Production build. The main
+  calculator launches this file via a button wrapped in GH_ONLY markers,
+  so it doesn't ship to worker-facing rbdelectrical.com.au.
+
+  Handoff: the main calculator writes a JSON blob to
+  localStorage['rbd_cost_calc_handoff'] just before opening this page in
+  a new tab. We read it on load and pre-fill Pay Codes + Allowances. If
+  no handoff is present, we render with zero defaults for ad-hoc costing.
+
+  Four sections:
+    1) Information & Rates: pulled day-context + manual hourly/charge rates
+    2) Pay Codes: NT/TT/TH/DT/TT+/DT+ with multipliers (consolidated)
+    3) Allowances: every AroFlo allowance with cost/sell rates locked
+    4) Totals: cost, charge, margin, margin % both ways
+-->
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+<title>RBD Cost Calculator</title>
+<link rel="icon" href="data:,">
+<style>
+  * { box-sizing: border-box; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+    background: linear-gradient(180deg, #f5f8fb 0%, #eef3f8 100%);
+    color: #1a1a1a;
+    margin: 0;
+    padding: 16px;
+    line-height: 1.45;
+    min-height: 100vh;
+  }
+  .container {
+    max-width: 1100px;
+    margin: 0 auto;
+  }
+  header {
+    background: linear-gradient(135deg, #003366, #004a99);
+    color: #fff;
+    padding: 18px 22px;
+    border-radius: 12px;
+    margin-bottom: 20px;
+    box-shadow: 0 4px 14px rgba(0,51,102,0.2);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 10px;
+  }
+  header h1 { margin: 0; font-size: 22px; letter-spacing: 0.3px; }
+  header .sub { font-size: 12px; opacity: 0.85; margin-top: 4px; }
+  .back-link {
+    color: #fff;
+    text-decoration: none;
+    font-size: 12px;
+    padding: 8px 14px;
+    border: 1px solid rgba(255,255,255,0.4);
+    border-radius: 8px;
+    transition: background 0.15s;
+  }
+  .back-link:hover { background: rgba(255,255,255,0.15); }
+  section {
+    background: #fff;
+    border-radius: 12px;
+    padding: 18px 22px;
+    margin-bottom: 16px;
+    box-shadow: 0 1px 5px rgba(0,51,102,0.08);
+    border: 1px solid #e1e8ed;
+  }
+  section h2 {
+    margin: 0 0 14px;
+    font-size: 16px;
+    color: #003366;
+    border-bottom: 2px solid #004a99;
+    padding-bottom: 6px;
+  }
+  section h3 { font-size: 13px; color: #004a99; margin: 10px 0 6px; }
+  .info-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 22px;
+  }
+  @media (max-width: 720px) {
+    .info-grid { grid-template-columns: 1fr; }
+  }
+  .pulled-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 12.5px;
+  }
+  .pulled-table td {
+    padding: 4px 6px;
+    border-bottom: 1px solid #f0f3f7;
+  }
+  .pulled-table td:first-child {
+    color: #6b7c8d;
+    font-weight: 500;
+    width: 45%;
+  }
+  .pulled-table td:last-child { color: #1a1a1a; font-weight: 500; }
+  .info-empty { color: #9aa6b3; font-style: italic; font-size: 12px; padding: 8px 0; }
+  .input-grp { margin-bottom: 12px; }
+  .input-grp label {
+    display: block;
+    font-size: 11.5px;
+    color: #6b7c8d;
+    margin-bottom: 4px;
+    font-weight: 600;
+    letter-spacing: 0.3px;
+    text-transform: uppercase;
+  }
+  .input-grp input, .input-grp select {
+    width: 100%;
+    padding: 10px 12px;
+    border: 1.5px solid #d2dce6;
+    border-radius: 8px;
+    font-size: 13.5px;
+    background: #f8fafc;
+    color: #1a1a1a;
+    font-family: inherit;
+  }
+  .input-grp input:focus, .input-grp select:focus {
+    outline: none;
+    border-color: #004a99;
+    background: #fff;
+  }
+  .rate-display {
+    background: #fff3cd;
+    border-left: 3px solid #ffc107;
+    padding: 8px 12px;
+    border-radius: 6px;
+    font-size: 12px;
+    margin-top: 8px;
+    color: #5e4d11;
+  }
+  table.calc-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 12.5px;
+  }
+  table.calc-table thead th {
+    background: #f0f6fc;
+    color: #003366;
+    text-align: left;
+    padding: 8px 10px;
+    font-size: 11.5px;
+    font-weight: 700;
+    letter-spacing: 0.3px;
+    text-transform: uppercase;
+    border-bottom: 2px solid #004a99;
+  }
+  table.calc-table tbody td {
+    padding: 6px 10px;
+    border-bottom: 1px solid #f0f3f7;
+    vertical-align: middle;
+  }
+  table.calc-table tbody tr.group-header td {
+    background: #f8fafc;
+    color: #003366;
+    font-weight: 700;
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    padding: 8px 10px;
+  }
+  table.calc-table tbody td.qty-cell { width: 80px; }
+  table.calc-table tbody td.rate-cell { width: 70px; color: #6b7c8d; text-align: right; }
+  table.calc-table tbody td.money-cell {
+    width: 90px;
+    text-align: right;
+    color: #1a1a1a;
+    font-variant-numeric: tabular-nums;
+  }
+  table.calc-table tbody td.mult-cell {
+    width: 55px;
+    color: #6b7c8d;
+    font-size: 11.5px;
+    font-style: italic;
+  }
+  table.calc-table input[type="number"] {
+    width: 100%;
+    padding: 5px 8px;
+    border: 1px solid #d2dce6;
+    border-radius: 5px;
+    font-size: 12.5px;
+    background: #f8fafc;
+    text-align: right;
+    font-variant-numeric: tabular-nums;
+    font-family: inherit;
+  }
+  table.calc-table input[type="number"]:focus {
+    outline: none;
+    border-color: #004a99;
+    background: #fff;
+  }
+  table.calc-table tfoot td {
+    background: #f0f6fc;
+    font-weight: 700;
+    padding: 8px 10px;
+    border-top: 2px solid #004a99;
+    color: #003366;
+  }
+  table.calc-table tfoot td.money-cell {
+    font-variant-numeric: tabular-nums;
+  }
+  .totals-grid {
+    display: grid;
+    grid-template-columns: 1fr auto;
+    gap: 8px 20px;
+    font-size: 14px;
+    max-width: 460px;
+  }
+  .totals-grid > div:nth-child(odd) { color: #6b7c8d; }
+  .totals-grid > div:nth-child(even) {
+    color: #003366;
+    font-weight: 700;
+    text-align: right;
+    font-variant-numeric: tabular-nums;
+  }
+  .totals-grid .row-headline { font-size: 16px; }
+  .totals-grid .row-margin-headline { color: #1e7a3a; font-size: 17px; }
+  .totals-grid .row-pct { color: #6b7c8d; font-size: 12.5px; }
+  .totals-grid .row-pct-value { font-size: 13px; color: #1e7a3a; }
+  .breakdown-card {
+    background: #f8fafc;
+    border-left: 3px solid #004a99;
+    border-radius: 8px;
+    padding: 10px 14px;
+    margin-top: 14px;
+    font-size: 12.5px;
+  }
+  .breakdown-card .bd-row {
+    display: grid;
+    grid-template-columns: 1fr auto auto;
+    gap: 10px;
+    padding: 3px 0;
+  }
+  .breakdown-card .bd-row span:not(:first-child) {
+    text-align: right;
+    font-variant-numeric: tabular-nums;
+    min-width: 90px;
+  }
+  .actions {
+    display: flex;
+    gap: 10px;
+    flex-wrap: wrap;
+    margin-top: 16px;
+  }
+  .actions button {
+    padding: 11px 18px;
+    border: 1.5px solid #1e7a3a;
+    background: #fff;
+    color: #1e7a3a;
+    border-radius: 10px;
+    font-weight: 700;
+    cursor: pointer;
+    font-size: 13px;
+    transition: all 0.15s;
+    font-family: inherit;
+  }
+  .actions button.primary {
+    background: linear-gradient(135deg, #1e7a3a, #28a745);
+    color: #fff;
+    border-color: transparent;
+    box-shadow: 0 2px 8px rgba(40,167,69,0.25);
+  }
+  .actions button:hover { transform: translateY(-1px); }
+  .actions button:active { transform: translateY(0); }
+  .info-note {
+    background: linear-gradient(135deg, #f0f6fc, #e8f0fa);
+    border-left: 4px solid #004a99;
+    border-radius: 8px;
+    padding: 10px 14px;
+    font-size: 12px;
+    color: #334155;
+    margin-bottom: 14px;
+    line-height: 1.55;
+  }
+  .info-note strong { color: #003366; }
+  .reset-btn {
+    background: transparent;
+    border: 1px solid #d2dce6;
+    color: #6b7c8d;
+    padding: 6px 12px;
+    font-size: 11.5px;
+    border-radius: 6px;
+    cursor: pointer;
+    font-weight: 600;
+    font-family: inherit;
+  }
+  .reset-btn:hover { background: #f0f3f7; color: #003366; }
+  .toast {
+    position: fixed;
+    bottom: 24px;
+    left: 50%;
+    transform: translateX(-50%) translateY(20px);
+    background: #1e7a3a;
+    color: #fff;
+    padding: 10px 22px;
+    border-radius: 8px;
+    font-size: 13px;
+    box-shadow: 0 4px 14px rgba(30,122,58,0.3);
+    opacity: 0;
+    transition: opacity 0.3s, transform 0.3s;
+    pointer-events: none;
+    z-index: 100;
+  }
+  .toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+</style>
+</head>
+<body>
+<div class="container">
+
+<header>
+  <div>
+    <h1>RBD Cost Calculator</h1>
+    <div class="sub">Pre/post-job costing &middot; EA 2025 &amp; AroFlo charge rates</div>
+  </div>
+  <a href="RBD_Timesheet_Calculator.html" class="back-link">&larr; Back to Timesheet Calculator</a>
+</header>
+
+<div class="info-note">
+  <strong>How this works:</strong> Pay Codes and Allowances are pre-filled from your latest Timesheet Calculator output (when you launched this page). Every cell is editable. Cost and Charge totals update live as you type. Hourly and Charge rates are required to calculate the pay-code dollars. The Allowance cost / sell rates are locked at the AroFlo values.
+</div>
+
+<!-- ============================================================
+     SECTION 1: INFORMATION & RATES
+     ============================================================ -->
+<section>
+  <h2>1. Information &amp; Rates</h2>
+  <div class="info-grid">
+    <div>
+      <h3>From Timesheet Calculator</h3>
+      <table class="pulled-table" id="pulled-table">
+        <!-- populated by JS -->
+      </table>
+    </div>
+    <div>
+      <h3>Rates &amp; Grade</h3>
+      <div class="input-grp">
+        <label for="grade-select">Grade / Year (EA 2025, Full Time)</label>
+        <select id="grade-select" onchange="onGradeChange()">
+          <option value="">&mdash; Select &mdash;</option>
+          <optgroup label="Electrical Workers">
+            <option value="32.43">Grade 1 ($32.43)</option>
+            <option value="34.00">Grade 2 ($34.00)</option>
+            <option value="34.40">Grade 3 ($34.40)</option>
+            <option value="35.38">Grade 4 ($35.38)</option>
+            <option value="47.14">Grade 5 ($47.14)</option>
+            <option value="48.69">Grade 6 ($48.69)</option>
+            <option value="51.43">Grade 7 ($51.43)</option>
+            <option value="54.51">Grade 8 ($54.51)</option>
+            <option value="56.02">Grade 9 ($56.02)</option>
+            <option value="60.63">Grade 10 ($60.63)</option>
+          </optgroup>
+          <optgroup label="Apprentice (Has not completed Year 12)">
+            <option value="20.30">1st Year ($20.30)</option>
+            <option value="23.41">2nd Year ($23.41)</option>
+            <option value="28.66">3rd Year ($28.66)</option>
+            <option value="32.51">4th Year ($32.51)</option>
+          </optgroup>
+          <optgroup label="Apprentice (Has completed Year 12)">
+            <option value="21.86">1st Year ($21.86)</option>
+            <option value="24.95">2nd Year ($24.95)</option>
+            <option value="28.66">3rd Year ($28.66)</option>
+            <option value="32.51">4th Year ($32.51)</option>
+          </optgroup>
+          <optgroup label="Adult Apprentice">
+            <option value="30.30">1st Year ($30.30)</option>
+            <option value="32.83">2nd Year ($32.83)</option>
+            <option value="33.95">3rd Year ($33.95)</option>
+            <option value="35.25">4th Year ($35.25)</option>
+          </optgroup>
+        </select>
+      </div>
+      <div class="input-grp">
+        <label for="hourly-rate">Hourly Rate (Cost) &mdash; manual override</label>
+        <input type="number" id="hourly-rate" step="0.01" min="0" placeholder="0.00" oninput="onHourlyRateInput()">
+      </div>
+      <div class="input-grp">
+        <label for="charge-rate">Charge Rate (to Customer)</label>
+        <input type="number" id="charge-rate" step="0.01" min="0" placeholder="0.00" oninput="recalc()">
+      </div>
+      <div class="rate-display" id="rate-summary">
+        Select a Grade or enter rates manually to begin.
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============================================================
+     SECTION 2: PAY CODES (consolidated to 6: NT/TT/TH/DT/TT+/DT+)
+     ============================================================ -->
+<section>
+  <h2>2. Pay Codes</h2>
+  <table class="calc-table">
+    <thead>
+      <tr>
+        <th>Code</th>
+        <th>Description</th>
+        <th>Mult</th>
+        <th>Hours</th>
+        <th style="text-align:right;">Cost ($)</th>
+        <th style="text-align:right;">Charge ($)</th>
+      </tr>
+    </thead>
+    <tbody id="paycodes-body">
+      <!-- populated by JS -->
+    </tbody>
+    <tfoot>
+      <tr>
+        <td colspan="4">Subtotal &mdash; Pay Codes</td>
+        <td class="money-cell" id="paycodes-cost-total">$0.00</td>
+        <td class="money-cell" id="paycodes-charge-total">$0.00</td>
+      </tr>
+    </tfoot>
+  </table>
+</section>
+
+<!-- ============================================================
+     SECTION 3: ALLOWANCES (every AroFlo line item, NT/OT split)
+     ============================================================ -->
+<section>
+  <h2>3. Allowances</h2>
+  <table class="calc-table">
+    <thead>
+      <tr>
+        <th>Allowance</th>
+        <th>Qty</th>
+        <th>Unit</th>
+        <th style="text-align:right;">Cost Rate</th>
+        <th style="text-align:right;">Sell Rate</th>
+        <th style="text-align:right;">Cost ($)</th>
+        <th style="text-align:right;">Charge ($)</th>
+      </tr>
+    </thead>
+    <tbody id="allowances-body">
+      <!-- populated by JS -->
+    </tbody>
+    <tfoot>
+      <tr>
+        <td colspan="5">Subtotal &mdash; Allowances</td>
+        <td class="money-cell" id="allowances-cost-total">$0.00</td>
+        <td class="money-cell" id="allowances-charge-total">$0.00</td>
+      </tr>
+    </tfoot>
+  </table>
+</section>
+
+<!-- ============================================================
+     SECTION 4: TOTALS
+     ============================================================ -->
+<section>
+  <h2>4. Totals</h2>
+  <div class="totals-grid">
+    <div class="row-headline">Total Cost to RBD</div>
+    <div class="row-headline" id="total-cost">$0.00</div>
+    <div class="row-headline">Total Charge to Customer</div>
+    <div class="row-headline" id="total-charge">$0.00</div>
+    <div class="row-margin-headline">Margin</div>
+    <div class="row-margin-headline" id="total-margin">$0.00</div>
+    <div class="row-pct">&nbsp;&nbsp;Margin % of Revenue (Charge)</div>
+    <div class="row-pct-value" id="margin-pct-rev">&mdash;</div>
+    <div class="row-pct">&nbsp;&nbsp;Margin % over Cost (Markup)</div>
+    <div class="row-pct-value" id="margin-pct-cost">&mdash;</div>
+  </div>
+  <div class="breakdown-card">
+    <div class="bd-row" style="font-weight:700; border-bottom:1px solid #d2dce6; margin-bottom:4px; padding-bottom:6px;">
+      <span>Breakdown</span><span>Cost</span><span>Charge</span>
+    </div>
+    <div class="bd-row">
+      <span>Pay Codes (Section 2)</span>
+      <span id="bd-paycodes-cost">$0.00</span>
+      <span id="bd-paycodes-charge">$0.00</span>
+    </div>
+    <div class="bd-row">
+      <span>Allowances (Section 3)</span>
+      <span id="bd-allowances-cost">$0.00</span>
+      <span id="bd-allowances-charge">$0.00</span>
+    </div>
+  </div>
+  <div class="actions">
+    <button class="primary" onclick="copySummary()">Copy Summary to Clipboard</button>
+    <button onclick="downloadSummary()">Download as Text File</button>
+    <button class="reset-btn" onclick="resetAll()">Reset All Values</button>
+  </div>
+</section>
+
+</div>
+
+<div id="toast" class="toast">Copied to clipboard</div>
+
+<script>
+//==============================================================
+// DATA: pay codes + allowances + handoff schema
+//==============================================================
+
+// Pay code definitions. multiplier × hourlyRate = cost per hour;
+// × chargeRate for charge. Order matches the on-screen layout.
+const PAY_CODES = [
+  { code: 'NT',  desc: 'Normal Time',             mult: 1.0 },
+  { code: 'TT',  desc: 'Travel Time (single)',    mult: 1.0 },
+  { code: 'TH',  desc: 'Time and a Half (work)',  mult: 1.5 },
+  { code: 'DT',  desc: 'Double Time (work)',      mult: 2.0 },
+  { code: 'TT+', desc: 'Travel Time (1.5x)',      mult: 1.5 },
+  { code: 'DT+', desc: 'Double Time and a Half',  mult: 2.5 }
+];
+
+// Allowance definitions sourced from the AroFlo Overheads screenshots.
+// unit: 'hr' / 'day' / 'night' / 'km'
+// costRate / sellRate: locked $ values from AroFlo.
+// liveTat: TAT row computes costRate = 0.25 × hourlyRate at render time
+//          (the EA's 25%-of-ordinary-rate definition; AroFlo can't do
+//          this so it's hardcoded $12.60, but here we can do it right).
+// ntOtSplit: true → render as two rows, "(NT)" and "(OT)".
+// ntOnly: true → render only "(NT)" row (shift loadings, Cl 56.2.b).
+const ALLOWANCES = [
+  // Group: Site & Industrial
+  { id: 'industrial',  group: 'Site & Industrial', name: 'Industrial Allowance', unit: 'hr', costRate: 2.50, sellRate: 0.00, ntOtSplit: true },
+  { id: 'site',        group: 'Site & Industrial', name: 'Site Allowance',       unit: 'hr', costRate: 2.50, sellRate: 0.00, ntOtSplit: true },
+  { id: 'indSite',     group: 'Site & Industrial', name: 'IND + Site Allowance', unit: 'hr', costRate: 5.00, sellRate: 0.00, ntOtSplit: true },
+  { id: 'firmus',      group: 'Site & Industrial', name: 'Firmus Allowance',     unit: 'hr', costRate: 5.00, sellRate: 0.00, ntOtSplit: true },
+  { id: 'firmusInd',   group: 'Site & Industrial', name: 'Firmus + IND',         unit: 'hr', costRate: 7.50, sellRate: 0.00, ntOtSplit: true },
+  { id: 'inclement',   group: 'Site & Industrial', name: 'Inclement Weather',    unit: 'hr', costRate: 2.50, sellRate: 0.00, ntOtSplit: true },
+  { id: 'hsm',         group: 'Site & Industrial', name: 'HSM Allowance',        unit: 'hr', costRate: 10.00, sellRate: 10.00, ntOtSplit: true },
+  // Group: Travel & Vehicle
+  { id: 'tat',         group: 'Travel & Vehicle',  name: 'TAT (Travel Time Allowance)', unit: 'day', costRate: 12.60, sellRate: 0.00, liveTat: true },
+  { id: 'fares',       group: 'Travel & Vehicle',  name: 'Fares (FTR)',          unit: 'day', costRate: 14.61, sellRate: 0.00 },
+  { id: 'tk1',         group: 'Travel & Vehicle',  name: 'TK1 (Outside Boundary / Callout)', unit: 'km', costRate: 0.57, sellRate: 0.57 },
+  { id: 'tk2',         group: 'Travel & Vehicle',  name: 'TK2 (Between Sites)',  unit: 'km', costRate: 1.05, sellRate: 1.00 },
+  { id: 'kmCo',        group: 'Travel & Vehicle',  name: "Km's (Company Car)",   unit: 'km', costRate: 0.75, sellRate: 1.25 },
+  // Group: Meals & Living Away
+  { id: 'mealOvertime', group: 'Meals & Living Away', name: 'Meal Allowance (Overtime, $15.50)', unit: 'day', costRate: 15.50, sellRate: 15.50 },
+  { id: 'mealOvernight', group: 'Meals & Living Away', name: 'Meal Allowance (Overnight)', unit: 'day', costRate: 120.00, sellRate: 120.00 },
+  { id: 'inc1',        group: 'Meals & Living Away', name: 'Incidentals 1 ($20)', unit: 'day', costRate: 20.00, sellRate: 20.00 },
+  { id: 'inc2',        group: 'Meals & Living Away', name: 'Incidentals 2 ($45)', unit: 'day', costRate: 45.00, sellRate: 45.00 },
+  { id: 'inc3',        group: 'Meals & Living Away', name: 'Incidentals 3 ($90)', unit: 'day', costRate: 90.00, sellRate: 90.00 },
+  { id: 'livingOwn',   group: 'Meals & Living Away', name: 'Living Away (Own Accommodation)', unit: 'night', costRate: 240.00, sellRate: 240.00 },
+  { id: 'livingFriends', group: 'Meals & Living Away', name: 'Living Away (Friends & Family)', unit: 'night', costRate: 160.00, sellRate: 160.00 },
+  // Group: Supervision
+  { id: 'supG5G6',     group: 'Supervision',       name: 'Supervisor G5 > G6',   unit: 'hr', costRate: 1.55, sellRate: 1.55, ntOtSplit: true },
+  { id: 'supG6G7',     group: 'Supervision',       name: 'Supervisor G6 > G7',   unit: 'hr', costRate: 2.74, sellRate: 2.74, ntOtSplit: true },
+  { id: 'supG7G8',     group: 'Supervision',       name: 'Supervisor G7 > G8',   unit: 'hr', costRate: 3.08, sellRate: 3.08, ntOtSplit: true },
+  // Group: High Voltage
+  { id: 'hvTerm',      group: 'High Voltage',      name: 'HV Termination',       unit: 'day', costRate: 35.00, sellRate: 200.00 },
+  { id: 'hvSwitch',    group: 'High Voltage',      name: 'HV Switching',         unit: 'day', costRate: 50.00, sellRate: 200.00 },
+  { id: 'hvPrep',      group: 'High Voltage',      name: 'HV Prep & Documentation', unit: 'day', costRate: 0.00, sellRate: 100.00 },
+  // Group: Shift Loadings (Cl 56.2.a — NT-only, Cl 62.2.b: OT substitutes)
+  { id: 'shiftAft15',  group: 'Shift Loadings',    name: 'Afternoon Shift Allowance 15%', unit: 'hr', costRate: 16.73, sellRate: 17.57, ntOnly: true },
+  { id: 'shiftNgt30',  group: 'Shift Loadings',    name: 'Night Shift Allowance 30%', unit: 'hr', costRate: 33.45, sellRate: 35.13, ntOnly: true },
+  // Group: Other
+  { id: 'onCall',      group: 'Other',             name: 'On Call Allowance',    unit: 'day', costRate: 45.71, sellRate: 45.71 }
+];
+
+//==============================================================
+// HANDOFF: read state passed from the main calculator
+//==============================================================
+
+let HANDOFF = null;
+try {
+  const raw = localStorage.getItem('rbd_cost_calc_handoff');
+  if (raw) {
+    HANDOFF = JSON.parse(raw);
+    // Don't clear it — the user might want to refresh the page or
+    // reset and reload. The next launch from the calculator
+    // overwrites it anyway.
+  }
+} catch (e) {
+  console.warn('Could not read cost-calc handoff from localStorage:', e);
+}
+
+//==============================================================
+// RENDER: Section 1 pulled data
+//==============================================================
+
+function renderPulledData() {
+  const t = document.getElementById('pulled-table');
+  if (!HANDOFF) {
+    t.innerHTML = '<tr><td colspan="2" class="info-empty">No handoff data &mdash; open this page from the Timesheet Calculator to auto-fill, or enter values manually below.</td></tr>';
+    return;
+  }
+  const c = HANDOFF.calculator || {};
+  const rows = [];
+  if (c.projectName) rows.push(['Project',       c.projectName]);
+  if (c.projectApplicable) rows.push(['Applicable for', c.projectApplicable]);
+  rows.push(['Day Type',     formatDayType(c)]);
+  rows.push(['Started at',   c.start === 'Work' ? 'Workshop'  : 'Site']);
+  rows.push(['Finished at',  c.finish === 'Work' ? 'Workshop' : 'Site']);
+  rows.push(['Vehicle',      c.vehicle === 'Co' ? 'Company Car' : 'Own Vehicle']);
+  if (c.inc1) {
+    let label = 'Yes';
+    if (c.firstDay) label += ' (First Day)';
+    else if (c.lastDay) label += ' (Last Day)';
+    rows.push(['Incidentals-1', label]);
+  }
+  if (c.rosteredShift) {
+    let label = 'Yes';
+    if (c.shiftClassification === 'afternoon')      label += ' &mdash; Afternoon (+15%)';
+    else if (c.shiftClassification === 'night')     label += ' &mdash; Night (+30%)';
+    else if (c.shiftClassification === 'suppressed') label += ' &mdash; suppressed (penalty/OT day)';
+    else if (c.shiftClassification === 'none')      label += ' &mdash; no loading (finish in day window)';
+    rows.push(['Rostered Shift', label]);
+  }
+  if (c.callout)        rows.push(['Callout', 'Yes']);
+  if (c.rdo)            rows.push(['RDO worked', 'Yes']);
+  if (c.unnotifiedOT)   rows.push(['Unnotified OT', 'Yes']);
+  if (c.times) {
+    const ts = c.times;
+    if (ts.leftWorkshop || ts.arriveSite || ts.leaveSite || ts.arriveWorkshop) {
+      rows.push(['Times',
+        (ts.leftWorkshop || '--') + ' &rarr; ' + (ts.arriveSite || '--') +
+        ' &nbsp;&middot;&nbsp; ' +
+        (ts.leaveSite || '--') + ' &rarr; ' + (ts.arriveWorkshop || '--')
+      ]);
+    }
+  }
+  t.innerHTML = rows.map(r => '<tr><td>' + r[0] + '</td><td>' + r[1] + '</td></tr>').join('');
+}
+function formatDayType(c) {
+  let d = c.dayType || 'Weekday';
+  if (d === 'PH') d = 'Public Holiday';
+  if (c.rdo) d += ' (RDO worked)';
+  return d;
+}
+
+//==============================================================
+// RENDER: Section 2 pay codes
+//==============================================================
+
+function renderPayCodes() {
+  // Consolidate handoff codes into the 6 cost-calc codes.
+  // Main calc keys → cost calc keys:
+  //   NT, NT (Public Holiday)               → NT
+  //   TT (Morning) + TT (Return)            → TT
+  //   TH                                    → TH
+  //   DT                                    → DT
+  //   TT+ (Morning) + TT+ (Return)          → TT+
+  //   (nothing)                             → DT+ (manual entry for casual PH)
+  // NT (RDO, AL or LWOP) is intentionally skipped: it's a leave-cover
+  // placeholder, not actual paid work for the project.
+  const pc = (HANDOFF && HANDOFF.calculator && HANDOFF.calculator.payCodes) || {};
+  const defaults = {
+    NT:  (pc['NT'] || 0) + (pc['NT (Public Holiday)'] || 0),
+    TT:  (pc['TT (Morning)'] || 0) + (pc['TT (Return)'] || 0),
+    TH:  pc['TH'] || 0,
+    DT:  pc['DT'] || 0,
+    'TT+': (pc['TT+ (Morning)'] || 0) + (pc['TT+ (Return)'] || 0),
+    'DT+': 0
+  };
+  const body = document.getElementById('paycodes-body');
+  body.innerHTML = PAY_CODES.map(p => {
+    const safeId = p.code.replace(/[^A-Za-z0-9]/g, '_');
+    const hrs = defaults[p.code] || 0;
+    return '<tr>' +
+      '<td><strong>' + p.code + '</strong></td>' +
+      '<td>' + p.desc + '</td>' +
+      '<td class="mult-cell">&times;' + p.mult.toFixed(1) + '</td>' +
+      '<td class="qty-cell"><input type="number" step="0.01" min="0" id="hrs_' + safeId + '" data-paycode="' + p.code + '" value="' + hrs.toFixed(2) + '" oninput="recalc()"></td>' +
+      '<td class="money-cell" id="cost_' + safeId + '">$0.00</td>' +
+      '<td class="money-cell" id="charge_' + safeId + '">$0.00</td>' +
+    '</tr>';
+  }).join('');
+}
+
+//==============================================================
+// RENDER: Section 3 allowances
+//==============================================================
+
+function renderAllowances() {
+  const c = (HANDOFF && HANDOFF.calculator) || {};
+  // Default qty per allowance from the handoff. Hour-based with NT/OT
+  // split: use the cached allowNT / allowOT / siteNT / siteOT / sup*
+  // values that the main calculator stores.
+  const ntOTSplit = c.ntOTSplit || {};
+  const allowNT = ntOTSplit.allowNT || 0;
+  const allowOT = ntOTSplit.allowOT || 0;
+  const siteNT  = ntOTSplit.siteNT  || 0;
+  const siteOT  = ntOTSplit.siteOT  || 0;
+  const supTH   = ntOTSplit.supTH   || 0;
+  const supDT   = ntOTSplit.supDT   || 0;
+  // Supervisor in main calc renders NT/TH/DT/TT/TT+ as separate lines.
+  // For cost calc we consolidate to NT + OT (where OT = TH + DT, since
+  // travel doesn't carry supervisor loading per the cost rate model).
+  const supOT = supTH + supDT;
+  const ticked = c.tickedAllowances || [];
+  const kmValues = c.kmValues || {};
+  const customHrs = c.customHrs || {};
+  // Per-day defaults from existing pay codes / flags
+  const pc = c.payCodes || {};
+  const tatDays   = pc['TAT'] || 0;             // pre-existing pay code
+  const faresDays = pc['Fares (FTR)'] || 0;     // pre-existing pay code
+  const mealOTDays = pc['Meal Allow ($15.50)'] || 0;
+  // Shift loading hours = NT hours (Cl 56.2.a; Cl 62.2.b suppresses OT)
+  const shiftHrs = pc['NT'] || 0;
+  const shiftAft = (ticked.indexOf('shiftAft15') !== -1) ? shiftHrs : 0;
+  const shiftNgt = (ticked.indexOf('shiftNgt30') !== -1) ? shiftHrs : 0;
+
+  // Default qty map keyed by allowance id (or id + '_NT' / '_OT')
+  function ifTicked(id, val) { return ticked.indexOf(id) !== -1 ? val : 0; }
+  const defaultsMap = {
+    industrial_NT: ifTicked('industrial', siteNT),
+    industrial_OT: ifTicked('industrial', siteOT),
+    site_NT:       ifTicked('site',       siteNT),
+    site_OT:       ifTicked('site',       siteOT),
+    firmus_NT:     ifTicked('firmus',     siteNT),
+    firmus_OT:     ifTicked('firmus',     siteOT),
+    inclement_NT:  ifTicked('inclement',  allowNT),
+    inclement_OT:  ifTicked('inclement',  allowOT),
+    hsm_NT:        ifTicked('hsm',        Math.min(customHrs.hsm || 0, allowNT)),
+    hsm_OT:        ifTicked('hsm',        Math.max(0, (customHrs.hsm || 0) - allowNT)),
+    tat:           tatDays,
+    fares:         faresDays,
+    tk1:           ifTicked('tk1', kmValues.tk1 || 0),
+    tk2:           ifTicked('tk2', kmValues.tk2 || 0),
+    kmCo:          ifTicked('kmCompanyCar', kmValues.kmCompanyCar || 0),
+    mealOvertime:  mealOTDays,
+    mealOvernight: ifTicked('mealOvernight', 1),
+    inc1:          ifTicked('inc1Allow', 1),
+    inc2:          ifTicked('inc2Allow', 1),
+    inc3:          ifTicked('inc3Allow', 1),
+    livingOwn:     ifTicked('livingOwn', 1),
+    livingFriends: ifTicked('livingFriends', 1),
+    supG5G6_NT:    ifTicked('supG5G6', allowNT),
+    supG5G6_OT:    ifTicked('supG5G6', supOT),
+    supG6G7_NT:    ifTicked('supG6G7', allowNT),
+    supG6G7_OT:    ifTicked('supG6G7', supOT),
+    supG7G8_NT:    ifTicked('supG7G8', allowNT),
+    supG7G8_OT:    ifTicked('supG7G8', supOT),
+    hvTerm:        ifTicked('hvTerm',   1),
+    hvSwitch:      ifTicked('hvSwitch', 1),
+    hvPrep:        ifTicked('hvPrep',   1),
+    shiftAft15:    shiftAft,
+    shiftNgt30:    shiftNgt,
+    onCall:        ifTicked('onCall',   1)
+  };
+
+  const body = document.getElementById('allowances-body');
+  let lastGroup = '';
+  const html = [];
+  ALLOWANCES.forEach(a => {
+    if (a.group !== lastGroup) {
+      html.push('<tr class="group-header"><td colspan="7">' + a.group + '</td></tr>');
+      lastGroup = a.group;
+    }
+    if (a.ntOtSplit) {
+      // Render two rows: (NT) and (OT)
+      ['NT', 'OT'].forEach(suffix => {
+        const rowId = a.id + '_' + suffix;
+        const def = defaultsMap[rowId] || 0;
+        html.push(renderAllowanceRow(a, rowId, a.name + ' (' + suffix + ')', def));
+      });
+    } else {
+      const def = defaultsMap[a.id] || 0;
+      html.push(renderAllowanceRow(a, a.id, a.name, def));
+    }
+  });
+  body.innerHTML = html.join('');
+}
+
+function renderAllowanceRow(a, rowId, name, defaultQty) {
+  const unitLabel = a.unit;
+  // For liveTat we display "live" instead of a fixed $ figure
+  const costRateDisplay = a.liveTat
+    ? '<em style="color:#1e7a3a;">25% × rate</em>'
+    : '$' + a.costRate.toFixed(2);
+  const sellRateDisplay = '$' + a.sellRate.toFixed(2);
+  return '<tr>' +
+    '<td>' + name + '</td>' +
+    '<td class="qty-cell"><input type="number" step="0.01" min="0" id="qty_' + rowId + '" data-allow="' + rowId + '" value="' + (Number(defaultQty) || 0).toFixed(2) + '" oninput="recalc()"></td>' +
+    '<td class="rate-cell">' + unitLabel + '</td>' +
+    '<td class="rate-cell" style="text-align:right;">' + costRateDisplay + '</td>' +
+    '<td class="rate-cell" style="text-align:right;">' + sellRateDisplay + '</td>' +
+    '<td class="money-cell" id="cost_a_' + rowId + '">$0.00</td>' +
+    '<td class="money-cell" id="charge_a_' + rowId + '">$0.00</td>' +
+  '</tr>';
+}
+
+//==============================================================
+// RECALC: pay codes + allowances + totals
+//==============================================================
+
+function getRates() {
+  const hourlyRate = parseFloat(document.getElementById('hourly-rate').value) || 0;
+  const chargeRate = parseFloat(document.getElementById('charge-rate').value) || 0;
+  return { hourlyRate: hourlyRate, chargeRate: chargeRate };
+}
+
+function recalc() {
+  const { hourlyRate, chargeRate } = getRates();
+  // Rate summary line
+  const summary = document.getElementById('rate-summary');
+  if (hourlyRate > 0 || chargeRate > 0) {
+    summary.innerHTML = 'Cost: <strong>$' + hourlyRate.toFixed(2) + '/hr</strong>' +
+      ' &nbsp;|&nbsp; Charge: <strong>$' + chargeRate.toFixed(2) + '/hr</strong>' +
+      ' &nbsp;|&nbsp; TAT (live, 25% of rate): <strong>$' + (hourlyRate * 0.25).toFixed(2) + '/day</strong>';
+  } else {
+    summary.innerHTML = 'Select a Grade or enter rates manually to begin.';
+  }
+  // Pay codes
+  let payCodesCost = 0, payCodesCharge = 0;
+  PAY_CODES.forEach(p => {
+    const safeId = p.code.replace(/[^A-Za-z0-9]/g, '_');
+    const hrs = parseFloat((document.getElementById('hrs_' + safeId) || {}).value) || 0;
+    const cost   = hrs * hourlyRate * p.mult;
+    const charge = hrs * chargeRate * p.mult;
+    document.getElementById('cost_' + safeId).textContent   = '$' + cost.toFixed(2);
+    document.getElementById('charge_' + safeId).textContent = '$' + charge.toFixed(2);
+    payCodesCost   += cost;
+    payCodesCharge += charge;
+  });
+  document.getElementById('paycodes-cost-total').textContent   = '$' + payCodesCost.toFixed(2);
+  document.getElementById('paycodes-charge-total').textContent = '$' + payCodesCharge.toFixed(2);
+
+  // Allowances
+  let allowCost = 0, allowCharge = 0;
+  ALLOWANCES.forEach(a => {
+    const rowIds = a.ntOtSplit ? [a.id + '_NT', a.id + '_OT'] : [a.id];
+    rowIds.forEach(rowId => {
+      const qtyEl = document.getElementById('qty_' + rowId);
+      if (!qtyEl) return;
+      const qty = parseFloat(qtyEl.value) || 0;
+      // TAT live cost = 0.25 × hourlyRate; everything else uses the
+      // hardcoded AroFlo cost rate.
+      const cost   = qty * (a.liveTat ? (hourlyRate * 0.25) : a.costRate);
+      const charge = qty * a.sellRate;
+      document.getElementById('cost_a_' + rowId).textContent   = '$' + cost.toFixed(2);
+      document.getElementById('charge_a_' + rowId).textContent = '$' + charge.toFixed(2);
+      allowCost   += cost;
+      allowCharge += charge;
+    });
+  });
+  document.getElementById('allowances-cost-total').textContent   = '$' + allowCost.toFixed(2);
+  document.getElementById('allowances-charge-total').textContent = '$' + allowCharge.toFixed(2);
+
+  // Totals
+  const totalCost   = payCodesCost + allowCost;
+  const totalCharge = payCodesCharge + allowCharge;
+  const margin      = totalCharge - totalCost;
+  document.getElementById('total-cost').textContent   = '$' + totalCost.toFixed(2);
+  document.getElementById('total-charge').textContent = '$' + totalCharge.toFixed(2);
+  document.getElementById('total-margin').textContent = '$' + margin.toFixed(2);
+  // Margin % of revenue (margin / charge): industry-standard "gross margin"
+  if (totalCharge > 0) {
+    document.getElementById('margin-pct-rev').textContent = ((margin / totalCharge) * 100).toFixed(1) + '%';
+  } else {
+    document.getElementById('margin-pct-rev').textContent = '—';
+  }
+  // Margin % over cost (margin / cost): "markup" — alternative framing
+  if (totalCost > 0) {
+    document.getElementById('margin-pct-cost').textContent = ((margin / totalCost) * 100).toFixed(1) + '%';
+  } else {
+    document.getElementById('margin-pct-cost').textContent = '—';
+  }
+  // Breakdown card
+  document.getElementById('bd-paycodes-cost').textContent   = '$' + payCodesCost.toFixed(2);
+  document.getElementById('bd-paycodes-charge').textContent = '$' + payCodesCharge.toFixed(2);
+  document.getElementById('bd-allowances-cost').textContent   = '$' + allowCost.toFixed(2);
+  document.getElementById('bd-allowances-charge').textContent = '$' + allowCharge.toFixed(2);
+
+  // Cache last computed totals for downloadSummary / copySummary
+  window._lastCostCalc = {
+    hourlyRate: hourlyRate,
+    chargeRate: chargeRate,
+    payCodesCost: payCodesCost,
+    payCodesCharge: payCodesCharge,
+    allowCost: allowCost,
+    allowCharge: allowCharge,
+    totalCost: totalCost,
+    totalCharge: totalCharge,
+    margin: margin,
+    marginPctRev:  totalCharge > 0 ? (margin / totalCharge) * 100 : 0,
+    marginPctCost: totalCost   > 0 ? (margin / totalCost)   * 100 : 0
+  };
+}
+
+//==============================================================
+// Grade dropdown handler — sets the manual Hourly Rate input.
+// We never lock the input: the dropdown is a convenience, the field
+// is always editable so the PM can adjust for special cases.
+//==============================================================
+function onGradeChange() {
+  const sel = document.getElementById('grade-select');
+  const val = sel.value;
+  if (val) {
+    document.getElementById('hourly-rate').value = parseFloat(val).toFixed(2);
+  }
+  recalc();
+}
+function onHourlyRateInput() {
+  // If the user types a custom value, blank the Grade dropdown so it's
+  // clear the rate isn't tied to a grade anymore. Avoids the misleading
+  // case where the dropdown shows "Grade 5" but the rate has been typed
+  // to something else.
+  const hrEl = document.getElementById('hourly-rate');
+  const sel = document.getElementById('grade-select');
+  const v = parseFloat(hrEl.value);
+  if (!isNaN(v)) {
+    // Only blank the dropdown if the value doesn't match the selected
+    // grade (avoids blanking when the rate happens to equal the dropdown).
+    const selVal = parseFloat(sel.value);
+    if (sel.value && Math.abs(v - selVal) > 0.005) {
+      sel.value = '';
+    }
+  }
+  recalc();
+}
+
+//==============================================================
+// Summary export — Copy to clipboard + download .txt
+//==============================================================
+
+function buildSummaryText() {
+  const c = (HANDOFF && HANDOFF.calculator) || {};
+  const last = window._lastCostCalc || {};
+  const lines = [];
+  const hr = function() { lines.push('-'.repeat(54)); };
+  lines.push('RBD COST CALCULATOR');
+  lines.push('Generated: ' + new Date().toLocaleString('en-AU', { dateStyle: 'medium', timeStyle: 'short' }));
+  if (c.projectName) lines.push('Project: ' + c.projectName);
+  if (c.projectApplicable) lines.push('Applicable for: ' + c.projectApplicable);
+  lines.push('');
+  // Day setup
+  hr(); lines.push('DAY SETUP'); hr();
+  lines.push('  Day Type:    ' + formatDayType(c).replace(/&[a-z]+;/g, ' '));
+  lines.push('  Start:       ' + (c.start  === 'Work' ? 'Workshop' : 'Site'));
+  lines.push('  Finish:      ' + (c.finish === 'Work' ? 'Workshop' : 'Site'));
+  lines.push('  Vehicle:     ' + (c.vehicle === 'Co' ? 'Company Car' : 'Own Vehicle'));
+  if (c.inc1) {
+    let i1 = 'Yes';
+    if (c.firstDay) i1 += ' (First Day)';
+    else if (c.lastDay) i1 += ' (Last Day)';
+    lines.push('  Inc-1:       ' + i1);
+  }
+  if (c.rosteredShift) {
+    const cls = c.shiftClassification === 'afternoon' ? '+15% (Afternoon)' :
+                c.shiftClassification === 'night'     ? '+30% (Night)' :
+                c.shiftClassification === 'suppressed'? 'suppressed' : 'no loading';
+    lines.push('  Rostered Shift: ' + cls);
+  }
+  if (c.callout)      lines.push('  Callout:     Yes');
+  if (c.rdo)          lines.push('  RDO:         Yes');
+  if (c.unnotifiedOT) lines.push('  Unnotified OT: Yes');
+  lines.push('');
+  // Rates
+  hr(); lines.push('RATES'); hr();
+  lines.push('  Hourly Rate (Cost):   $' + (last.hourlyRate || 0).toFixed(2) + '/hr');
+  lines.push('  Charge Rate:          $' + (last.chargeRate || 0).toFixed(2) + '/hr');
+  lines.push('  TAT (live, 25%):      $' + ((last.hourlyRate || 0) * 0.25).toFixed(2) + '/day');
+  lines.push('');
+  // Pay codes
+  hr(); lines.push('PAY CODES'); hr();
+  lines.push('  Code  Mult  Hours      Cost          Charge');
+  PAY_CODES.forEach(p => {
+    const safeId = p.code.replace(/[^A-Za-z0-9]/g, '_');
+    const hrs = parseFloat((document.getElementById('hrs_' + safeId) || {}).value) || 0;
+    if (hrs <= 0.001) return;
+    const cost   = hrs * (last.hourlyRate || 0) * p.mult;
+    const charge = hrs * (last.chargeRate || 0) * p.mult;
+    lines.push('  ' + p.code.padEnd(5) + ' x' + p.mult.toFixed(1) + '  '
+      + hrs.toFixed(2).padStart(6) + '    $' + cost.toFixed(2).padStart(9) + '    $' + charge.toFixed(2).padStart(9));
+  });
+  lines.push('  ' + '-'.repeat(50));
+  lines.push('  Subtotal           $' + (last.payCodesCost || 0).toFixed(2).padStart(9) + '    $' + (last.payCodesCharge || 0).toFixed(2).padStart(9));
+  lines.push('');
+  // Allowances (only non-zero rows)
+  hr(); lines.push('ALLOWANCES'); hr();
+  let anyAllow = false;
+  let lastGroup = '';
+  ALLOWANCES.forEach(a => {
+    const rowIds = a.ntOtSplit ? [a.id + '_NT', a.id + '_OT'] : [a.id];
+    rowIds.forEach(rowId => {
+      const qtyEl = document.getElementById('qty_' + rowId);
+      if (!qtyEl) return;
+      const qty = parseFloat(qtyEl.value) || 0;
+      if (qty <= 0.001) return;
+      if (!anyAllow || a.group !== lastGroup) {
+        if (anyAllow) lines.push('');
+        lines.push('  [' + a.group + ']');
+        lastGroup = a.group;
+      }
+      anyAllow = true;
+      const name = a.ntOtSplit ? (a.name + ' (' + rowId.split('_').pop() + ')') : a.name;
+      const cost   = qty * (a.liveTat ? ((last.hourlyRate || 0) * 0.25) : a.costRate);
+      const charge = qty * a.sellRate;
+      lines.push('    ' + name.padEnd(38) + qty.toFixed(2).padStart(7) + ' ' + a.unit.padEnd(5)
+        + '   $' + cost.toFixed(2).padStart(8) + '   $' + charge.toFixed(2).padStart(8));
+    });
+  });
+  if (!anyAllow) lines.push('  (none)');
+  lines.push('  ' + '-'.repeat(50));
+  lines.push('  Subtotal' + ' '.repeat(38) + '   $' + (last.allowCost || 0).toFixed(2).padStart(8) + '   $' + (last.allowCharge || 0).toFixed(2).padStart(8));
+  lines.push('');
+  // Totals
+  hr(); lines.push('TOTALS'); hr();
+  lines.push('  Total Cost to RBD:        $' + (last.totalCost || 0).toFixed(2).padStart(10));
+  lines.push('  Total Charge to Customer: $' + (last.totalCharge || 0).toFixed(2).padStart(10));
+  lines.push('  Margin:                   $' + (last.margin || 0).toFixed(2).padStart(10));
+  lines.push('    Margin % of Revenue:    ' + (last.marginPctRev || 0).toFixed(1) + '%');
+  lines.push('    Margin % over Cost:     ' + (last.marginPctCost || 0).toFixed(1) + '%');
+  lines.push('');
+  lines.push('---');
+  lines.push('Cost calc is a guide only. Refer to AroFlo for final rates and the RBD');
+  lines.push('Enterprise Agreement 2025 / Handbook Rev 8.0 for definitive entitlements.');
+  return lines.join('\n');
+}
+
+function copySummary() {
+  const text = buildSummaryText();
+  const toast = document.getElementById('toast');
+  function showToast(msg, ok) {
+    toast.textContent = msg;
+    toast.style.background = ok ? '#1e7a3a' : '#a02020';
+    toast.classList.add('show');
+    setTimeout(() => toast.classList.remove('show'), 2000);
+  }
+  if (navigator.clipboard && navigator.clipboard.writeText) {
+    navigator.clipboard.writeText(text).then(
+      () => showToast('Copied to clipboard', true),
+      () => fallbackCopy(text, showToast)
+    );
+  } else {
+    fallbackCopy(text, showToast);
+  }
+}
+function fallbackCopy(text, showToast) {
+  try {
+    const ta = document.createElement('textarea');
+    ta.value = text;
+    ta.style.position = 'fixed';
+    ta.style.opacity = '0';
+    document.body.appendChild(ta);
+    ta.select();
+    const ok = document.execCommand('copy');
+    document.body.removeChild(ta);
+    showToast(ok ? 'Copied to clipboard' : 'Copy failed', ok);
+  } catch (e) {
+    showToast('Copy failed', false);
+  }
+}
+function downloadSummary() {
+  const text = buildSummaryText();
+  const blob = new Blob([text], { type: 'text/plain' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = 'RBD_Cost_Calc_' + new Date().toISOString().slice(0,10) + '.txt';
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+}
+
+//==============================================================
+// Reset — clear all qty/hrs inputs back to 0 (rates kept)
+//==============================================================
+function resetAll() {
+  if (!confirm('Reset all Pay Codes hours and Allowance quantities to 0? Hourly Rate and Charge Rate are kept.')) return;
+  document.querySelectorAll('input[type="number"]').forEach(el => {
+    if (el.id !== 'hourly-rate' && el.id !== 'charge-rate') {
+      el.value = '0.00';
+    }
+  });
+  recalc();
+}
+
+//==============================================================
+// Init
+//==============================================================
+renderPulledData();
+renderPayCodes();
+renderAllowances();
+recalc();
+</script>
+</body>
+</html>
