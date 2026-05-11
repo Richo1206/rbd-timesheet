@@ -2162,12 +2162,83 @@
     const projName = (document.getElementById('projectName') || {}).value || '';
     if (projName) lines.push('Project: ' + projName);
     lines.push('');
+    // ---- Pay codes (moved to top so the headline figures lead) ----
+    // These two sections are what payroll / the worker actually needs to
+    // enter into AroFlo. Everything below them is supporting detail.
+    hr(); lines.push('PAY CODES (FROM DAILY TIMESHEET)'); hr();
+    const r = window._lastResults || {};
+    const codes = ['NT', 'NT (RDO, AL or LWOP)', 'NT (Public Holiday)', 'TH', 'DT', 'TT (Morning)', 'TT+ (Morning)', 'TT (Return)', 'TT+ (Return)', 'TAT', 'Fares (FTR)', 'Meal Allow ($15.50)'];
+    codes.forEach(function(code) {
+      const v = r[code];
+      if (v == null || v < 0.001) return;
+      const unit = (code === 'TAT' || code === 'Fares (FTR)' || code === 'Meal Allow ($15.50)') ? 'Unit': 'hrs';
+      lines.push('  ' + code + ': ' + v.toFixed(2) + ' ' + unit);
+    });
+    lines.push('');
+    // ---- Extra Allowances (moved to top, sits next to Pay Codes) ----
+    // Use the cached per-day NT/OT splits (computed by calculate())
+    // so per-hour allowances render with their actual hours, matching
+    // what would appear on AroFlo. Mirrors downloadSummary()'s logic.
+    const ticked = EXTRA_ALLOWANCES.filter(function(a) {
+      const cb = document.getElementById('allow_' + a.id);
+      return cb && cb.checked;
+    });
+    if (ticked.length) {
+      hr(); lines.push('EXTRA ALLOWANCES (SELECTED)'); hr();
+      const aNT = window._lastAllowNT || 0;
+      const aOT = window._lastAllowOT || 0;
+      const sNT = window._lastSiteNT || 0;
+      const sOT = window._lastSiteOT || 0;
+      const sTH = window._lastSupTH  || 0;
+      const sDT = window._lastSupDT  || 0;
+      const sTT = window._lastSupTT  || 0;
+      const sTTP = window._lastSupTTP || 0;
+      const hvCapActive = !!window._lastHvCapActive;
+      ticked.forEach(function(a) {
+        if (a.id === 'hvTerm' && hvCapActive) return; // HV cap (Cl 50.c)
+        const note = a.summaryNote ? ' (' + a.summaryNote + ')': '';
+        if (a.unit === 'hr') {
+          if (a.includeTravel) {
+            // Supervisor: NT / TH / DT / TT / TT+
+            if (aNT > 0.001) lines.push('  - ' + a.name + ' (NT)' + note + ': ' + aNT.toFixed(2) + ' hrs');
+            if (sTH > 0.001) lines.push('  - ' + a.name + ' (TH)' + note + ': ' + sTH.toFixed(2) + ' hrs');
+            if (sDT > 0.001) lines.push('  - ' + a.name + ' (DT)' + note + ': ' + sDT.toFixed(2) + ' hrs');
+            if (sTT > 0.001) lines.push('  - ' + a.name + ' (TT)' + note + ': ' + sTT.toFixed(2) + ' hrs');
+            if (sTTP > 0.001) lines.push('  - ' + a.name + ' (TT+)' + note + ': ' + sTTP.toFixed(2) + ' hrs');
+          } else if (a.siteOnly) {
+            if (sNT > 0.001) lines.push('  - ' + a.name + ' (NT)' + note + ': ' + sNT.toFixed(2) + ' hrs');
+            if (sOT > 0.001) lines.push('  - ' + a.name + ' (OT)' + note + ': ' + sOT.toFixed(2) + ' hrs');
+          } else if (a.ntOnly) {
+            // Shift loading (Cl 56.2.a): NT-only, no (NT) tag in the name to
+            // match the AroFlo overhead exactly. Cl 62.2.b: OT substitutes.
+            if (aNT > 0.001) lines.push('  - ' + a.name + note + ': ' + aNT.toFixed(2) + ' hrs');
+          } else {
+            if (aNT > 0.001) lines.push('  - ' + a.name + ' (NT)' + note + ': ' + aNT.toFixed(2) + ' hrs');
+            if (aOT > 0.001) lines.push('  - ' + a.name + ' (OT)' + note + ': ' + aOT.toFixed(2) + ' hrs');
+          }
+        } else if (a.unit === 'km') {
+          const km = (document.getElementById('km_' + a.id) || {}).value || '0';
+          lines.push('  - ' + a.name + note + ': ' + km + ' km');
+        } else if (a.unit === 'custom_hr') {
+          const h = (document.getElementById('hrs_' + a.id) || {}).value || '0';
+          lines.push('  - ' + a.name + note + ': ' + h + ' hrs');
+        } else {
+          lines.push('  - ' + a.name + note + ': 1 Unit');
+        }
+      });
+      lines.push('');
+    }
+    // ---- "Detailed breakdown" divider — everything below is optional reading ----
+    hr();
+    lines.push('DETAILED BREAKDOWN (HOW THE NUMBERS ABOVE WERE WORKED OUT)');
+    hr();
+    lines.push('');
     // ---- Glossary ----
     // Plain-English definitions of every code the explanation references,
     // so a reader who isn\'t familiar with payroll jargon (NT, TT+, TAT,
     // etc.) can follow the rest of the document without flipping back
     // to the EA.
-    hr(); lines.push('GLOSSARY (PLAIN ENGLISH)'); hr();
+    hr(); lines.push('GLOSSARY'); hr();
     lines.push('  NT    Normal Time. Your ordinary 8-hour workday at the base rate (weekday only).');
     lines.push('  TH    Time and a Half. The first 2 hours of weekday overtime (1.5x base rate, Cl 62.2.a.i).');
     lines.push('  DT    Double Time. Weekday OT past the first 2 hours, or any hour worked');
@@ -2302,17 +2373,6 @@
       lines.push('    You selected Finish = Workshop, so the drive home from site is part of your paid workday.');
     }
     lines.push('');
-    // ---- Pay codes ----
-    hr(); lines.push('PAY CODES (FROM DAILY TIMESHEET)'); hr();
-    const r = window._lastResults || {};
-    const codes = ['NT', 'NT (RDO, AL or LWOP)', 'NT (Public Holiday)', 'TH', 'DT', 'TT (Morning)', 'TT+ (Morning)', 'TT (Return)', 'TT+ (Return)', 'TAT', 'Fares (FTR)', 'Meal Allow ($15.50)'];
-    codes.forEach(function(code) {
-      const v = r[code];
-      if (v == null || v < 0.001) return;
-      const unit = (code === 'TAT' || code === 'Fares (FTR)' || code === 'Meal Allow ($15.50)') ? 'Unit': 'hrs';
-      lines.push(' ' + code + ': ' + v.toFixed(2) + ' ' + unit);
-    });
-    lines.push('');
     // ---- Shift Loading explanation (Cl 56.2.a) ----
     // Walk through the auto-classification + loading calc so a reviewer
     // can audit it the same way they'd audit TT or NT. Only emitted when
@@ -2408,63 +2468,10 @@
       });
       lines.push('');
     }
-    // ---- Allowances ----
-    // Use the cached per-day NT/OT splits (computed by calculate())
-    // so per-hour allowances render with their actual hours, matching
-    // what would appear on AroFlo. Mirrors downloadSummary()'s logic.
-    const ticked = EXTRA_ALLOWANCES.filter(function(a) {
-      const cb = document.getElementById('allow_' + a.id);
-      return cb && cb.checked;
-    });
-    if (ticked.length) {
-      hr(); lines.push('EXTRA ALLOWANCES (SELECTED)'); hr();
-      const aNT = window._lastAllowNT || 0;
-      const aOT = window._lastAllowOT || 0;
-      const sNT = window._lastSiteNT || 0;
-      const sOT = window._lastSiteOT || 0;
-      const sTH = window._lastSupTH  || 0;
-      const sDT = window._lastSupDT  || 0;
-      const sTT = window._lastSupTT  || 0;
-      const sTTP = window._lastSupTTP || 0;
-      const hvCapActive = !!window._lastHvCapActive;
-      ticked.forEach(function(a) {
-        if (a.id === 'hvTerm' && hvCapActive) return; // HV cap (Cl 50.c)
-        const note = a.summaryNote ? ' (' + a.summaryNote + ')': '';
-        if (a.unit === 'hr') {
-          if (a.includeTravel) {
-            // Supervisor: NT / TH / DT / TT / TT+
-            if (aNT > 0.001) lines.push(' - ' + a.name + ' (NT)' + note + ': ' + aNT.toFixed(2) + ' hrs');
-            if (sTH > 0.001) lines.push(' - ' + a.name + ' (TH)' + note + ': ' + sTH.toFixed(2) + ' hrs');
-            if (sDT > 0.001) lines.push(' - ' + a.name + ' (DT)' + note + ': ' + sDT.toFixed(2) + ' hrs');
-            if (sTT > 0.001) lines.push(' - ' + a.name + ' (TT)' + note + ': ' + sTT.toFixed(2) + ' hrs');
-            if (sTTP > 0.001) lines.push(' - ' + a.name + ' (TT+)' + note + ': ' + sTTP.toFixed(2) + ' hrs');
-          } else if (a.siteOnly) {
-            // Site-only allowances: NT/OT split from site hours
-            if (sNT > 0.001) lines.push(' - ' + a.name + ' (NT)' + note + ': ' + sNT.toFixed(2) + ' hrs');
-            if (sOT > 0.001) lines.push(' - ' + a.name + ' (OT)' + note + ': ' + sOT.toFixed(2) + ' hrs');
-          } else if (a.ntOnly) {
-            // NT-only (shift loadings, Cl 56.2.a — loading
-            // attaches to ordinary hours only, OT/weekend/PH
-            // substitutes per Cl 62.2.b). Name already carries
-            // "(NT)" so we don't tag again.
-            if (aNT > 0.001) lines.push(' - ' + a.name + note + ': ' + aNT.toFixed(2) + ' hrs');
-          } else {
-            // Default per-hour: NT/OT split from day hours
-            if (aNT > 0.001) lines.push(' - ' + a.name + ' (NT)' + note + ': ' + aNT.toFixed(2) + ' hrs');
-            if (aOT > 0.001) lines.push(' - ' + a.name + ' (OT)' + note + ': ' + aOT.toFixed(2) + ' hrs');
-          }
-        } else if (a.unit === 'km') {
-          const km = (document.getElementById('km_' + a.id) || {}).value || '0';
-          lines.push(' - ' + a.name + note + ': ' + km + ' km');
-        } else if (a.unit === 'custom_hr') {
-          const h = (document.getElementById('hrs_' + a.id) || {}).value || '0';
-          lines.push(' - ' + a.name + note + ': ' + h + ' hrs');
-        } else {
-          lines.push(' - ' + a.name + note + ': 1 Unit');
-        }
-      });
-      lines.push('');
-    }
+    // (Pay Codes and Extra Allowances are emitted near the top of the
+    // document so the worker / payroll reviewer reads the headline figures
+    // first. The detail sections above explain how those figures were
+    // arrived at, for anyone who wants to audit the calculation.)
     hr();
     lines.push('Disclaimer: Always refer to the RBD Enterprise Agreement 2025 /');
     lines.push('RBD Handbook Rev 8.0 for definitive entitlements.');
@@ -2489,6 +2496,11 @@
     // Match the section block: top dashes line + section title + bottom
     // dashes line + content lines, up to the trailing blank line. The
     // [\s\S]*? non-greedy match stops at the next blank-line boundary.
+    //
+    // PAY CODES + EXTRA ALLOWANCES are wrapped in a <mark> + <strong> so
+    // they render with a yellow highlight AND bold inside the <pre>. The
+    // <mark> tag preserves whitespace and works inline, so the alignment
+    // of the existing two-column layout is untouched.
     const sections = ['PAY CODES \\(FROM DAILY TIMESHEET\\)',
              'EXTRA ALLOWANCES \\(SELECTED\\)'];
     let html = escaped;
@@ -2497,7 +2509,7 @@
         '(-{20,}\\n' + name + '\\n-{20,}\\n[\\s\\S]*?)(\\n\\n|$)',
         'g'
       );
-      html = html.replace(re, '<strong>$1</strong>$2');
+      html = html.replace(re, '<mark style="background:#fff7d6; padding:2px 4px; border-radius:3px;"><strong>$1</strong></mark>$2');
     });
     return html;
   }
