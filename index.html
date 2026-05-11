@@ -323,16 +323,18 @@
   <div class="sub">EA 2025 &amp; Handbook Rev 8.0</div>
   <div class="sub no-print" style="margin-bottom: 8px; font-size: 10px; color: #999; font-style: italic;">For more information on each section, click the <span style="display:inline-flex; align-items:center; justify-content:center; width:16px; height:16px; border-radius:50%; border:1.5px solid #004a99; color:#004a99; font-size:10px; font-weight:bold; font-family:Georgia,serif; vertical-align:middle;">i</span> button to the right.</div>
   <!--
-   3-column grid: title (auto width, no-wrap), Travel Boundary Tool
-   button (centred in remaining space), info-btn (auto width, right).
-   auto / 1fr / auto lets the title keep its natural width and stay
-   on a single line; the middle column (1fr) absorbs the remaining
-   space and centres the button within it.
+   3-column grid: title (auto width, no-wrap), Boundary Tool button if
+   present (centred in remaining space, GH-only), info-btn pinned to
+   col 3. The middle 1fr absorbs the remaining space so the layout
+   still looks balanced in the Production build where the button is
+   stripped out.
   -->
   <div class="section-header no-print" style="display: grid; grid-template-columns: auto 1fr auto; align-items: center; gap: 8px;">
     <span style="white-space: nowrap;">Google Maps Travel Tool</span>
+    <!--@GH_ONLY_BEGIN-->
     <a href="https://richo1206.github.io/rbd-timesheet/RBD_Travel_Boundary.html" class="tool-link-btn" title="Open the 30-min Travel Boundary map" style="justify-self: center;">Boundary Tool</a>
-    <button class="info-btn" onclick="toggleInfo('infoMaps')">i</button>
+    <!--@GH_ONLY_END-->
+    <button class="info-btn" onclick="toggleInfo('infoMaps')" style="grid-column: 3;">i</button>
   </div>
   <div id="infoMaps" class="info-panel no-print">
     <strong>How it works:</strong>
@@ -346,7 +348,9 @@
       <li><strong>TK1 / TK2 / Kms (Company Car):</strong> tick these in Extra Allowances and the km fields populate automatically using Google's distances. Kms (CC) totals every leg the driver covers (morning + every between-site leg + return), and auto-ticks itself on <em>any</em> travelled km when Company Car is on.</li>
       <li><strong>Multi-site days</strong> (Dest &rarr; Site 2 &rarr; Site 3 &rarr; &hellip;): click <em>+ Add another site</em> to chain up to 5 sites. Works regardless of allowance: Company Car, TK1, or TK2. The return leg automatically starts from the last site in the chain (e.g. Site 3, not the morning Destination). When TK2 is also ticked, between-site km auto-fill from the chain.</li>
       <li>Manual overrides are always preserved. If you type your own Travel Hrs/Mins, Return Hrs/Mins, or km values, auto-fires won't clobber them.</li>
+      <!--@GH_ONLY_BEGIN-->
       <li><strong>Travel Boundary Tool</strong> (button at the top of this section): opens a separate 30-min drive-time map. Useful when you need to check whether a site is inside or outside the EA's Travel Boundary (Cl 64.1.a). Pick a Centre of Employment (Devonport, Hobart, or a Custom address) and the tool plots the reachable area as a polygon on Google Maps.</li>
+      <!--@GH_ONLY_END-->
     </ul>
   </div>
   <div class="route-box no-print">
@@ -657,6 +661,12 @@
      Production build by build_production.py) until the workflow has
      been validated end-to-end. -->
   <button id="emailBtn" class="no-print" style="width:100%; margin-top:6px; padding:11px; background:white; color:#1e7a3a; border:1.5px solid #1e7a3a; border-radius:10px; font-weight:700; cursor:pointer; font-size:13px; transition:transform 0.1s, background 0.15s;" onclick="this.style.transform='scale(0.98)'; setTimeout(()=>this.style.transform='',100); emailWorker()">Email Explanation</button>
+  <!-- Cost Calculator: writes the current calc state to localStorage and
+     opens the cost calc in a new tab. GitHub-only PM utility — strips
+     from Production build alongside Email Explanation. Button styled
+     differently (navy outline) so it visually separates from the
+     worker-facing actions above. -->
+  <button id="costCalcBtn" class="no-print" style="width:100%; margin-top:6px; padding:11px; background:white; color:#003366; border:1.5px solid #003366; border-radius:10px; font-weight:700; cursor:pointer; font-size:13px; transition:transform 0.1s, background 0.15s;" onclick="this.style.transform='scale(0.98)'; setTimeout(()=>this.style.transform='',100); openCostCalculator()">Cost Calculator</button>
   <!--@GH_ONLY_END-->
   <!-- Explanation panel: hidden by default. Built dynamically by
      generateExplanation() and shown when "Explain Results" is tapped.
@@ -2606,6 +2616,104 @@
     const mailto = 'mailto:?subject=' + encodeURIComponent(subject) +
             '&body=' + encodeURIComponent(body);
     window.location.href = mailto;
+  }
+  // ------------------------------------------------------------------
+  // Cost Calculator — PM utility for job costing. We build a handoff
+  // blob with all current calculator state, write to localStorage under
+  // a known key, then open RBD_Cost_Calculator.html in a new tab.
+  // The cost calc reads the blob on load and pre-fills its inputs.
+  //
+  // localStorage is the right choice here vs URL params or window.opener
+  // postMessage: same-origin (always the case for our GitHub Pages /
+  // production deployment), persists across the page load, and isn't
+  // length-limited the way a query string is. The new tab can read it
+  // immediately on DOMContentLoaded.
+  // ------------------------------------------------------------------
+  function openCostCalculator() {
+    // Collect every value the cost calc needs to pre-fill its UI.
+    const tickedAllowances = EXTRA_ALLOWANCES
+      .map(a => a.id)
+      .filter(id => {
+        const cb = document.getElementById('allow_' + id);
+        return cb && cb.checked;
+      });
+    const kmValues = {};
+    ['tk1', 'tk2', 'kmCompanyCar'].forEach(id => {
+      const el = document.getElementById('km_' + id);
+      if (el) kmValues[id] = parseFloat(el.value) || 0;
+    });
+    const customHrs = {};
+    ['hsm', 'inclement'].forEach(id => {
+      const el = document.getElementById('hrs_' + id);
+      if (el) customHrs[id] = parseFloat(el.value) || 0;
+    });
+    // Project info for the pulled-data table on the cost calc.
+    const projName = (document.getElementById('projectName') || {}).value || '';
+    const projDay  = (document.getElementById('projectDay')  || {}).value || '';
+    const projDateRaw = (document.getElementById('projectDate') || {}).value || '';
+    const projDate = projDateRaw
+      ? new Date(projDateRaw + 'T00:00:00').toLocaleDateString('en-AU', {
+          weekday: 'long', day: 'numeric', month: 'long', year: 'numeric'
+        })
+      : '';
+    const projectApplicable = projDate || projDay || '';
+    // Shift classification — call the live classifier so we capture the
+    // current state, not a stale one.
+    const shiftCls = (flags.Shift && typeof classifyShift === 'function')
+      ? classifyShift() : null;
+    // Build the handoff blob.
+    const handoff = {
+      version: 1,
+      generatedAt: new Date().toISOString(),
+      calculator: {
+        projectName: projName,
+        projectApplicable: projectApplicable,
+        dayType:    flags.Day,
+        rdo:        !!flags.RDO,
+        callout:    !!flags.Callout,
+        unnotifiedOT: !!flags.UnnotifiedOT,
+        rosteredShift: !!flags.Shift,
+        shiftClassification: shiftCls,
+        start:      flags.Start,
+        finish:     flags.Fin,
+        vehicle:    flags.Co ? 'Co' : 'Own',
+        inc1:       !!flags.Inc1,
+        firstDay:   !!flags.FirstDay,
+        lastDay:    !!flags.LastDay,
+        notified24h: !!flags.Notified24h,
+        times: {
+          leftWorkshop:   (document.getElementById('leftWorkshop')   || {}).value || '',
+          arriveSite:     (document.getElementById('arriveSite')     || {}).value || '',
+          leaveSite:      (document.getElementById('leaveSite')      || {}).value || '',
+          arriveWorkshop: (document.getElementById('arriveWorkshop') || {}).value || ''
+        },
+        payCodes:   window._lastResults || {},
+        ntOTSplit: {
+          allowNT: window._lastAllowNT || 0,
+          allowOT: window._lastAllowOT || 0,
+          siteNT:  window._lastSiteNT  || 0,
+          siteOT:  window._lastSiteOT  || 0,
+          supTH:   window._lastSupTH   || 0,
+          supDT:   window._lastSupDT   || 0,
+          supTT:   window._lastSupTT   || 0,
+          supTTP:  window._lastSupTTP  || 0
+        },
+        tickedAllowances: tickedAllowances,
+        kmValues: kmValues,
+        customHrs: customHrs
+      }
+    };
+    try {
+      localStorage.setItem('rbd_cost_calc_handoff', JSON.stringify(handoff));
+    } catch (e) {
+      console.warn('Could not write cost-calc handoff to localStorage:', e);
+      alert('Could not pass current calculator state to the Cost Calculator. ' +
+            'Opening it anyway — you may need to enter values manually.');
+    }
+    // Open in a new tab. Relative path works on both GitHub Pages
+    // deployment and any future hosting that places the two HTMLs in
+    // the same directory.
+    window.open('RBD_Cost_Calculator.html', '_blank');
   }
   //@GH_ONLY_END
   // ------------------------------------------------------------------
