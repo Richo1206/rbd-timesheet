@@ -574,11 +574,11 @@
     <div id="btnInc1" class="toggle-btn" onclick="toggleInc1()">Incidentals-1</div>
     <div id="btnOther" class="toggle-btn" onclick="toggleOther()">Other <span id="btnOtherArrow" style="display:inline-block; transition: transform 0.2s ease;">&#x25BC;</span></div>
   </div>
-  <div id="otherPanel" class="day-toggle-section hidden" style="border-top:none; padding-top:0;">
-    <div id="btnUnnotifiedOT" class="toggle-btn" onclick="toggle('UnnotifiedOT')">Unnotified OT</div>
-    <div id="btnRDO" class="toggle-btn" onclick="toggle('RDO')">RDO</div>
+  <div id="otherPanel" class="day-toggle-section hidden" style="border-top:none; padding-top:0; grid-template-columns: 1fr 1fr;">
+    <div id="btnShift" class="toggle-btn" onclick="toggle('Shift')">Shift Work</div>
     <div id="btnCallout" class="toggle-btn" onclick="toggle('Callout')">Callout</div>
-    <div id="btnShift" class="toggle-btn" onclick="toggle('Shift')">Shift</div>
+    <div id="btnUnnotifiedOT" class="toggle-btn" onclick="toggle('UnnotifiedOT')">Unnotified OT</div>
+    <div id="btnRDO" class="toggle-btn" onclick="toggle('RDO')">Rostered Day Off</div>
   </div>
   <div id="notified24hRow" class="day-toggle-section hidden" style="border-top:none; padding-top:0; grid-template-columns: 1fr;">
     <div id="btnNotified24h" class="toggle-btn" onclick="toggle('Notified24h')">Scheduled (24h+ notice, 2h min)</div>
@@ -739,8 +739,8 @@
     //  • gate visibility/enable on flags.Shift
     //  • render an NT-only line (no OT/site split — loading is NT only
     //   per Cl 62.2.b, OT rates substitute for shift premiums)
-    { id: 'shiftAft15', name: 'Afternoon Shift Allowance 15% (NT)', rate: 16.73, rateLabel: '+15% / hr', unit: 'hr', group: 'Other', hideRate: false, shiftAllowance: 'afternoon', ntOnly: true },
-    { id: 'shiftNgt30', name: 'Night Shift Allowance 30% (NT)',   rate: 33.45, rateLabel: '+30% / hr', unit: 'hr', group: 'Other', hideRate: false, shiftAllowance: 'night',   ntOnly: true },
+    { id: 'shiftAft15', name: 'Afternoon Shift Allowance 15%', rate: 16.73, rateLabel: '+15% / hr', unit: 'hr', group: 'Other', hideRate: false, shiftAllowance: 'afternoon', ntOnly: true },
+    { id: 'shiftNgt30', name: 'Night Shift Allowance 30%',     rate: 33.45, rateLabel: '+30% / hr', unit: 'hr', group: 'Other', hideRate: false, shiftAllowance: 'night',     ntOnly: true },
   ];
   function buildAllowancePanel() {
     let panel = document.getElementById('allowPanel');
@@ -1885,10 +1885,12 @@
             if (supTTP > 0.001) allowanceHtml += '<div class="code-row"><span>' + a.name + ' (TT+)' + hrNoteSup + '</span><span>' + supTTP.toFixed(2) + ' hrs</span></div>';
           } else if (a.ntOnly) {
             // NT-only allowance (shift loadings, Cl 56.2.a).
-            // Cl 62.2.b prevents OT from carrying the loading, and
-            // the EA wording "shifts worked" means it never
-            // attaches to travel. So we render a single NT line —
-            // the name already includes "(NT)" so we don't double-tag.
+            // Cl 62.2.b prevents OT from carrying the loading and the EA
+            // wording "shifts worked" means it never attaches to travel,
+            // so we render a single line with the NT hours. The allowance
+            // name is left without an "(NT)" tag to match the AroFlo
+            // overhead name exactly: makes copy-paste into the Expenses
+            // section a no-brainer.
             let hrNote = a.summaryNote ? ' <span style="font-size:10px;color:#888;font-style:italic;">(' + a.summaryNote + ')</span>': '';
             if (allowNT > 0.001) allowanceHtml += '<div class="code-row"><span>' + a.name + hrNote + '</span><span>' + allowNT.toFixed(2) + ' hrs</span></div>';
           } else {
@@ -2070,8 +2072,10 @@
             if (sTT > 0.001) extraLines.push('• ' + a.name + ' (TT)' + dlNote + ': ' + sTT.toFixed(2) + ' hrs');
             if (sTTP > 0.001) extraLines.push('• ' + a.name + ' (TT+)' + dlNote + ': ' + sTTP.toFixed(2) + ' hrs');
           } else if (a.ntOnly) {
-            // NT-only allowance (shift loadings, Cl 56.2.a). Name
-            // already carries "(NT)" so we don't tag again.
+            // NT-only allowance (shift loadings, Cl 56.2.a). Cl 62.2.b
+            // prevents OT/penalty rates from stacking with the loading,
+            // so we render a single line with the NT hours. Name left
+            // untagged to match the AroFlo overhead exactly.
             if (aNT > 0.001) extraLines.push('• ' + a.name + dlNote + ': ' + aNT.toFixed(2) + ' hrs');
           } else {
             let nt = a.siteOnly ? sNT: aNT;
@@ -2341,7 +2345,7 @@
         lines.push('');
         lines.push('  ' + pad('Loading rate:', 22) + '+15% on NT hours only');
         lines.push('  ' + pad('Loading hours:', 22) + _shNT.toFixed(2) + ' hrs (matches NT hours from the timesheet above)');
-        lines.push('  ' + pad('AroFlo entry:', 22) + 'Expenses section, "Afternoon Shift Allowance 15% (NT) / Per hour"');
+        lines.push('  ' + pad('AroFlo entry:', 22) + 'Expenses section, "Afternoon Shift Allowance 15% / Per hour"');
         lines.push('');
         lines.push('  Why it isn\'t paid on OT hours: Cl 62.2.b says OT rates "will be');
         lines.push('  in substitution for, and not cumulative upon, the shift premiums".');
@@ -2356,7 +2360,7 @@
         lines.push('');
         lines.push('  ' + pad('Loading rate:', 22) + '+30% on NT hours only');
         lines.push('  ' + pad('Loading hours:', 22) + _shNT.toFixed(2) + ' hrs (matches NT hours from the timesheet above)');
-        lines.push('  ' + pad('AroFlo entry:', 22) + 'Expenses section, "Night Shift Allowance 30% (NT) / Per hour"');
+        lines.push('  ' + pad('AroFlo entry:', 22) + 'Expenses section, "Night Shift Allowance 30% / Per hour"');
         lines.push('');
         lines.push('  Why it isn\'t paid on OT hours: Cl 62.2.b says OT rates "will be');
         lines.push('  in substitution for, and not cumulative upon, the shift premiums".');
