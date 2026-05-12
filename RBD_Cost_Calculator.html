@@ -24,7 +24,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
-<title>RBD Cost Calculator</title>
+<title>RBD Daily Labour Cost Calculator</title>
 <link rel="icon" href="data:,">
 <style>
   * { box-sizing: border-box; }
@@ -320,7 +320,7 @@
 
 <header>
   <div>
-    <h1>RBD Cost Calculator</h1>
+    <h1>RBD Daily Labour Cost Calculator</h1>
     <div class="sub">Pre/post-job costing &middot; EA 2025 &amp; AroFlo charge rates</div>
   </div>
   <a href="RBD_Timesheet_Calculator.html" class="back-link" onclick="return goBack(event);">&larr; Back to Timesheet Calculator</a>
@@ -1169,7 +1169,7 @@ function buildSummaryText() {
   const last = window._lastCostCalc || {};
   const lines = [];
   const hr = function() { lines.push('-'.repeat(54)); };
-  lines.push('RBD COST CALCULATOR');
+  lines.push('RBD DAILY LABOUR COST CALCULATOR');
   lines.push('Generated: ' + new Date().toLocaleString('en-AU', { dateStyle: 'medium', timeStyle: 'short' }));
   if (c.projectName) lines.push('Project: ' + c.projectName);
   if (c.projectApplicable) lines.push('Applicable for: ' + c.projectApplicable);
