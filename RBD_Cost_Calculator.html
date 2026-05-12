@@ -497,19 +497,7 @@
      ============================================================ -->
 <section>
   <h2>4. Totals</h2>
-  <div class="totals-grid">
-    <div class="row-headline">Total Cost to RBD</div>
-    <div class="row-headline" id="total-cost">$0.00</div>
-    <div class="row-headline">Total Charge to Customer</div>
-    <div class="row-headline" id="total-charge">$0.00</div>
-    <div class="row-margin-headline">Margin</div>
-    <div class="row-margin-headline" id="total-margin">$0.00</div>
-    <div class="row-pct">&nbsp;&nbsp;Margin % of Revenue (Charge)</div>
-    <div class="row-pct-value" id="margin-pct-rev">n/a</div>
-    <div class="row-pct">&nbsp;&nbsp;Margin % over Cost (Markup)</div>
-    <div class="row-pct-value" id="margin-pct-cost">n/a</div>
-  </div>
-  <div class="breakdown-card">
+  <div class="breakdown-card" style="margin-top: 0;">
     <div class="bd-row" style="font-weight:700; border-bottom:1px solid #d2dce6; margin-bottom:4px; padding-bottom:6px;">
       <span>Breakdown</span><span>Cost</span><span>Charge</span>
     </div>
@@ -524,13 +512,21 @@
       <span id="bd-allowances-charge">$0.00</span>
     </div>
   </div>
+  <div class="totals-grid" style="margin-top: 16px;">
+    <div class="row-headline">Total Cost to RBD</div>
+    <div class="row-headline" id="total-cost">$0.00</div>
+    <div class="row-headline">Total Charge to Customer</div>
+    <div class="row-headline" id="total-charge">$0.00</div>
+    <div class="row-margin-headline">Margin</div>
+    <div class="row-margin-headline" id="total-margin">$0.00</div>
+  </div>
+  <div style="margin-top: 14px; padding: 12px 14px; background: #f8fafc; border-left: 3px solid #6b7c8d; border-radius: 8px; font-size: 11.5px; color: #475568; line-height: 1.55;">
+    <strong style="color:#003366;">Note:</strong> The figures above are direct labour cost vs charge only. The <strong>Cost</strong> column does NOT include payroll on-costs (workers compensation, superannuation, payroll tax), insurances, vehicle running costs, plant &amp; tools, training, PPE, supervision overhead, office &amp; back-of-house overhead, or any other indirect costs.
+  </div>
   <div class="actions">
     <button class="primary" onclick="copySummary()">Copy Summary to Clipboard</button>
     <button onclick="downloadSummary()">Download as Text File</button>
     <button class="reset-btn" onclick="resetAll()">Reset All Values</button>
-  </div>
-  <div style="margin-top: 18px; padding: 12px 14px; background: #f8fafc; border-left: 3px solid #6b7c8d; border-radius: 8px; font-size: 11.5px; color: #475568; line-height: 1.55;">
-    <strong style="color:#003366;">Note:</strong> The figures above are direct labour cost vs charge only. The <strong>Cost</strong> column does NOT include payroll on-costs (workers compensation, superannuation, payroll tax), insurances, vehicle running costs, plant &amp; tools, training, PPE, supervision overhead, office &amp; back-of-house overhead, or any other indirect costs. Once those are factored in, the real margin is materially lower than this calculator suggests.
   </div>
 </section>
 
@@ -722,9 +718,17 @@ const ALLOWANCES = [
   { id: 'hvTerm',      group: 'High Voltage',      name: 'HV Termination',       unit: 'day', costRate: 35.00, sellRate: 200.00 },
   { id: 'hvSwitch',    group: 'High Voltage',      name: 'HV Switching',         unit: 'day', costRate: 50.00, sellRate: 200.00 },
   { id: 'hvPrep',      group: 'High Voltage',      name: 'HV Prep & Documentation', unit: 'day', costRate: 0.00, sellRate: 100.00 },
-  // Group: Shift Loadings (Cl 56.2.a — NT-only, Cl 62.2.b: OT substitutes)
-  { id: 'shiftAft15',  group: 'Shift Loadings',    name: 'Afternoon Shift Allowance 15%', unit: 'hr', costRate: 16.73, sellRate: 17.57, ntOnly: true },
-  { id: 'shiftNgt30',  group: 'Shift Loadings',    name: 'Night Shift Allowance 30%', unit: 'hr', costRate: 33.45, sellRate: 35.13, ntOnly: true },
+  // Group: Shift Loadings (Cl 56.2.a, NT-only per Cl 62.2.b which makes OT
+  // substitute for the shift premium rather than stack). Computed live:
+  //   cost   = qty × pct × hourlyRate       (scales by Grade)
+  //   charge = qty × pct × chargeRateNT     (loading applies to NT only,
+  //                                          so it's always off the NT
+  //                                          client rate even on PH days)
+  // The AroFlo fixed rates ($16.73/$33.45 cost, $17.57/$35.13 sell) are
+  // kept as costRate/sellRate fallback display only, never used for
+  // calculation when livePctOfHourly is set.
+  { id: 'shiftAft15',  group: 'Shift Loadings',    name: 'Afternoon Shift Allowance 15%', unit: 'hr', costRate: 16.73, sellRate: 17.57, ntOnly: true, livePctOfHourly: 0.15, livePctOfChargeNT: 0.15 },
+  { id: 'shiftNgt30',  group: 'Shift Loadings',    name: 'Night Shift Allowance 30%',     unit: 'hr', costRate: 33.45, sellRate: 35.13, ntOnly: true, livePctOfHourly: 0.30, livePctOfChargeNT: 0.30 },
   // Group: Other
   { id: 'onCall',      group: 'Other',             name: 'On Call Allowance',    unit: 'day', costRate: 45.71, sellRate: 45.71 }
 ];
@@ -981,11 +985,23 @@ function renderAllowances() {
 
 function renderAllowanceRow(a, rowId, name, defaultQty) {
   const unitLabel = a.unit;
-  // For liveTat we display "live" instead of a fixed $ figure
-  const costRateDisplay = a.liveTat
-    ? '<em style="color:#1e7a3a;">25% × rate</em>'
-    : '$' + a.costRate.toFixed(2);
-  const sellRateDisplay = '$' + a.sellRate.toFixed(2);
+  // Live-formula display when an allowance is calculated from the rates
+  // entered above (TAT, shift loadings) rather than a fixed AroFlo dollar.
+  const liveStyle = 'color:#1e7a3a; font-style:italic; white-space:nowrap;';
+  let costRateDisplay;
+  if (a.liveTat) {
+    costRateDisplay = '<span style="' + liveStyle + '">25% &times; rate</span>';
+  } else if (a.livePctOfHourly !== undefined) {
+    costRateDisplay = '<span style="' + liveStyle + '">' + (a.livePctOfHourly * 100).toFixed(0) + '% &times; rate</span>';
+  } else {
+    costRateDisplay = '$' + a.costRate.toFixed(2);
+  }
+  let sellRateDisplay;
+  if (a.livePctOfChargeNT !== undefined) {
+    sellRateDisplay = '<span style="' + liveStyle + '">' + (a.livePctOfChargeNT * 100).toFixed(0) + '% &times; NT charge</span>';
+  } else {
+    sellRateDisplay = '$' + a.sellRate.toFixed(2);
+  }
   return '<tr>' +
     '<td>' + name + '</td>' +
     '<td class="qty-cell"><input type="number" step="0.01" min="0" id="qty_' + rowId + '" data-allow="' + rowId + '" value="' + (Number(defaultQty) || 0).toFixed(2) + '" oninput="recalc()"></td>' +
@@ -1077,10 +1093,20 @@ function recalc() {
       const qtyEl = document.getElementById('qty_' + rowId);
       if (!qtyEl) return;
       const qty = parseFloat(qtyEl.value) || 0;
-      // TAT live cost = 0.25 × hourlyRate; everything else uses the
-      // hardcoded AroFlo cost rate.
-      const cost   = qty * (a.liveTat ? (hourlyRate * 0.25) : a.costRate);
-      const charge = qty * a.sellRate;
+      // Cost rate: liveTat (25% of hourly) or livePctOfHourly (15%/30%
+      // shift loadings) take precedence over the fixed AroFlo costRate.
+      let costPerUnit;
+      if (a.liveTat) costPerUnit = hourlyRate * 0.25;
+      else if (a.livePctOfHourly !== undefined) costPerUnit = hourlyRate * a.livePctOfHourly;
+      else costPerUnit = a.costRate;
+      // Sell rate: livePctOfChargeNT (shift loadings) uses the client's
+      // NT charge rate, since shift loading per Cl 62.2.b only attaches
+      // to ordinary hours. Other allowances use the fixed AroFlo sell.
+      let sellPerUnit;
+      if (a.livePctOfChargeNT !== undefined) sellPerUnit = chargeNT * a.livePctOfChargeNT;
+      else sellPerUnit = a.sellRate;
+      const cost   = qty * costPerUnit;
+      const charge = qty * sellPerUnit;
       document.getElementById('cost_a_' + rowId).textContent   = '$' + cost.toFixed(2);
       document.getElementById('charge_a_' + rowId).textContent = '$' + charge.toFixed(2);
       allowCost   += cost;
@@ -1100,18 +1126,6 @@ function recalc() {
   document.getElementById('total-cost').textContent   = '$' + totalCost.toFixed(2);
   document.getElementById('total-charge').textContent = '$' + totalCharge.toFixed(2);
   document.getElementById('total-margin').textContent = '$' + margin.toFixed(2);
-  // Margin % of revenue (margin / charge): industry-standard "gross margin"
-  if (totalCharge > 0) {
-    document.getElementById('margin-pct-rev').textContent = ((margin / totalCharge) * 100).toFixed(1) + '%';
-  } else {
-    document.getElementById('margin-pct-rev').textContent = 'n/a';
-  }
-  // Margin % over cost (margin / cost): "markup" — alternative framing
-  if (totalCost > 0) {
-    document.getElementById('margin-pct-cost').textContent = ((margin / totalCost) * 100).toFixed(1) + '%';
-  } else {
-    document.getElementById('margin-pct-cost').textContent = 'n/a';
-  }
   // Breakdown card
   document.getElementById('bd-paycodes-cost').textContent   = '$' + payCodesCost.toFixed(2);
   document.getElementById('bd-paycodes-charge').textContent = '$' + payCodesCharge.toFixed(2);
@@ -1273,8 +1287,16 @@ function buildSummaryText() {
       }
       anyAllow = true;
       const name = a.ntOtSplit ? (a.name + ' (' + rowId.split('_').pop() + ')') : a.name;
-      const cost   = qty * (a.liveTat ? ((last.hourlyRate || 0) * 0.25) : a.costRate);
-      const charge = qty * a.sellRate;
+      // Live calc takes precedence; mirrors the recalc() logic above.
+      let costPerUnit;
+      if (a.liveTat) costPerUnit = (last.hourlyRate || 0) * 0.25;
+      else if (a.livePctOfHourly !== undefined) costPerUnit = (last.hourlyRate || 0) * a.livePctOfHourly;
+      else costPerUnit = a.costRate;
+      let sellPerUnit;
+      if (a.livePctOfChargeNT !== undefined) sellPerUnit = (last.chargeNT || 0) * a.livePctOfChargeNT;
+      else sellPerUnit = a.sellRate;
+      const cost   = qty * costPerUnit;
+      const charge = qty * sellPerUnit;
       lines.push('    ' + name.padEnd(38) + qty.toFixed(2).padStart(7) + ' ' + a.unit.padEnd(5)
         + '   $' + cost.toFixed(2).padStart(8) + '   $' + charge.toFixed(2).padStart(8));
     });
@@ -1288,8 +1310,6 @@ function buildSummaryText() {
   lines.push('  Total Cost to RBD:        $' + (last.totalCost || 0).toFixed(2).padStart(10));
   lines.push('  Total Charge to Customer: $' + (last.totalCharge || 0).toFixed(2).padStart(10));
   lines.push('  Margin:                   $' + (last.margin || 0).toFixed(2).padStart(10));
-  lines.push('    Margin % of Revenue:    ' + (last.marginPctRev || 0).toFixed(1) + '%');
-  lines.push('    Margin % over Cost:     ' + (last.marginPctCost || 0).toFixed(1) + '%');
   lines.push('');
   lines.push('---');
   lines.push('NOTE: Cost above is direct labour only. It EXCLUDES payroll on-costs');
