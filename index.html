@@ -584,6 +584,17 @@
     <div id="btnUnnotifiedOT" class="toggle-btn" onclick="toggle('UnnotifiedOT')">Unnotified OT</div>
     <div id="btnRDO" class="toggle-btn" onclick="toggle('RDO')">Rostered Day Off</div>
   </div>
+  <!-- Rostered Hours: only shown when Rostered Shift is on. Optional;
+       leave blank for the no-overrun case (all rostered hours = NT).
+       Fill in if the worker actually worked PAST their rostered finish,
+       so the excess can be split into OT per Cl 62.2. -->
+  <div id="shiftRosteredRow" class="hidden" style="margin: 8px 0 0; padding: 10px 14px; background: linear-gradient(135deg, #f8fafc, #f0f5fa); border: 1.5px solid #d2dce6; border-radius: 10px;">
+    <label for="shiftRosteredHrs" style="display:block; font-size: 11.5px; font-weight: 600; color: #475568; margin-bottom: 4px; letter-spacing: 0.3px; text-transform: uppercase;">Rostered Shift Length (hrs, optional)</label>
+    <input type="number" id="shiftRosteredHrs" step="0.25" min="0" placeholder="Leave blank if no overrun" oninput="calculate()" style="width: 100%; padding: 8px 12px; border: 1.5px solid #d2dce6; border-radius: 8px; font-size: 13px; background: white; font-family: inherit;">
+    <div style="font-size: 11px; color: #6b7c8d; margin-top: 6px; line-height: 1.4;">
+      Leave blank if you worked exactly your rostered hours. Only fill in if you worked PAST the rostered finish (e.g. rostered 10h but actually worked 12h: enter <strong>10</strong>). The excess past this value will be paid as OT (TH first 2h, DT after) and won't carry the shift loading.
+    </div>
+  </div>
   <div id="notified24hRow" class="day-toggle-section hidden" style="border-top:none; padding-top:0; grid-template-columns: 1fr;">
     <div id="btnNotified24h" class="toggle-btn" onclick="toggle('Notified24h')">Scheduled (24h+ notice, 2h min)</div>
   </div>
@@ -1128,7 +1139,17 @@
     // Company Car flag gates the km allowances — refresh the mutex.
     if (id === 'Co') syncAllowanceBoundUI();
     // Shift toggle controls the Extra Allowances shift entries (enable/auto-tick).
-    if (id === 'Shift') syncShiftAllowanceUI();
+    if (id === 'Shift') {
+      syncShiftAllowanceUI();
+      // Show / hide the Rostered Hours input row. Clear the field when
+      // the toggle goes off so stale overrun values don't get reused.
+      const row = document.getElementById('shiftRosteredRow');
+      if (row) row.classList.toggle('hidden', !flags.Shift);
+      if (!flags.Shift) {
+        const inp = document.getElementById('shiftRosteredHrs');
+        if (inp) inp.value = '';
+      }
+    }
     calculate();
   }
   function toggleOther() {
@@ -1421,7 +1442,14 @@
     let ntCapMins = 480;
     if (_onValidShift) {
       outsideOrdinaryGross = 0;
-      ntCapMins = Infinity;
+      // Rostered Hours override: if the worker entered a rostered shift
+      // length, use that as the NT cap so any actual hours past the
+      // rostered finish fall into OT (per Cl 62.2). Blank/zero = no
+      // overrun, all rostered hours are NT.
+      const _rosteredHrs = parseFloat((document.getElementById('shiftRosteredHrs') || {}).value);
+      ntCapMins = (isFinite(_rosteredHrs) && _rosteredHrs > 0)
+        ? _rosteredHrs * 60
+        : Infinity;
     }
     // Apply meal ratio so we're working with net minutes
     let outsideOT = roundTo15(Math.round(outsideOrdinaryGross * mealRatio));
@@ -1845,6 +1873,14 @@
         notes.push("Rostered Shift toggle on, but loading suppressed: " + reason + " substitute for the shift premium (Cl 56.2.c / 62.2.b).");
       } else if (shiftCls === 'none') {
         notes.push("Rostered Shift toggle on, but finish time falls inside the ordinary day window (6am to 6pm): no loading applied. For a shift to attract loading, the rostered ordinary hours must finish after 6pm (afternoon) or by 8am (night) per Cl 56 / Cl 5.");
+      }
+      // Overrun status note: if the worker entered a Rostered Hours
+      // value and it's shorter than the actual net work, the calc has
+      // split into NT (rostered) + OT (overrun). Surface this so the
+      // worker can sanity-check before submitting.
+      const _rosteredVal = parseFloat((document.getElementById('shiftRosteredHrs') || {}).value);
+      if (isFinite(_rosteredVal) && _rosteredVal > 0 && results.TH + results.DT > 0.001) {
+        notes.push("Shift overrun detected: rostered " + _rosteredVal.toFixed(2) + "h, actually worked more. The first " + _rosteredVal.toFixed(2) + "h is NT (with loading); the extra " + (results.TH + results.DT).toFixed(2) + "h is OT (no loading, Cl 62.2.b substitution).");
       }
       notes.push("Casual shift carve-out (Cl 56.2.d): if this isn't part of a 5+ day consecutive shift roster, the casual rates T+½ first 2h then T×2 may apply instead. Escalate to payroll. Permanent night (Cl 56.2.e, >4 wks): same 30% as regular night, no extra logic.");
     }
