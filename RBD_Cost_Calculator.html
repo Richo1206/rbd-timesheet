@@ -521,7 +521,90 @@
     <div class="row-margin-headline" id="total-margin">$0.00</div>
   </div>
   <div style="margin-top: 14px; padding: 12px 14px; background: #f8fafc; border-left: 3px solid #6b7c8d; border-radius: 8px; font-size: 11.5px; color: #475568; line-height: 1.55;">
-    <strong style="color:#003366;">Note:</strong> The figures above are direct labour cost vs charge only. The <strong>Cost</strong> column does NOT include payroll on-costs (workers compensation, superannuation, payroll tax), insurances, vehicle running costs, plant &amp; tools, training, PPE, supervision overhead, office &amp; back-of-house overhead, or any other indirect costs.
+    <strong style="color:#003366;">Note:</strong> The figures above are direct labour cost vs charge only. The <strong>Cost</strong> column does NOT include payroll on-costs (workers compensation, superannuation, payroll tax), insurances, vehicle running costs, plant &amp; tools, training, PPE, supervision overhead, office &amp; back-of-house overhead, or any other indirect costs. Section 5 below layers an estimated overhead rate plus payroll on-costs on top to give a closer-to-real figure.
+  </div>
+  <!-- Section 4 action buttons removed: they live in Section 5 now so the
+       PM exports after seeing the True Margin, not just the Direct Margin. -->
+</section>
+
+<!-- ============================================================
+     SECTION 5: ON-COSTS (payroll on-costs only)
+     ============================================================ -->
+<section>
+  <h2>5. Payroll On-Costs</h2>
+  <p style="margin: 0 0 14px; font-size: 12px; color: #475568; line-height: 1.55;">
+    Layers super, workers comp, and payroll tax on top of the direct cost.
+    Still excludes vehicle/plant/PPE/training/back-of-house overhead, but gets closer to the
+    real cost-to-RBD figure. All three percentages are editable.
+  </p>
+  <div class="info-grid" style="margin-bottom: 14px;">
+    <div class="input-grp" style="margin: 0;">
+      <label for="oncost-super">Superannuation %</label>
+      <input type="number" id="oncost-super" step="0.1" min="0" value="12" oninput="recalc()">
+      <div style="font-size: 11px; color: #6b7c8d; margin-top: 4px; line-height: 1.4;">
+        Applied to NT pay + NT-portion of all-purpose / hour-based allowances, shift loadings, TAT, HV, On Call.
+      </div>
+    </div>
+    <div class="input-grp" style="margin: 0;">
+      <label for="oncost-wc">Workers Comp %</label>
+      <input type="number" id="oncost-wc" step="0.01" min="0" value="2.3" oninput="recalc()">
+      <div style="font-size: 11px; color: #6b7c8d; margin-top: 4px; line-height: 1.4;">
+        Applied to all pay codes (NT/TT/TH/DT/TT+/DT+) + all taxable allowances.
+      </div>
+    </div>
+    <div class="input-grp" style="margin: 0;">
+      <label for="oncost-pt">Payroll Tax %</label>
+      <input type="number" id="oncost-pt" step="0.1" min="0" value="6.1" oninput="recalc()">
+      <div style="font-size: 11px; color: #6b7c8d; margin-top: 4px; line-height: 1.4;">
+        Same base as Workers Comp. Tasmania's higher tier (wages above $2M annual threshold).
+      </div>
+    </div>
+    <div class="input-grp" style="margin: 0;">
+      <label for="oncost-overhead">Overhead Rate ($/hr)</label>
+      <input type="number" id="oncost-overhead" step="0.01" min="0" value="35" oninput="recalc()">
+      <div style="font-size: 11px; color: #6b7c8d; margin-top: 4px; line-height: 1.4;">
+        Flat $ per NT hour. Covers vehicle, plant, PPE, training, supervision, office overhead etc. Adjust per the latest costing model.
+      </div>
+    </div>
+  </div>
+  <div class="breakdown-card" style="margin-top: 0;">
+    <div class="bd-row" style="font-weight:700; border-bottom:1px solid #d2dce6; margin-bottom:4px; padding-bottom:6px;">
+      <span>On-Cost</span><span>Base</span><span>Cost</span>
+    </div>
+    <div class="bd-row">
+      <span>Super (<span id="oncost-super-display">12.0%</span>)</span>
+      <span id="oncost-super-base">$0.00</span>
+      <span id="oncost-super-cost">$0.00</span>
+    </div>
+    <div class="bd-row">
+      <span>Workers Comp (<span id="oncost-wc-display">2.30%</span>)</span>
+      <span id="oncost-wc-base">$0.00</span>
+      <span id="oncost-wc-cost">$0.00</span>
+    </div>
+    <div class="bd-row">
+      <span>Payroll Tax (<span id="oncost-pt-display">6.1%</span>)</span>
+      <span id="oncost-pt-base">$0.00</span>
+      <span id="oncost-pt-cost">$0.00</span>
+    </div>
+    <div class="bd-row">
+      <span>Overhead (<span id="oncost-overhead-display">$35.00/hr</span>)</span>
+      <span id="oncost-overhead-base">0.00 hrs NT</span>
+      <span id="oncost-overhead-cost">$0.00</span>
+    </div>
+    <div class="bd-row" style="border-top:1px solid #d2dce6; padding-top:6px; margin-top:4px; font-weight:700;">
+      <span>Subtotal On-Costs</span>
+      <span></span>
+      <span id="oncost-subtotal">$0.00</span>
+    </div>
+  </div>
+  <div class="totals-grid" style="margin-top: 16px;">
+    <div class="row-headline">True Total Cost to RBD</div>
+    <div class="row-headline" id="true-total-cost">$0.00</div>
+    <div class="row-margin-headline">True Margin (after on-costs)</div>
+    <div class="row-margin-headline" id="true-margin">$0.00</div>
+  </div>
+  <div style="margin-top: 14px; padding: 12px 14px; background: #f8fafc; border-left: 3px solid #6b7c8d; border-radius: 8px; font-size: 11.5px; color: #475568; line-height: 1.55;">
+    <strong style="color:#003366;">Note:</strong> The Overhead Rate is an estimate only and not a true reflection of RBD's actual per-worker overhead. Adjust the $/hr above per the latest internal costing model. The True Margin shown is indicative.
   </div>
   <div class="actions">
     <button class="primary" onclick="copySummary()">Copy Summary to Clipboard</button>
@@ -687,22 +770,28 @@ const PAY_CODES = [
 //          this so it's hardcoded $12.60, but here we can do it right).
 // ntOtSplit: true → render as two rows, "(NT)" and "(OT)".
 // ntOnly: true → render only "(NT)" row (shift loadings, Cl 56.2.b).
+// oteForSuper:    true → super applies (on NT-portion only if ntOtSplit)
+// taxableForWcPt: true → workers comp + payroll tax apply on the full cost
+// Reimbursements (FTR, Meals, Inc, Living Away, TK1/TK2/Km's CC) have both
+// flags false: they're not wages.
 const ALLOWANCES = [
-  // Group: Site & Industrial
-  { id: 'industrial',  group: 'Site & Industrial', name: 'Industrial Allowance', unit: 'hr', costRate: 2.50, sellRate: 0.00, ntOtSplit: true },
-  { id: 'site',        group: 'Site & Industrial', name: 'Site Allowance',       unit: 'hr', costRate: 2.50, sellRate: 0.00, ntOtSplit: true },
-  { id: 'indSite',     group: 'Site & Industrial', name: 'IND + Site Allowance', unit: 'hr', costRate: 5.00, sellRate: 0.00, ntOtSplit: true },
-  { id: 'firmus',      group: 'Site & Industrial', name: 'Firmus Allowance',     unit: 'hr', costRate: 5.00, sellRate: 0.00, ntOtSplit: true },
-  { id: 'firmusInd',   group: 'Site & Industrial', name: 'Firmus + IND',         unit: 'hr', costRate: 7.50, sellRate: 0.00, ntOtSplit: true },
-  { id: 'inclement',   group: 'Site & Industrial', name: 'Inclement Weather',    unit: 'hr', costRate: 2.50, sellRate: 0.00, ntOtSplit: true },
-  { id: 'hsm',         group: 'Site & Industrial', name: 'HSM Allowance',        unit: 'hr', costRate: 10.00, sellRate: 10.00, ntOtSplit: true },
+  // Group: Site & Industrial — taxable wage components, NT-portion super-eligible
+  { id: 'industrial',  group: 'Site & Industrial', name: 'Industrial Allowance', unit: 'hr', costRate: 2.50, sellRate: 0.00, ntOtSplit: true, oteForSuper: true, taxableForWcPt: true },
+  { id: 'site',        group: 'Site & Industrial', name: 'Site Allowance',       unit: 'hr', costRate: 2.50, sellRate: 0.00, ntOtSplit: true, oteForSuper: true, taxableForWcPt: true },
+  { id: 'indSite',     group: 'Site & Industrial', name: 'IND + Site Allowance', unit: 'hr', costRate: 5.00, sellRate: 0.00, ntOtSplit: true, oteForSuper: true, taxableForWcPt: true },
+  { id: 'firmus',      group: 'Site & Industrial', name: 'Firmus Allowance',     unit: 'hr', costRate: 5.00, sellRate: 0.00, ntOtSplit: true, oteForSuper: true, taxableForWcPt: true },
+  { id: 'firmusInd',   group: 'Site & Industrial', name: 'Firmus + IND',         unit: 'hr', costRate: 7.50, sellRate: 0.00, ntOtSplit: true, oteForSuper: true, taxableForWcPt: true },
+  { id: 'inclement',   group: 'Site & Industrial', name: 'Inclement Weather',    unit: 'hr', costRate: 2.50, sellRate: 0.00, ntOtSplit: true, oteForSuper: true, taxableForWcPt: true },
+  { id: 'hsm',         group: 'Site & Industrial', name: 'HSM Allowance',        unit: 'hr', costRate: 10.00, sellRate: 10.00, ntOtSplit: true, oteForSuper: true, taxableForWcPt: true },
   // Group: Travel & Vehicle
-  { id: 'tat',         group: 'Travel & Vehicle',  name: 'TAT (Travel Time Allowance)', unit: 'day', costRate: 12.60, sellRate: 0.00, liveTat: true },
+  // TAT is an all-purpose allowance (Cl 5) — counts as OTE + taxable.
+  // FTR / TK1 / TK2 / Km's CC are reimbursements — neither super nor WC/PT.
+  { id: 'tat',         group: 'Travel & Vehicle',  name: 'TAT (Travel Time Allowance)', unit: 'day', costRate: 12.60, sellRate: 0.00, liveTat: true, oteForSuper: true, taxableForWcPt: true },
   { id: 'fares',       group: 'Travel & Vehicle',  name: 'Fares (FTR)',          unit: 'day', costRate: 14.61, sellRate: 0.00 },
   { id: 'tk1',         group: 'Travel & Vehicle',  name: 'TK1 (Outside Boundary / Callout)', unit: 'km', costRate: 0.57, sellRate: 0.57 },
   { id: 'tk2',         group: 'Travel & Vehicle',  name: 'TK2 (Between Sites)',  unit: 'km', costRate: 1.05, sellRate: 1.00 },
   { id: 'kmCo',        group: 'Travel & Vehicle',  name: "Km's (Company Car)",   unit: 'km', costRate: 0.75, sellRate: 1.25 },
-  // Group: Meals & Living Away
+  // Group: Meals & Living Away — all reimbursements / per-diems, NOT wages.
   { id: 'mealOvertime', group: 'Meals & Living Away', name: 'Meal Allowance (Overtime, $15.50)', unit: 'day', costRate: 15.50, sellRate: 15.50 },
   { id: 'mealOvernight', group: 'Meals & Living Away', name: 'Meal Allowance (Overnight)', unit: 'day', costRate: 120.00, sellRate: 120.00 },
   { id: 'inc1',        group: 'Meals & Living Away', name: 'Incidentals 1 ($20)', unit: 'day', costRate: 20.00, sellRate: 20.00 },
@@ -710,14 +799,14 @@ const ALLOWANCES = [
   { id: 'inc3',        group: 'Meals & Living Away', name: 'Incidentals 3 ($90)', unit: 'day', costRate: 90.00, sellRate: 90.00 },
   { id: 'livingOwn',   group: 'Meals & Living Away', name: 'Living Away (Own Accommodation)', unit: 'night', costRate: 240.00, sellRate: 240.00 },
   { id: 'livingFriends', group: 'Meals & Living Away', name: 'Living Away (Friends & Family)', unit: 'night', costRate: 160.00, sellRate: 160.00 },
-  // Group: Supervision
-  { id: 'supG5G6',     group: 'Supervision',       name: 'Supervisor G5 > G6',   unit: 'hr', costRate: 1.55, sellRate: 1.55, ntOtSplit: true },
-  { id: 'supG6G7',     group: 'Supervision',       name: 'Supervisor G6 > G7',   unit: 'hr', costRate: 2.74, sellRate: 2.74, ntOtSplit: true },
-  { id: 'supG7G8',     group: 'Supervision',       name: 'Supervisor G7 > G8',   unit: 'hr', costRate: 3.08, sellRate: 3.08, ntOtSplit: true },
-  // Group: High Voltage
-  { id: 'hvTerm',      group: 'High Voltage',      name: 'HV Termination',       unit: 'day', costRate: 35.00, sellRate: 200.00 },
-  { id: 'hvSwitch',    group: 'High Voltage',      name: 'HV Switching',         unit: 'day', costRate: 50.00, sellRate: 200.00 },
-  { id: 'hvPrep',      group: 'High Voltage',      name: 'HV Prep & Documentation', unit: 'day', costRate: 0.00, sellRate: 100.00 },
+  // Group: Supervision — higher-duties wage, NT-portion super-eligible
+  { id: 'supG5G6',     group: 'Supervision',       name: 'Supervisor G5 > G6',   unit: 'hr', costRate: 1.55, sellRate: 1.55, ntOtSplit: true, oteForSuper: true, taxableForWcPt: true },
+  { id: 'supG6G7',     group: 'Supervision',       name: 'Supervisor G6 > G7',   unit: 'hr', costRate: 2.74, sellRate: 2.74, ntOtSplit: true, oteForSuper: true, taxableForWcPt: true },
+  { id: 'supG7G8',     group: 'Supervision',       name: 'Supervisor G7 > G8',   unit: 'hr', costRate: 3.08, sellRate: 3.08, ntOtSplit: true, oteForSuper: true, taxableForWcPt: true },
+  // Group: High Voltage — taxable wage allowance for HV work
+  { id: 'hvTerm',      group: 'High Voltage',      name: 'HV Termination',       unit: 'day', costRate: 35.00, sellRate: 200.00, oteForSuper: true, taxableForWcPt: true },
+  { id: 'hvSwitch',    group: 'High Voltage',      name: 'HV Switching',         unit: 'day', costRate: 50.00, sellRate: 200.00, oteForSuper: true, taxableForWcPt: true },
+  { id: 'hvPrep',      group: 'High Voltage',      name: 'HV Prep & Documentation', unit: 'day', costRate: 0.00, sellRate: 100.00, oteForSuper: true, taxableForWcPt: true },
   // Group: Shift Loadings (Cl 56.2.a, NT-only per Cl 62.2.b which makes OT
   // substitute for the shift premium rather than stack). Computed live:
   //   cost   = qty × pct × hourlyRate       (scales by Grade)
@@ -727,10 +816,10 @@ const ALLOWANCES = [
   // The AroFlo fixed rates ($16.73/$33.45 cost, $17.57/$35.13 sell) are
   // kept as costRate/sellRate fallback display only, never used for
   // calculation when livePctOfHourly is set.
-  { id: 'shiftAft15',  group: 'Shift Loadings',    name: 'Afternoon Shift Allowance 15%', unit: 'hr', costRate: 16.73, sellRate: 17.57, ntOnly: true, livePctOfHourly: 0.15, livePctOfChargeNT: 0.15 },
-  { id: 'shiftNgt30',  group: 'Shift Loadings',    name: 'Night Shift Allowance 30%',     unit: 'hr', costRate: 33.45, sellRate: 35.13, ntOnly: true, livePctOfHourly: 0.30, livePctOfChargeNT: 0.30 },
-  // Group: Other
-  { id: 'onCall',      group: 'Other',             name: 'On Call Allowance',    unit: 'day', costRate: 45.71, sellRate: 45.71 }
+  { id: 'shiftAft15',  group: 'Shift Loadings',    name: 'Afternoon Shift Allowance 15%', unit: 'hr', costRate: 16.73, sellRate: 17.57, ntOnly: true, livePctOfHourly: 0.15, livePctOfChargeNT: 0.15, oteForSuper: true, taxableForWcPt: true },
+  { id: 'shiftNgt30',  group: 'Shift Loadings',    name: 'Night Shift Allowance 30%',     unit: 'hr', costRate: 33.45, sellRate: 35.13, ntOnly: true, livePctOfHourly: 0.30, livePctOfChargeNT: 0.30, oteForSuper: true, taxableForWcPt: true },
+  // Group: Other — On-Call is a taxable wage allowance, ATO treats as OTE
+  { id: 'onCall',      group: 'Other',             name: 'On Call Allowance',    unit: 'day', costRate: 45.71, sellRate: 45.71, oteForSuper: true, taxableForWcPt: true }
 ];
 
 //==============================================================
@@ -1126,6 +1215,86 @@ function recalc() {
   document.getElementById('total-cost').textContent   = '$' + totalCost.toFixed(2);
   document.getElementById('total-charge').textContent = '$' + totalCharge.toFixed(2);
   document.getElementById('total-margin').textContent = '$' + margin.toFixed(2);
+
+  // ----------------------------------------------------------
+  // On-costs (Section 5):
+  //   Super base   = NT pay + NT-portion of taxable hour-based allowances
+  //                  + ntOnly allowances (shift loadings) + oteForSuper
+  //                  flat allowances (TAT, HV, On Call)
+  //   WC + PT base = ALL pay codes + ALL taxable allowances (NT + OT
+  //                  portions of split rows, plus flat taxable allowances)
+  //
+  // Reimbursements (FTR, Meals, Inc 1/2/3, Living Away, TK1/TK2/Km's CC)
+  // have neither oteForSuper nor taxableForWcPt and so are excluded from
+  // both bases.
+  // ----------------------------------------------------------
+  let superBase = 0, taxBase = 0;
+  // Pay codes
+  PAY_CODES.forEach(p => {
+    const safeId = p.code.replace(/[^A-Za-z0-9]/g, '_');
+    const hrs = parseFloat((document.getElementById('hrs_' + safeId) || {}).value) || 0;
+    const cost = hrs * hourlyRate * p.mult;
+    if (p.code === 'NT') superBase += cost;       // super on NT only
+    taxBase += cost;                              // WC+PT on all pay codes
+  });
+  // Allowances
+  ALLOWANCES.forEach(a => {
+    if (a.ntOtSplit) {
+      // NT row
+      const ntQtyEl = document.getElementById('qty_' + a.id + '_NT');
+      const ntQty   = parseFloat((ntQtyEl || {}).value) || 0;
+      const ntCost  = ntQty * a.costRate;
+      if (a.oteForSuper)    superBase += ntCost;
+      if (a.taxableForWcPt) taxBase   += ntCost;
+      // OT row — taxable but NOT super
+      const otQtyEl = document.getElementById('qty_' + a.id + '_OT');
+      const otQty   = parseFloat((otQtyEl || {}).value) || 0;
+      const otCost  = otQty * a.costRate;
+      if (a.taxableForWcPt) taxBase   += otCost;
+    } else {
+      const qtyEl = document.getElementById('qty_' + a.id);
+      if (!qtyEl) return;
+      const qty = parseFloat(qtyEl.value) || 0;
+      // Same costPerUnit logic as the row render
+      let costPerUnit;
+      if (a.liveTat) costPerUnit = hourlyRate * 0.25;
+      else if (a.livePctOfHourly !== undefined) costPerUnit = hourlyRate * a.livePctOfHourly;
+      else costPerUnit = a.costRate;
+      const cost = qty * costPerUnit;
+      if (a.oteForSuper)    superBase += cost;
+      if (a.taxableForWcPt) taxBase   += cost;
+    }
+  });
+  const superPct = parseFloat((document.getElementById('oncost-super') || {}).value) || 0;
+  const wcPct    = parseFloat((document.getElementById('oncost-wc')    || {}).value) || 0;
+  const ptPct    = parseFloat((document.getElementById('oncost-pt')    || {}).value) || 0;
+  const overheadRate = parseFloat((document.getElementById('oncost-overhead') || {}).value) || 0;
+  // Overhead base: NT hours only. Pulled from the NT pay code input
+  // independently of cost (cost is hours × rate × mult; overhead is
+  // hours × flat $/hr, no rate involved).
+  const ntHoursForOverhead = parseFloat((document.getElementById('hrs_NT') || {}).value) || 0;
+  const superCost    = superBase * superPct / 100;
+  const wcCost       = taxBase   * wcPct    / 100;
+  const ptCost       = taxBase   * ptPct    / 100;
+  const overheadCost = ntHoursForOverhead * overheadRate;
+  const onCostSubtotal = superCost + wcCost + ptCost + overheadCost;
+  const trueTotalCost  = totalCost + onCostSubtotal;
+  const trueMargin     = totalCharge - trueTotalCost;
+  document.getElementById('oncost-super-display').textContent    = superPct.toFixed(1) + '%';
+  document.getElementById('oncost-wc-display').textContent       = wcPct.toFixed(2) + '%';
+  document.getElementById('oncost-pt-display').textContent       = ptPct.toFixed(1) + '%';
+  document.getElementById('oncost-overhead-display').textContent = '$' + overheadRate.toFixed(2) + '/hr';
+  document.getElementById('oncost-super-base').textContent    = '$' + superBase.toFixed(2);
+  document.getElementById('oncost-wc-base').textContent       = '$' + taxBase.toFixed(2);
+  document.getElementById('oncost-pt-base').textContent       = '$' + taxBase.toFixed(2);
+  document.getElementById('oncost-overhead-base').textContent = ntHoursForOverhead.toFixed(2) + ' hrs NT';
+  document.getElementById('oncost-super-cost').textContent    = '$' + superCost.toFixed(2);
+  document.getElementById('oncost-wc-cost').textContent       = '$' + wcCost.toFixed(2);
+  document.getElementById('oncost-pt-cost').textContent       = '$' + ptCost.toFixed(2);
+  document.getElementById('oncost-overhead-cost').textContent = '$' + overheadCost.toFixed(2);
+  document.getElementById('oncost-subtotal').textContent      = '$' + onCostSubtotal.toFixed(2);
+  document.getElementById('true-total-cost').textContent      = '$' + trueTotalCost.toFixed(2);
+  document.getElementById('true-margin').textContent          = '$' + trueMargin.toFixed(2);
   // Breakdown card
   document.getElementById('bd-paycodes-cost').textContent   = '$' + payCodesCost.toFixed(2);
   document.getElementById('bd-paycodes-charge').textContent = '$' + payCodesCharge.toFixed(2);
@@ -1147,7 +1316,22 @@ function recalc() {
     totalCharge: totalCharge,
     margin: margin,
     marginPctRev:  totalCharge > 0 ? (margin / totalCharge) * 100 : 0,
-    marginPctCost: totalCost   > 0 ? (margin / totalCost)   * 100 : 0
+    marginPctCost: totalCost   > 0 ? (margin / totalCost)   * 100 : 0,
+    // On-costs
+    superPct: superPct,
+    wcPct: wcPct,
+    ptPct: ptPct,
+    overheadRate: overheadRate,
+    ntHoursForOverhead: ntHoursForOverhead,
+    superBase: superBase,
+    taxBase: taxBase,
+    superCost: superCost,
+    wcCost: wcCost,
+    ptCost: ptCost,
+    overheadCost: overheadCost,
+    onCostSubtotal: onCostSubtotal,
+    trueTotalCost: trueTotalCost,
+    trueMargin: trueMargin
   };
 }
 
@@ -1309,7 +1493,18 @@ function buildSummaryText() {
   hr(); lines.push('TOTALS'); hr();
   lines.push('  Total Cost to RBD:        $' + (last.totalCost || 0).toFixed(2).padStart(10));
   lines.push('  Total Charge to Customer: $' + (last.totalCharge || 0).toFixed(2).padStart(10));
-  lines.push('  Margin:                   $' + (last.margin || 0).toFixed(2).padStart(10));
+  lines.push('  Margin (direct):          $' + (last.margin || 0).toFixed(2).padStart(10));
+  lines.push('');
+  // On-costs
+  hr(); lines.push('PAYROLL ON-COSTS + OVERHEAD'); hr();
+  lines.push('  Super     (' + (last.superPct || 0).toFixed(1) + '% × $' + (last.superBase || 0).toFixed(2) + ' OTE base): $' + (last.superCost || 0).toFixed(2).padStart(10));
+  lines.push('  WComp     (' + (last.wcPct    || 0).toFixed(2) + '% × $' + (last.taxBase   || 0).toFixed(2) + ' wage base): $' + (last.wcCost   || 0).toFixed(2).padStart(10));
+  lines.push('  PT        (' + (last.ptPct    || 0).toFixed(1) + '% × $' + (last.taxBase   || 0).toFixed(2) + ' wage base): $' + (last.ptCost   || 0).toFixed(2).padStart(10));
+  lines.push('  Overhead  ($' + (last.overheadRate || 0).toFixed(2) + '/hr × ' + (last.ntHoursForOverhead || 0).toFixed(2) + ' hrs NT, estimated): $' + (last.overheadCost || 0).toFixed(2).padStart(10));
+  lines.push('  Subtotal on-costs + overhead:               $' + (last.onCostSubtotal || 0).toFixed(2).padStart(10));
+  lines.push('');
+  lines.push('  TRUE Total Cost (incl on-costs):         $' + (last.trueTotalCost || 0).toFixed(2).padStart(10));
+  lines.push('  TRUE Margin (after on-costs):            $' + (last.trueMargin    || 0).toFixed(2).padStart(10));
   lines.push('');
   lines.push('---');
   lines.push('NOTE: Cost above is direct labour only. It EXCLUDES payroll on-costs');
