@@ -429,6 +429,24 @@
       <div class="rate-display" id="rate-summary">
         Select a Grade or enter rates manually to begin.
       </div>
+      <!-- Compact totals mirror — same numbers as the bottom totals grid
+           in Section 4, surfaced here so the PM can adjust rates and
+           watch the headline figures update without scrolling. Style is
+           intentionally less prominent than the bottom totals (which are
+           the "primary" output) — smaller font, tighter padding. -->
+      <div style="margin-top: 10px; padding: 12px 14px; background: linear-gradient(135deg, #f0f6fc, #e8f0fa); border-left: 4px solid #004a99; border-radius: 8px;">
+        <div style="display:grid; grid-template-columns: 1fr auto; gap: 4px 16px; font-size: 13px;">
+          <div style="color:#475568;">Total Cost to RBD</div>
+          <div id="total-cost-top" style="text-align:right; color:#003366; font-weight:700; font-variant-numeric: tabular-nums;">$0.00</div>
+          <div style="color:#475568;">Total Charge to Customer</div>
+          <div id="total-charge-top" style="text-align:right; color:#003366; font-weight:700; font-variant-numeric: tabular-nums;">$0.00</div>
+          <div style="color:#1e5a2a; font-weight:700;">Margin</div>
+          <div id="total-margin-top" style="text-align:right; color:#1e7a3a; font-weight:700; font-size:14px; font-variant-numeric: tabular-nums;">$0.00</div>
+        </div>
+        <div style="margin-top: 6px; font-size: 10.5px; color: #6b7c8d; font-style: italic; line-height: 1.4;">
+          Live totals (includes on-costs &amp; overhead). Detailed breakdown in Section 4 below.
+        </div>
+      </div>
     </div>
   </div>
 </section>
@@ -1261,10 +1279,27 @@ function recalc() {
   document.getElementById('oncost-wc-cost').textContent       = '$' + wcCost.toFixed(2);
   document.getElementById('oncost-pt-cost').textContent       = '$' + ptCost.toFixed(2);
   document.getElementById('oncost-overhead-cost').textContent = '$' + overheadCost.toFixed(2);
-  // Total Cost / Charge / Margin (single combined figure)
-  document.getElementById('total-cost').textContent   = '$' + totalCost.toFixed(2);
-  document.getElementById('total-charge').textContent = '$' + totalCharge.toFixed(2);
-  document.getElementById('total-margin').textContent = '$' + margin.toFixed(2);
+  // Total Cost / Charge / Margin (single combined figure). Two display
+  // copies: the headline grid in Section 4, and a compact mirror in
+  // Section 1 (next to the rate inputs) so the PM can see totals shift
+  // live while adjusting Hourly Rate / Charge Rate without scrolling.
+  const totalCostStr   = '$' + totalCost.toFixed(2);
+  const totalChargeStr = '$' + totalCharge.toFixed(2);
+  const marginStr      = '$' + margin.toFixed(2);
+  document.getElementById('total-cost').textContent       = totalCostStr;
+  document.getElementById('total-charge').textContent     = totalChargeStr;
+  document.getElementById('total-margin').textContent     = marginStr;
+  const topCost   = document.getElementById('total-cost-top');
+  const topCharge = document.getElementById('total-charge-top');
+  const topMargin = document.getElementById('total-margin-top');
+  if (topCost)   topCost.textContent   = totalCostStr;
+  if (topCharge) topCharge.textContent = totalChargeStr;
+  if (topMargin) {
+    topMargin.textContent = marginStr;
+    // Colour the margin red if negative — gives a clear visual when the
+    // current rate combination is loss-making at the all-in cost level.
+    topMargin.style.color = margin < 0 ? '#c33' : '#1e7a3a';
+  }
   // Breakdown card
   document.getElementById('bd-paycodes-cost').textContent   = '$' + payCodesCost.toFixed(2);
   document.getElementById('bd-paycodes-charge').textContent = '$' + payCodesCharge.toFixed(2);
