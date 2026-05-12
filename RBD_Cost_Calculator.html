@@ -341,6 +341,15 @@
       <table class="pulled-table" id="pulled-table">
         <!-- populated by JS -->
       </table>
+      <div style="margin-top:18px;">
+        <h3>Load Charge Rates &mdash; Client / Site</h3>
+        <p style="font-size:11.5px; color:#6b7c8d; margin:0 0 8px;">Pick a client &amp; role to pre-fill the three Charge Rate fields on the right. Values stay editable once loaded.</p>
+        <select id="client-preset" style="width:100%; padding:10px 12px; border:1.5px solid #d2dce6; border-radius:8px; font-size:13.5px; background:#f8fafc; color:#1a1a1a; font-family:inherit;" onchange="onClientPresetChange()">
+          <option value="">&mdash; Select Client / Role &mdash;</option>
+          <!-- populated by JS -->
+        </select>
+        <div id="preset-applied" style="display:none; margin-top:8px; padding:8px 12px; background:#e8f5e9; border-left:3px solid #1e7a3a; border-radius:6px; font-size:11.5px; color:#1e5a2a;"></div>
+      </div>
     </div>
     <div>
       <h3>Rates &amp; Grade</h3>
@@ -386,15 +395,15 @@
       </div>
       <div class="input-grp">
         <label for="charge-rate-nt">Charge Rate &mdash; NT &amp; TT</label>
-        <input type="number" id="charge-rate-nt" step="0.01" min="0" placeholder="0.00" oninput="recalc()">
+        <input type="number" id="charge-rate-nt" step="0.01" min="0" placeholder="0.00" oninput="onChargeRateEdit()">
       </div>
       <div class="input-grp">
         <label for="charge-rate-ot">Charge Rate &mdash; Overtime (TH / DT / TT+ / DT+)</label>
-        <input type="number" id="charge-rate-ot" step="0.01" min="0" placeholder="0.00" oninput="recalc()">
+        <input type="number" id="charge-rate-ot" step="0.01" min="0" placeholder="0.00" oninput="onChargeRateEdit()">
       </div>
       <div class="input-grp">
         <label for="charge-rate-ph">Charge Rate &mdash; Public Holiday</label>
-        <input type="number" id="charge-rate-ph" step="0.01" min="0" placeholder="0.00" oninput="recalc()">
+        <input type="number" id="charge-rate-ph" step="0.01" min="0" placeholder="0.00" oninput="onChargeRateEdit()">
       </div>
       <div class="input-grp" style="display:flex; align-items:center; gap:8px; background:#fff7d6; padding:8px 12px; border-radius:8px; border:1px solid #ffe4a1;">
         <input type="checkbox" id="is-ph" style="width:18px; height:18px; cursor:pointer;" onchange="recalc()">
@@ -533,6 +542,116 @@ function goBack(e) {
 // DATA: pay codes + allowances + handoff schema
 //==============================================================
 
+// Client charge-rate presets, valid until 30-Jun-26.
+// Sourced from the per-client PDFs in /uploads. Each entry has the three
+// charge rates (NT, OT, PH) the client agreement specifies for that role.
+// PM rates omitted where the client only listed an NT rate (Firmus,
+// TasNetworks) since the cost calc needs all three to be meaningful.
+// Selecting a preset writes these values into the three Charge Rate
+// fields; users can still edit afterwards.
+const CHARGE_RATE_PRESETS = [
+  {
+    client: 'RBD (default rates)',
+    roles: [
+      { role: 'Electrician',                       nt: 116.62, ot: 143.10, ph: 164.95 },
+      { role: 'Specialist / Site Supervisor',      nt: 126.34, ot: 152.65, ph: 187.40 },
+      { role: 'Trades Assistance / Apprentice',    nt:  96.45, ot: 112.00, ph: 121.35 },
+      { role: 'Project Manager',                   nt: 147.24, ot: 183.35, ph: 225.47 }
+    ]
+  },
+  {
+    client: 'CA Labour Hire',
+    roles: [
+      { role: 'Electrician',                       nt: 102.85, ot: 135.65, ph: 159.70 },
+      { role: 'Mitchell Pullford',                 nt: 107.75, ot: 144.75, ph: 170.75 },
+      { role: 'Specialist / Site Supervisor',      nt: 107.75, ot: 144.75, ph: 170.75 },
+      { role: 'Trades Assistance / Apprentice',    nt:  90.10, ot: 109.25, ph: 123.85 }
+    ]
+  },
+  {
+    client: 'CA Project / Shut Down',
+    roles: [
+      { role: 'Electrician',                       nt: 117.10, ot: 144.40, ph: 166.45 },
+      { role: 'Specialist / Site Supervisor',      nt: 126.90, ot: 154.05, ph: 189.15 },
+      { role: 'Trades Assistance / Apprentice',    nt:  96.95, ot: 113.05, ph: 122.50 },
+      { role: 'Project Manager',                   nt: 147.95, ot: 185.10, ph: 227.65 }
+    ]
+  },
+  {
+    client: 'Firmus',
+    roles: [
+      { role: 'Electrician',                       nt: 129.66, ot: 163.24, ph: 190.67 },
+      { role: 'Specialist / Site Supervisor',      nt: 139.93, ot: 172.90, ph: 207.52 },
+      { role: 'Trades Assistance / Apprentice',    nt: 104.93, ot: 117.49, ph: 132.03 }
+    ]
+  },
+  {
+    client: 'Hydro Tas (Umbrella Contract)',
+    roles: [
+      { role: 'Electrician',                       nt: 122.95, ot: 155.75, ph: 183.90 },
+      { role: 'Specialist / Site Supervisor',      nt: 133.45, ot: 168.70, ph: 199.20 },
+      { role: 'Trades Assistance / Apprentice',    nt:  98.45, ot: 124.45, ph: 146.95 },
+      { role: 'Project Manager',                   nt: 148.90, ot: 182.25, ph: 215.30 }
+    ]
+  },
+  {
+    client: 'Renison (Bluestone)',
+    roles: [
+      { role: 'Electrician',                       nt: 132.98, ot: 159.10, ph: 173.95 },
+      { role: 'Specialist / Site Supervisor',      nt: 142.33, ot: 168.35, ph: 197.65 },
+      { role: 'Trades Assistance / Apprentice',    nt: 113.64, ot: 129.06, ph: 128.00 },
+      { role: 'Project Manager',                   nt: 154.60, ot: 193.45, ph: 237.90 }
+    ]
+  },
+  {
+    client: 'Safegroup Automation',
+    roles: [
+      { role: 'Electrician',                       nt: 116.75, ot: 140.45, ph: 160.95 },
+      { role: 'Specialist / Site Supervisor',      nt: 123.35, ot: 148.35, ph: 182.45 },
+      { role: 'Trades Assistance / Apprentice',    nt:  95.50, ot: 109.80, ph: 123.90 },
+      { role: 'Project Manager',                   nt: 145.80, ot: 178.20, ph: 220.00 },
+      { role: 'HV Switching & Maintenance / Hazardous Area', nt: 141.75, ot: 175.00, ph: 214.50 }
+    ]
+  },
+  {
+    client: 'Sage',
+    roles: [
+      { role: 'Electrician',                       nt: 116.75, ot: 140.45, ph: 160.95 },
+      { role: 'Specialist / Site Supervisor',      nt: 123.35, ot: 148.35, ph: 182.45 },
+      { role: 'Trades Assistance / Apprentice',    nt:  95.50, ot: 109.80, ph: 123.90 },
+      { role: 'Project Manager',                   nt: 145.80, ot: 178.20, ph: 220.00 },
+      { role: 'HV Switching & Maintenance / Hazardous Area', nt: 141.75, ot: 175.00, ph: 214.50 }
+    ]
+  },
+  {
+    client: 'TasNetworks',
+    roles: [
+      { role: 'Electrician',                       nt: 123.16, ot: 156.74, ph: 184.17 },
+      { role: 'Specialist / Supervisor',           nt: 133.43, ot: 166.40, ph: 201.02 },
+      { role: 'Trades Assistance / Apprentice',    nt:  98.43, ot: 110.99, ph: 125.53 }
+    ]
+  },
+  {
+    client: 'TasPorts',
+    roles: [
+      { role: 'Electrician',                       nt: 136.37, ot: 154.50, ph: 169.05 },
+      { role: 'Specialist / Site Supervisor',      nt: 142.12, ot: 157.04, ph: 184.50 },
+      { role: 'Trades Assistance / Apprentice',    nt: 101.63, ot: 106.24, ph: 115.18 },
+      { role: 'Project Manager',                   nt: 143.79, ot: 175.76, ph: 198.59 }
+    ]
+  },
+  {
+    client: 'TasWater',
+    roles: [
+      { role: 'Electrician',                       nt: 116.75, ot: 140.45, ph: 160.95 },
+      { role: 'Specialist / Site Supervisor',      nt: 123.35, ot: 148.35, ph: 182.45 },
+      { role: 'Trades Assistance / Apprentice',    nt:  95.50, ot: 109.80, ph: 123.90 },
+      { role: 'Project Manager',                   nt: 145.80, ot: 178.20, ph: 220.00 },
+      { role: 'HV Switching & Maintenance / Hazardous Area', nt: 141.75, ot: 175.00, ph: 214.50 }
+    ]
+  }
+];
+
 // Pay code definitions. multiplier × hourlyRate = cost per hour;
 // × chargeRate for charge. Order matches the on-screen layout.
 const PAY_CODES = [
@@ -605,6 +724,51 @@ try {
   }
 } catch (e) {
   console.warn('Could not read cost-calc handoff from localStorage:', e);
+}
+
+//==============================================================
+// RENDER: Client preset dropdown — build optgroups from
+// CHARGE_RATE_PRESETS and wire up the change handler.
+//==============================================================
+
+function renderClientPresetDropdown() {
+  const sel = document.getElementById('client-preset');
+  if (!sel) return;
+  const html = ['<option value="">— Select Client / Role —</option>'];
+  CHARGE_RATE_PRESETS.forEach((preset, ci) => {
+    html.push('<optgroup label="' + preset.client + '">');
+    preset.roles.forEach((r, ri) => {
+      // Value encodes the preset path: clientIdx|roleIdx
+      html.push('<option value="' + ci + '|' + ri + '">' +
+        r.role + '  ($' + r.nt.toFixed(2) + ' / $' + r.ot.toFixed(2) + ' / $' + r.ph.toFixed(2) + ')</option>');
+    });
+    html.push('</optgroup>');
+  });
+  sel.innerHTML = html.join('');
+}
+
+function onClientPresetChange() {
+  const sel = document.getElementById('client-preset');
+  const applied = document.getElementById('preset-applied');
+  if (!sel.value) {
+    applied.style.display = 'none';
+    return;
+  }
+  const [ci, ri] = sel.value.split('|').map(s => parseInt(s, 10));
+  const preset = CHARGE_RATE_PRESETS[ci];
+  const role   = preset && preset.roles[ri];
+  if (!role) {
+    applied.style.display = 'none';
+    return;
+  }
+  document.getElementById('charge-rate-nt').value = role.nt.toFixed(2);
+  document.getElementById('charge-rate-ot').value = role.ot.toFixed(2);
+  document.getElementById('charge-rate-ph').value = role.ph.toFixed(2);
+  applied.style.display = 'block';
+  applied.innerHTML = '<strong>Loaded:</strong> ' + preset.client + ' &mdash; ' + role.role +
+    '. NT $' + role.nt.toFixed(2) + ' &middot; OT $' + role.ot.toFixed(2) + ' &middot; PH $' + role.ph.toFixed(2) +
+    '. Edit any field below if needed.';
+  recalc();
 }
 
 //==============================================================
@@ -955,6 +1119,28 @@ function onGradeChange() {
   }
   recalc();
 }
+// User manually edited a Charge Rate field: clear the preset dropdown and
+// hide the "Loaded: …" note so the UI isn't claiming the rates match a
+// preset when they don't.
+function onChargeRateEdit() {
+  const sel = document.getElementById('client-preset');
+  const applied = document.getElementById('preset-applied');
+  if (sel && sel.value) {
+    const [ci, ri] = sel.value.split('|').map(s => parseInt(s, 10));
+    const role = CHARGE_RATE_PRESETS[ci] && CHARGE_RATE_PRESETS[ci].roles[ri];
+    if (role) {
+      const nt = parseFloat(document.getElementById('charge-rate-nt').value) || 0;
+      const ot = parseFloat(document.getElementById('charge-rate-ot').value) || 0;
+      const ph = parseFloat(document.getElementById('charge-rate-ph').value) || 0;
+      // If the user's typed values no longer match the preset, blank the dropdown.
+      if (Math.abs(nt - role.nt) > 0.005 || Math.abs(ot - role.ot) > 0.005 || Math.abs(ph - role.ph) > 0.005) {
+        sel.value = '';
+        if (applied) applied.style.display = 'none';
+      }
+    }
+  }
+  recalc();
+}
 function onHourlyRateInput() {
   // If the user types a custom value, blank the Grade dropdown so it's
   // clear the rate isn't tied to a grade anymore. Avoids the misleading
@@ -1142,6 +1328,7 @@ function resetAll() {
 //==============================================================
 // Init
 //==============================================================
+renderClientPresetDropdown();
 renderPulledData();
 renderPayCodes();
 renderAllowances();
