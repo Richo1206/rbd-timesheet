@@ -25,7 +25,8 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
 <title>RBD Daily Labour Cost Calculator</title>
-<link rel="icon" href="data:,">
+<link rel="icon" type="image/x-icon" href="favicon.ico">
+<link rel="apple-touch-icon" href="favicon.ico">
 <style>
   * { box-sizing: border-box; }
   body {
@@ -342,10 +343,10 @@
         <!-- populated by JS -->
       </table>
       <div style="margin-top:18px;">
-        <h3>Load Charge Rates &mdash; Client / Site</h3>
+        <h3>Load Charge Rates for Client / Site</h3>
         <p style="font-size:11.5px; color:#6b7c8d; margin:0 0 8px;">Pick a client &amp; role to pre-fill the three Charge Rate fields on the right. Values stay editable once loaded.</p>
         <select id="client-preset" style="width:100%; padding:10px 12px; border:1.5px solid #d2dce6; border-radius:8px; font-size:13.5px; background:#f8fafc; color:#1a1a1a; font-family:inherit;" onchange="onClientPresetChange()">
-          <option value="">&mdash; Select Client / Role &mdash;</option>
+          <option value="">Select Client / Role</option>
           <!-- populated by JS -->
         </select>
         <div id="preset-applied" style="display:none; margin-top:8px; padding:8px 12px; background:#e8f5e9; border-left:3px solid #1e7a3a; border-radius:6px; font-size:11.5px; color:#1e5a2a;"></div>
@@ -356,7 +357,7 @@
       <div class="input-grp">
         <label for="grade-select">Grade / Year (EA 2025, Full Time)</label>
         <select id="grade-select" onchange="onGradeChange()">
-          <option value="">&mdash; Select &mdash;</option>
+          <option value="">Select</option>
           <optgroup label="Electrical Workers">
             <option value="32.43">Grade 1 ($32.43)</option>
             <option value="34.00">Grade 2 ($34.00)</option>
@@ -390,24 +391,24 @@
         </select>
       </div>
       <div class="input-grp">
-        <label for="hourly-rate">Hourly Rate (Cost) &mdash; manual override</label>
+        <label for="hourly-rate">Hourly Rate (Cost)</label>
         <input type="number" id="hourly-rate" step="0.01" min="0" placeholder="0.00" oninput="onHourlyRateInput()">
       </div>
       <div class="input-grp">
-        <label for="charge-rate-nt">Charge Rate &mdash; NT &amp; TT</label>
+        <label for="charge-rate-nt">Charge Rate - (Normal time)</label>
         <input type="number" id="charge-rate-nt" step="0.01" min="0" placeholder="0.00" oninput="onChargeRateEdit()">
       </div>
       <div class="input-grp">
-        <label for="charge-rate-ot">Charge Rate &mdash; Overtime (TH / DT / TT+ / DT+)</label>
+        <label for="charge-rate-ot">Charge Rate - Overtime</label>
         <input type="number" id="charge-rate-ot" step="0.01" min="0" placeholder="0.00" oninput="onChargeRateEdit()">
       </div>
       <div class="input-grp">
-        <label for="charge-rate-ph">Charge Rate &mdash; Public Holiday</label>
+        <label for="charge-rate-ph">Charge Rate - Public Holiday</label>
         <input type="number" id="charge-rate-ph" step="0.01" min="0" placeholder="0.00" oninput="onChargeRateEdit()">
       </div>
       <div class="input-grp" style="display:flex; align-items:center; gap:8px; background:#fff7d6; padding:8px 12px; border-radius:8px; border:1px solid #ffe4a1;">
         <input type="checkbox" id="is-ph" style="width:18px; height:18px; cursor:pointer;" onchange="recalc()">
-        <label for="is-ph" style="margin:0; text-transform:none; font-size:12.5px; cursor:pointer; color:#5e4d11; font-weight:600;">This is a Public Holiday day &mdash; all pay codes use the PH charge rate</label>
+        <label for="is-ph" style="margin:0; text-transform:none; font-size:12.5px; cursor:pointer; color:#5e4d11; font-weight:600;">This is a Public Holiday day. All pay codes use the PH charge rate.</label>
       </div>
       <div class="rate-display" id="rate-summary">
         Select a Grade or enter rates manually to begin.
@@ -437,7 +438,7 @@
     </tbody>
     <tfoot>
       <tr>
-        <td colspan="4">Subtotal &mdash; Pay Codes</td>
+        <td colspan="4">Subtotal: Pay Codes</td>
         <td class="money-cell" id="paycodes-cost-total">$0.00</td>
         <td class="money-cell" id="paycodes-charge-total">$0.00</td>
       </tr>
@@ -467,7 +468,7 @@
     </tbody>
     <tfoot>
       <tr>
-        <td colspan="5">Subtotal &mdash; Allowances</td>
+        <td colspan="5">Subtotal: Allowances</td>
         <td class="money-cell" id="allowances-cost-total">$0.00</td>
         <td class="money-cell" id="allowances-charge-total">$0.00</td>
       </tr>
@@ -488,9 +489,9 @@
     <div class="row-margin-headline">Margin</div>
     <div class="row-margin-headline" id="total-margin">$0.00</div>
     <div class="row-pct">&nbsp;&nbsp;Margin % of Revenue (Charge)</div>
-    <div class="row-pct-value" id="margin-pct-rev">&mdash;</div>
+    <div class="row-pct-value" id="margin-pct-rev">n/a</div>
     <div class="row-pct">&nbsp;&nbsp;Margin % over Cost (Markup)</div>
-    <div class="row-pct-value" id="margin-pct-cost">&mdash;</div>
+    <div class="row-pct-value" id="margin-pct-cost">n/a</div>
   </div>
   <div class="breakdown-card">
     <div class="bd-row" style="font-weight:700; border-bottom:1px solid #d2dce6; margin-bottom:4px; padding-bottom:6px;">
@@ -511,6 +512,9 @@
     <button class="primary" onclick="copySummary()">Copy Summary to Clipboard</button>
     <button onclick="downloadSummary()">Download as Text File</button>
     <button class="reset-btn" onclick="resetAll()">Reset All Values</button>
+  </div>
+  <div style="margin-top: 18px; padding: 12px 14px; background: #f8fafc; border-left: 3px solid #6b7c8d; border-radius: 8px; font-size: 11.5px; color: #475568; line-height: 1.55;">
+    <strong style="color:#003366;">Note:</strong> The figures above are direct labour cost vs charge only. The <strong>Cost</strong> column does NOT include payroll on-costs (workers compensation, superannuation, payroll tax), insurances, vehicle running costs, plant &amp; tools, training, PPE, supervision overhead, office &amp; back-of-house overhead, or any other indirect costs. Once those are factored in, the real margin is materially lower than this calculator suggests.
   </div>
 </section>
 
@@ -734,7 +738,7 @@ try {
 function renderClientPresetDropdown() {
   const sel = document.getElementById('client-preset');
   if (!sel) return;
-  const html = ['<option value="">— Select Client / Role —</option>'];
+  const html = ['<option value="">Select Client / Role</option>'];
   CHARGE_RATE_PRESETS.forEach((preset, ci) => {
     html.push('<optgroup label="' + preset.client + '">');
     preset.roles.forEach((r, ri) => {
@@ -765,7 +769,7 @@ function onClientPresetChange() {
   document.getElementById('charge-rate-ot').value = role.ot.toFixed(2);
   document.getElementById('charge-rate-ph').value = role.ph.toFixed(2);
   applied.style.display = 'block';
-  applied.innerHTML = '<strong>Loaded:</strong> ' + preset.client + ' &mdash; ' + role.role +
+  applied.innerHTML = '<strong>Loaded:</strong> ' + preset.client + ' (' + role.role + ')' +
     '. NT $' + role.nt.toFixed(2) + ' &middot; OT $' + role.ot.toFixed(2) + ' &middot; PH $' + role.ph.toFixed(2) +
     '. Edit any field below if needed.';
   recalc();
@@ -778,7 +782,7 @@ function onClientPresetChange() {
 function renderPulledData() {
   const t = document.getElementById('pulled-table');
   if (!HANDOFF) {
-    t.innerHTML = '<tr><td colspan="2" class="info-empty">No handoff data &mdash; open this page from the Timesheet Calculator to auto-fill, or enter values manually below.</td></tr>';
+    t.innerHTML = '<tr><td colspan="2" class="info-empty">No handoff data. Open this page from the Timesheet Calculator to auto-fill, or enter values manually below.</td></tr>';
     return;
   }
   const c = HANDOFF.calculator || {};
@@ -797,10 +801,10 @@ function renderPulledData() {
   }
   if (c.rosteredShift) {
     let label = 'Yes';
-    if (c.shiftClassification === 'afternoon')      label += ' &mdash; Afternoon (+15%)';
-    else if (c.shiftClassification === 'night')     label += ' &mdash; Night (+30%)';
-    else if (c.shiftClassification === 'suppressed') label += ' &mdash; suppressed (penalty/OT day)';
-    else if (c.shiftClassification === 'none')      label += ' &mdash; no loading (finish in day window)';
+    if (c.shiftClassification === 'afternoon')      label += ' (Afternoon +15%)';
+    else if (c.shiftClassification === 'night')     label += ' (Night +30%)';
+    else if (c.shiftClassification === 'suppressed') label += ' (suppressed: penalty/OT day)';
+    else if (c.shiftClassification === 'none')      label += ' (no loading: finish in day window)';
     rows.push(['Rostered Shift', label]);
   }
   if (c.callout)        rows.push(['Callout', 'Yes']);
@@ -1016,7 +1020,7 @@ function recalc() {
       : '';
     summary.innerHTML =
       'Cost: <strong>$' + hourlyRate.toFixed(2) + '/hr</strong>' + phNote +
-      '<br>Charge &mdash; NT/TT: <strong>$' + chargeNT.toFixed(2) + '/hr</strong>' +
+      '<br>Charge - Normal time: <strong>$' + chargeNT.toFixed(2) + '/hr</strong>' +
       ' &nbsp;|&nbsp; OT: <strong>$' + chargeOT.toFixed(2) + '/hr</strong>' +
       ' &nbsp;|&nbsp; PH: <strong>$' + chargePH.toFixed(2) + '/hr</strong>' +
       '<br>TAT (live, 25% of cost rate): <strong>$' + (hourlyRate * 0.25).toFixed(2) + '/day</strong>';
@@ -1073,13 +1077,13 @@ function recalc() {
   if (totalCharge > 0) {
     document.getElementById('margin-pct-rev').textContent = ((margin / totalCharge) * 100).toFixed(1) + '%';
   } else {
-    document.getElementById('margin-pct-rev').textContent = '—';
+    document.getElementById('margin-pct-rev').textContent = 'n/a';
   }
   // Margin % over cost (margin / cost): "markup" — alternative framing
   if (totalCost > 0) {
     document.getElementById('margin-pct-cost').textContent = ((margin / totalCost) * 100).toFixed(1) + '%';
   } else {
-    document.getElementById('margin-pct-cost').textContent = '—';
+    document.getElementById('margin-pct-cost').textContent = 'n/a';
   }
   // Breakdown card
   document.getElementById('bd-paycodes-cost').textContent   = '$' + payCodesCost.toFixed(2);
@@ -1202,7 +1206,7 @@ function buildSummaryText() {
   lines.push('  Charge Rate (NT / TT):    $' + (last.chargeNT || 0).toFixed(2) + '/hr');
   lines.push('  Charge Rate (OT):         $' + (last.chargeOT || 0).toFixed(2) + '/hr');
   lines.push('  Charge Rate (PH):         $' + (last.chargePH || 0).toFixed(2) + '/hr');
-  if (last.isPH) lines.push('  *** PUBLIC HOLIDAY active — all pay codes charged at PH rate ***');
+  if (last.isPH) lines.push('  *** PUBLIC HOLIDAY active. All pay codes charged at PH rate. ***');
   lines.push('  TAT (live, 25% of cost):  $' + ((last.hourlyRate || 0) * 0.25).toFixed(2) + '/day');
   lines.push('');
   // Pay codes
@@ -1261,6 +1265,12 @@ function buildSummaryText() {
   lines.push('    Margin % over Cost:     ' + (last.marginPctCost || 0).toFixed(1) + '%');
   lines.push('');
   lines.push('---');
+  lines.push('NOTE: Cost above is direct labour only. It EXCLUDES payroll on-costs');
+  lines.push('(workers comp, super, payroll tax), insurances, vehicle running costs,');
+  lines.push('plant & tools, training, PPE, supervision overhead, and back-of-house');
+  lines.push('overhead. The real margin after on-costs and overhead is materially');
+  lines.push('lower than this calculator shows.');
+  lines.push('');
   lines.push('Cost calc is a guide only. Refer to AroFlo for final rates and the RBD');
   lines.push('Enterprise Agreement 2025 / Handbook Rev 8.0 for definitive entitlements.');
   return lines.join('\n');
