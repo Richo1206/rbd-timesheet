@@ -497,47 +497,11 @@
      ============================================================ -->
 <section>
   <h2>4. Totals</h2>
-  <div class="breakdown-card" style="margin-top: 0;">
-    <div class="bd-row" style="font-weight:700; border-bottom:1px solid #d2dce6; margin-bottom:4px; padding-bottom:6px;">
-      <span>Breakdown</span><span>Cost</span><span>Charge</span>
-    </div>
-    <div class="bd-row">
-      <span>Pay Codes (Section 2)</span>
-      <span id="bd-paycodes-cost">$0.00</span>
-      <span id="bd-paycodes-charge">$0.00</span>
-    </div>
-    <div class="bd-row">
-      <span>Allowances (Section 3)</span>
-      <span id="bd-allowances-cost">$0.00</span>
-      <span id="bd-allowances-charge">$0.00</span>
-    </div>
-  </div>
-  <div class="totals-grid" style="margin-top: 16px;">
-    <div class="row-headline">Total Cost to RBD</div>
-    <div class="row-headline" id="total-cost">$0.00</div>
-    <div class="row-headline">Total Charge to Customer</div>
-    <div class="row-headline" id="total-charge">$0.00</div>
-    <div class="row-margin-headline">Margin</div>
-    <div class="row-margin-headline" id="total-margin">$0.00</div>
-  </div>
-  <div style="margin-top: 14px; padding: 12px 14px; background: #f8fafc; border-left: 3px solid #6b7c8d; border-radius: 8px; font-size: 11.5px; color: #475568; line-height: 1.55;">
-    <strong style="color:#003366;">Note:</strong> The figures above are direct labour cost vs charge only. The <strong>Cost</strong> column does NOT include payroll on-costs (workers compensation, superannuation, payroll tax), insurances, vehicle running costs, plant &amp; tools, training, PPE, supervision overhead, office &amp; back-of-house overhead, or any other indirect costs. Section 5 below layers an estimated overhead rate plus payroll on-costs on top to give a closer-to-real figure.
-  </div>
-  <!-- Section 4 action buttons removed: they live in Section 5 now so the
-       PM exports after seeing the True Margin, not just the Direct Margin. -->
-</section>
-
-<!-- ============================================================
-     SECTION 5: ON-COSTS (payroll on-costs only)
-     ============================================================ -->
-<section>
-  <h2>5. Payroll On-Costs</h2>
-  <p style="margin: 0 0 14px; font-size: 12px; color: #475568; line-height: 1.55;">
-    Layers super, workers comp, and payroll tax on top of the direct cost.
-    Still excludes vehicle/plant/PPE/training/back-of-house overhead, but gets closer to the
-    real cost-to-RBD figure. All three percentages are editable.
-  </p>
-  <div class="info-grid" style="margin-bottom: 14px;">
+  <!-- On-cost rate inputs sit at the top of Section 4 because they drive
+       the four on-cost lines in the breakdown below. All four are
+       editable; defaults reflect Tasmania at current SG / payroll tax tiers
+       plus an estimated $35/hr overhead. -->
+  <div class="info-grid" style="margin-bottom: 16px;">
     <div class="input-grp" style="margin: 0;">
       <label for="oncost-super">Superannuation %</label>
       <input type="number" id="oncost-super" step="0.1" min="0" value="12" oninput="recalc()">
@@ -563,48 +527,58 @@
       <label for="oncost-overhead">Overhead Rate ($/hr)</label>
       <input type="number" id="oncost-overhead" step="0.01" min="0" value="35" oninput="recalc()">
       <div style="font-size: 11px; color: #6b7c8d; margin-top: 4px; line-height: 1.4;">
-        Flat $ per NT hour. Covers vehicle, plant, PPE, training, supervision, office overhead etc. Adjust per the latest costing model.
+        Flat $ per NT hour. Covers vehicle, plant, insurances, PPE, training, supervision, office overhead etc. Adjust per the latest costing model. (current model set as default)
       </div>
     </div>
   </div>
+  <!-- Single combined breakdown: direct costs (pay codes + allowances) plus
+       the four on-cost lines (super, WC, PT, overhead). One subtotal, one
+       Total Cost in the totals grid below. -->
   <div class="breakdown-card" style="margin-top: 0;">
     <div class="bd-row" style="font-weight:700; border-bottom:1px solid #d2dce6; margin-bottom:4px; padding-bottom:6px;">
-      <span>On-Cost</span><span>Base</span><span>Cost</span>
+      <span>Breakdown</span><span>Cost</span><span>Charge</span>
+    </div>
+    <div class="bd-row">
+      <span>Pay Codes (Section 2)</span>
+      <span id="bd-paycodes-cost">$0.00</span>
+      <span id="bd-paycodes-charge">$0.00</span>
+    </div>
+    <div class="bd-row">
+      <span>Allowances (Section 3)</span>
+      <span id="bd-allowances-cost">$0.00</span>
+      <span id="bd-allowances-charge">$0.00</span>
     </div>
     <div class="bd-row">
       <span>Super (<span id="oncost-super-display">12.0%</span>)</span>
-      <span id="oncost-super-base">$0.00</span>
       <span id="oncost-super-cost">$0.00</span>
+      <span></span>
     </div>
     <div class="bd-row">
       <span>Workers Comp (<span id="oncost-wc-display">2.30%</span>)</span>
-      <span id="oncost-wc-base">$0.00</span>
       <span id="oncost-wc-cost">$0.00</span>
+      <span></span>
     </div>
     <div class="bd-row">
       <span>Payroll Tax (<span id="oncost-pt-display">6.1%</span>)</span>
-      <span id="oncost-pt-base">$0.00</span>
       <span id="oncost-pt-cost">$0.00</span>
+      <span></span>
     </div>
     <div class="bd-row">
       <span>Overhead (<span id="oncost-overhead-display">$35.00/hr</span>)</span>
-      <span id="oncost-overhead-base">0.00 hrs NT</span>
       <span id="oncost-overhead-cost">$0.00</span>
-    </div>
-    <div class="bd-row" style="border-top:1px solid #d2dce6; padding-top:6px; margin-top:4px; font-weight:700;">
-      <span>Subtotal On-Costs</span>
       <span></span>
-      <span id="oncost-subtotal">$0.00</span>
     </div>
   </div>
   <div class="totals-grid" style="margin-top: 16px;">
-    <div class="row-headline">True Total Cost to RBD</div>
-    <div class="row-headline" id="true-total-cost">$0.00</div>
-    <div class="row-margin-headline">True Margin (after on-costs)</div>
-    <div class="row-margin-headline" id="true-margin">$0.00</div>
+    <div class="row-headline">Total Cost to RBD</div>
+    <div class="row-headline" id="total-cost">$0.00</div>
+    <div class="row-headline">Total Charge to Customer</div>
+    <div class="row-headline" id="total-charge">$0.00</div>
+    <div class="row-margin-headline">Margin</div>
+    <div class="row-margin-headline" id="total-margin">$0.00</div>
   </div>
   <div style="margin-top: 14px; padding: 12px 14px; background: #f8fafc; border-left: 3px solid #6b7c8d; border-radius: 8px; font-size: 11.5px; color: #475568; line-height: 1.55;">
-    <strong style="color:#003366;">Note:</strong> The Overhead Rate is an estimate only and not a true reflection of RBD's actual per-worker overhead. Adjust the $/hr above per the latest internal costing model. The True Margin shown is indicative.
+    <strong style="color:#003366;">Note:</strong> The Overhead Rate is a working estimate, not RBD's actual per-worker overhead. Other indirect costs (e.g. uninvoiced rework, finance, professional fees) sit outside the model entirely. The Margin shown is indicative and should be sanity-checked against the latest internal costing model before being relied on for pricing decisions.
   </div>
   <div class="actions">
     <button class="primary" onclick="copySummary()">Copy Summary to Clipboard</button>
@@ -1208,13 +1182,10 @@ function recalc() {
   document.getElementById('allowances-cost-total').textContent   = '$' + allowCost.toFixed(2);
   document.getElementById('allowances-charge-total').textContent = '$' + allowCharge.toFixed(2);
 
-  // Totals
-  const totalCost   = payCodesCost + allowCost;
+  // Direct totals (pay + allowances). Final "Total Cost to RBD" further
+  // below adds the on-costs + overhead so it reflects the all-in figure.
+  const directCost  = payCodesCost + allowCost;
   const totalCharge = payCodesCharge + allowCharge;
-  const margin      = totalCharge - totalCost;
-  document.getElementById('total-cost').textContent   = '$' + totalCost.toFixed(2);
-  document.getElementById('total-charge').textContent = '$' + totalCharge.toFixed(2);
-  document.getElementById('total-margin').textContent = '$' + margin.toFixed(2);
 
   // ----------------------------------------------------------
   // On-costs (Section 5):
@@ -1278,23 +1249,22 @@ function recalc() {
   const ptCost       = taxBase   * ptPct    / 100;
   const overheadCost = ntHoursForOverhead * overheadRate;
   const onCostSubtotal = superCost + wcCost + ptCost + overheadCost;
-  const trueTotalCost  = totalCost + onCostSubtotal;
-  const trueMargin     = totalCharge - trueTotalCost;
+  // Single combined Total Cost = direct labour + on-costs + overhead.
+  // Margin is calc'd off this so there's only one figure to report.
+  const totalCost = directCost + onCostSubtotal;
+  const margin    = totalCharge - totalCost;
   document.getElementById('oncost-super-display').textContent    = superPct.toFixed(1) + '%';
   document.getElementById('oncost-wc-display').textContent       = wcPct.toFixed(2) + '%';
   document.getElementById('oncost-pt-display').textContent       = ptPct.toFixed(1) + '%';
   document.getElementById('oncost-overhead-display').textContent = '$' + overheadRate.toFixed(2) + '/hr';
-  document.getElementById('oncost-super-base').textContent    = '$' + superBase.toFixed(2);
-  document.getElementById('oncost-wc-base').textContent       = '$' + taxBase.toFixed(2);
-  document.getElementById('oncost-pt-base').textContent       = '$' + taxBase.toFixed(2);
-  document.getElementById('oncost-overhead-base').textContent = ntHoursForOverhead.toFixed(2) + ' hrs NT';
   document.getElementById('oncost-super-cost').textContent    = '$' + superCost.toFixed(2);
   document.getElementById('oncost-wc-cost').textContent       = '$' + wcCost.toFixed(2);
   document.getElementById('oncost-pt-cost').textContent       = '$' + ptCost.toFixed(2);
   document.getElementById('oncost-overhead-cost').textContent = '$' + overheadCost.toFixed(2);
-  document.getElementById('oncost-subtotal').textContent      = '$' + onCostSubtotal.toFixed(2);
-  document.getElementById('true-total-cost').textContent      = '$' + trueTotalCost.toFixed(2);
-  document.getElementById('true-margin').textContent          = '$' + trueMargin.toFixed(2);
+  // Total Cost / Charge / Margin (single combined figure)
+  document.getElementById('total-cost').textContent   = '$' + totalCost.toFixed(2);
+  document.getElementById('total-charge').textContent = '$' + totalCharge.toFixed(2);
+  document.getElementById('total-margin').textContent = '$' + margin.toFixed(2);
   // Breakdown card
   document.getElementById('bd-paycodes-cost').textContent   = '$' + payCodesCost.toFixed(2);
   document.getElementById('bd-paycodes-charge').textContent = '$' + payCodesCharge.toFixed(2);
@@ -1312,12 +1282,15 @@ function recalc() {
     payCodesCharge: payCodesCharge,
     allowCost: allowCost,
     allowCharge: allowCharge,
+    // Direct cost = pay codes + allowances (no on-costs). Kept for the
+    // summary export breakdown so reviewers can see direct vs all-in.
+    directCost: directCost,
+    // Total cost = direct + on-costs + overhead (the figure shown in the
+    // single Total Cost row of the UI).
     totalCost: totalCost,
     totalCharge: totalCharge,
     margin: margin,
-    marginPctRev:  totalCharge > 0 ? (margin / totalCharge) * 100 : 0,
-    marginPctCost: totalCost   > 0 ? (margin / totalCost)   * 100 : 0,
-    // On-costs
+    // On-cost components
     superPct: superPct,
     wcPct: wcPct,
     ptPct: ptPct,
@@ -1329,9 +1302,7 @@ function recalc() {
     wcCost: wcCost,
     ptCost: ptCost,
     overheadCost: overheadCost,
-    onCostSubtotal: onCostSubtotal,
-    trueTotalCost: trueTotalCost,
-    trueMargin: trueMargin
+    onCostSubtotal: onCostSubtotal
   };
 }
 
@@ -1489,29 +1460,27 @@ function buildSummaryText() {
   lines.push('  ' + '-'.repeat(50));
   lines.push('  Subtotal' + ' '.repeat(38) + '   $' + (last.allowCost || 0).toFixed(2).padStart(8) + '   $' + (last.allowCharge || 0).toFixed(2).padStart(8));
   lines.push('');
-  // Totals
-  hr(); lines.push('TOTALS'); hr();
-  lines.push('  Total Cost to RBD:        $' + (last.totalCost || 0).toFixed(2).padStart(10));
-  lines.push('  Total Charge to Customer: $' + (last.totalCharge || 0).toFixed(2).padStart(10));
-  lines.push('  Margin (direct):          $' + (last.margin || 0).toFixed(2).padStart(10));
-  lines.push('');
-  // On-costs
-  hr(); lines.push('PAYROLL ON-COSTS + OVERHEAD'); hr();
+  // Cost breakdown (direct + on-costs + overhead)
+  hr(); lines.push('COST BREAKDOWN'); hr();
+  lines.push('  Pay Codes (direct):                          $' + (last.payCodesCost || 0).toFixed(2).padStart(10));
+  lines.push('  Allowances (direct):                         $' + (last.allowCost    || 0).toFixed(2).padStart(10));
   lines.push('  Super     (' + (last.superPct || 0).toFixed(1) + '% × $' + (last.superBase || 0).toFixed(2) + ' OTE base): $' + (last.superCost || 0).toFixed(2).padStart(10));
-  lines.push('  WComp     (' + (last.wcPct    || 0).toFixed(2) + '% × $' + (last.taxBase   || 0).toFixed(2) + ' wage base): $' + (last.wcCost   || 0).toFixed(2).padStart(10));
-  lines.push('  PT        (' + (last.ptPct    || 0).toFixed(1) + '% × $' + (last.taxBase   || 0).toFixed(2) + ' wage base): $' + (last.ptCost   || 0).toFixed(2).padStart(10));
-  lines.push('  Overhead  ($' + (last.overheadRate || 0).toFixed(2) + '/hr × ' + (last.ntHoursForOverhead || 0).toFixed(2) + ' hrs NT, estimated): $' + (last.overheadCost || 0).toFixed(2).padStart(10));
-  lines.push('  Subtotal on-costs + overhead:               $' + (last.onCostSubtotal || 0).toFixed(2).padStart(10));
+  lines.push('  WComp     (' + (last.wcPct    || 0).toFixed(2) + '% × $' + (last.taxBase   || 0).toFixed(2) + ' wage base):$' + (last.wcCost   || 0).toFixed(2).padStart(10));
+  lines.push('  PT        (' + (last.ptPct    || 0).toFixed(1) + '% × $' + (last.taxBase   || 0).toFixed(2) + ' wage base):$' + (last.ptCost   || 0).toFixed(2).padStart(10));
+  lines.push('  Overhead  ($' + (last.overheadRate || 0).toFixed(2) + '/hr × ' + (last.ntHoursForOverhead || 0).toFixed(2) + ' hrs NT, estimate):$' + (last.overheadCost || 0).toFixed(2).padStart(10));
   lines.push('');
-  lines.push('  TRUE Total Cost (incl on-costs):         $' + (last.trueTotalCost || 0).toFixed(2).padStart(10));
-  lines.push('  TRUE Margin (after on-costs):            $' + (last.trueMargin    || 0).toFixed(2).padStart(10));
+  // Totals (single combined Total Cost incl on-costs + overhead)
+  hr(); lines.push('TOTALS'); hr();
+  lines.push('  Total Cost to RBD:        $' + (last.totalCost   || 0).toFixed(2).padStart(10));
+  lines.push('  Total Charge to Customer: $' + (last.totalCharge || 0).toFixed(2).padStart(10));
+  lines.push('  Margin:                   $' + (last.margin      || 0).toFixed(2).padStart(10));
   lines.push('');
   lines.push('---');
-  lines.push('NOTE: Cost above is direct labour only. It EXCLUDES payroll on-costs');
-  lines.push('(workers comp, super, payroll tax), insurances, vehicle running costs,');
-  lines.push('plant & tools, training, PPE, supervision overhead, and back-of-house');
-  lines.push('overhead. The real margin after on-costs and overhead is materially');
-  lines.push('lower than this calculator shows.');
+  lines.push('NOTE: Total Cost above includes payroll on-costs (super, workers comp,');
+  lines.push('payroll tax) and an estimated overhead rate. The Overhead Rate is a');
+  lines.push('working estimate, not RBD\'s actual per-worker overhead. Other indirect');
+  lines.push('costs (e.g. uninvoiced rework, finance, professional fees) sit outside');
+  lines.push('the model. Margin shown is indicative.');
   lines.push('');
   lines.push('Cost calc is a guide only. Refer to AroFlo for final rates and the RBD');
   lines.push('Enterprise Agreement 2025 / Handbook Rev 8.0 for definitive entitlements.');
