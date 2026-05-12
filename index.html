@@ -666,7 +666,7 @@
      from Production build alongside Email Explanation. Button styled
      differently (navy outline) so it visually separates from the
      worker-facing actions above. -->
-  <button id="costCalcBtn" class="no-print" style="width:100%; margin-top:6px; padding:11px; background:white; color:#003366; border:1.5px solid #003366; border-radius:10px; font-weight:700; cursor:pointer; font-size:13px; transition:transform 0.1s, background 0.15s;" onclick="this.style.transform='scale(0.98)'; setTimeout(()=>this.style.transform='',100); openCostCalculator()">Cost Calculator</button>
+  <button id="costCalcBtn" class="no-print" style="width:100%; margin-top:6px; padding:11px; background:white; color:#003366; border:1.5px solid #003366; border-radius:10px; font-weight:700; cursor:pointer; font-size:13px; transition:transform 0.1s, background 0.15s;" onclick="this.style.transform='scale(0.98)'; setTimeout(()=>this.style.transform='',100); openCostCalculator()">Daily Labour Cost Calculator</button>
   <!--@GH_ONLY_END-->
   <!-- Explanation panel: hidden by default. Built dynamically by
      generateExplanation() and shown when "Explain Results" is tapped.
@@ -2707,8 +2707,8 @@
       localStorage.setItem('rbd_cost_calc_handoff', JSON.stringify(handoff));
     } catch (e) {
       console.warn('Could not write cost-calc handoff to localStorage:', e);
-      alert('Could not pass current calculator state to the Cost Calculator. ' +
-            'Opening it anyway — you may need to enter values manually.');
+      alert('Could not pass current calculator state to the Daily Labour Cost Calculator. ' +
+            'Opening it anyway, you may need to enter values manually.');
     }
     // Open in a new tab. Relative path works on both GitHub Pages
     // deployment and any future hosting that places the two HTMLs in
