@@ -509,7 +509,7 @@
           <li>Finish after midnight and at or before 8am → <strong>Night shift</strong> → +30% loading on NT hours</li>
           <li>Finish 8:01am to 6pm → not a shift; no loading</li>
         </ul>
-        The loading attaches to <strong>NT (ordinary) hours only</strong>: Cl 62.2.b prevents OT/weekend/PH rates from stacking with the shift premium. The matching Extra Allowance row auto-ticks; the other is cleared. On weekend / Public Holiday / RDO / Callout days the toggle goes inert (penalty rates already substitute for the loading). One-off shifts &lt;5 consecutive days fall under Cl 56.2.d casual rates (T+½ first 2h, T×2 after): not auto-calculated; escalate to payroll if applicable. The finish time used for classification is <em>Left Site</em> in Finish Site mode, or <em>Arrived at Workshop/Accom</em> in Finish Workshop mode (Cl 56 keys off when ordinary work ends, not when the worker arrives home).</li>
+        The loading attaches to <strong>NT (ordinary) hours only</strong>: Cl 62.2.b prevents OT/weekend/PH rates from stacking with the shift premium. The matching Extra Allowance row auto-ticks; the other is cleared. On weekend / Public Holiday / RDO / Callout days the toggle goes inert (penalty rates already substitute for the loading). <strong>Shift length:</strong> per Cl 56.1.a the roster defines ordinary hours, so a 10-12 hour rostered shift is all NT (no auto-OT past 8h) and the loading applies to the full rostered span. OT only fires if the worker stays past their rostered finish, which the worker can capture manually. One-off shifts &lt;5 consecutive days fall under Cl 56.2.d casual rates (T+½ first 2h, T×2 after): not auto-calculated; escalate to payroll if applicable. The finish time used for classification is <em>Left Site</em> in Finish Site mode, or <em>Arrived at Workshop/Accom</em> in Finish Workshop mode (Cl 56 keys off when ordinary work ends, not when the worker arrives home).</li>
       <li><strong>Scheduled (24h+ notice)</strong>. When working a weekend/PH/RDO that was planned 24h+ in advance, minimum drops from 4h to 2h (Cl 62.3.b).</li>
     </ul>
     <strong>Key EA rules:</strong>
@@ -1405,23 +1405,30 @@
     // SHIFT WORK OVERRIDE (Cl 56.2.a + Cl 56.1 rosters).
     // When the Shift toggle is on and the auto-classifier confirms a valid
     // afternoon/night shift, the worker is rostered for ordinary hours
-    // OUTSIDE the standard 6am-6pm day window. Cl 56.1.a says shift rosters
-    // "shall specify the commencing and finishing times of ordinary working
-    // hours of the respective shifts". So the 6am-6pm clock-window OT calc
-    // doesn't apply: every rostered hour is ordinary time. The 8-hour NT
-    // cap still applies, so a 12-hour night shift still gets 8h NT + 4h OT.
-    if (flags.Shift && typeof classifyShift === 'function') {
-      const _shiftClsForOT = classifyShift();
-      if (_shiftClsForOT === 'afternoon' || _shiftClsForOT === 'night') {
-        outsideOrdinaryGross = 0;
-      }
+    // and the roster defines those hours per Cl 56.1.a:
+    //  "Shift rosters shall specify the commencing and finishing times of
+    //   ordinary working hours of the respective shifts."
+    // Two consequences for the calc:
+    //  1. The standard 6am-6pm ordinary-hours window doesn't apply (a
+    //     rostered shift naturally falls outside it).
+    //  2. The 8-hour daily NT cap doesn't apply either: typical RBD
+    //     shut-down shifts run 10-12h, all of it is ordinary time per
+    //     the roster definition, so we treat the full span as NT.
+    // OT only kicks in if the worker actually works PAST the rostered
+    // finish (rare; if it happens the worker can manually adjust hours).
+    const _onValidShift = flags.Shift && typeof classifyShift === 'function'
+      && (classifyShift() === 'afternoon' || classifyShift() === 'night');
+    let ntCapMins = 480;
+    if (_onValidShift) {
+      outsideOrdinaryGross = 0;
+      ntCapMins = Infinity;
     }
     // Apply meal ratio so we're working with net minutes
     let outsideOT = roundTo15(Math.round(outsideOrdinaryGross * mealRatio));
     // Within-window work (net)
     let withinWindowNet = Math.max(0, netWorkMins - outsideOT);
-    let withinNT = Math.min(480, withinWindowNet);
-    let withinOT = Math.max(0, withinWindowNet - 480);
+    let withinNT = Math.min(ntCapMins, withinWindowNet);
+    let withinOT = Math.max(0, withinWindowNet - ntCapMins);
     // Total overtime from work hours
     let totalWorkOT = outsideOT + withinOT;
     // NT top-up from travel pools (only TT, not TT+)
@@ -2417,10 +2424,15 @@
         lines.push('  ' + pad('Loading hours:', 22) + _shNT.toFixed(2) + ' hrs (matches NT hours from the timesheet above)');
         lines.push('  ' + pad('AroFlo entry:', 22) + 'Expenses section, "Afternoon Shift Allowance 15% / Per hour"');
         lines.push('');
-        lines.push('  Why it isn\'t paid on OT hours: Cl 62.2.b says OT rates "will be');
-        lines.push('  in substitution for, and not cumulative upon, the shift premiums".');
-        lines.push('  In plain English: if a hour is already paid at the OT rate, the');
-        lines.push('  15% shift loading does not stack on top.');
+        lines.push('  Note on shift length: per Cl 56.1.a the roster defines ordinary');
+        lines.push('  hours, so a 10-12 hour rostered shift is all NT (no auto-OT past');
+        lines.push('  8h). Loading applies to the FULL rostered span. OT only kicks in');
+        lines.push('  if the worker stays past their rostered finish time.');
+        lines.push('');
+        lines.push('  Why loading isn\'t paid on OT hours: Cl 62.2.b says OT rates "will');
+        lines.push('  be in substitution for, and not cumulative upon, the shift');
+        lines.push('  premiums". In plain English: if an hour is already paid at the OT');
+        lines.push('  rate, the 15% shift loading does not stack on top.');
       } else if (_shCls === 'night') {
         lines.push('  Classification: NIGHT SHIFT');
         lines.push('  Why: finish time is after midnight and at or before 8am (Cl 5).');
@@ -2432,10 +2444,15 @@
         lines.push('  ' + pad('Loading hours:', 22) + _shNT.toFixed(2) + ' hrs (matches NT hours from the timesheet above)');
         lines.push('  ' + pad('AroFlo entry:', 22) + 'Expenses section, "Night Shift Allowance 30% / Per hour"');
         lines.push('');
-        lines.push('  Why it isn\'t paid on OT hours: Cl 62.2.b says OT rates "will be');
-        lines.push('  in substitution for, and not cumulative upon, the shift premiums".');
-        lines.push('  In plain English: if a hour is already paid at the OT rate, the');
-        lines.push('  30% shift loading does not stack on top.');
+        lines.push('  Note on shift length: per Cl 56.1.a the roster defines ordinary');
+        lines.push('  hours, so a 10-12 hour rostered shift is all NT (no auto-OT past');
+        lines.push('  8h). Loading applies to the FULL rostered span. OT only kicks in');
+        lines.push('  if the worker stays past their rostered finish time.');
+        lines.push('');
+        lines.push('  Why loading isn\'t paid on OT hours: Cl 62.2.b says OT rates "will');
+        lines.push('  be in substitution for, and not cumulative upon, the shift');
+        lines.push('  premiums". In plain English: if an hour is already paid at the OT');
+        lines.push('  rate, the 30% shift loading does not stack on top.');
       } else if (_shCls === 'suppressed') {
         let _why  = '';
         let _clause = 'Cl 56.2.c (no stacking with weekend/holiday rates) and Cl 62.2.b (OT substitutes for shift premium).';
