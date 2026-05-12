@@ -162,6 +162,22 @@
     border-bottom: 1px solid #f0f3f7;
     vertical-align: middle;
   }
+  /* Row highlight: subtle mint-green wash on any pay-code / allowance row
+     whose hours / qty input is non-zero. Helps the PM scan a busy table
+     and immediately see which lines are actually contributing to the
+     totals. Money cells also colour-shift to a darker green so the
+     dollar values pop. */
+  table.calc-table tbody tr.has-data {
+    background: #f0fff4;
+  }
+  table.calc-table tbody tr.has-data td.money-cell {
+    color: #1e7a3a;
+    font-weight: 600;
+  }
+  table.calc-table tbody tr.has-data input[type="number"] {
+    background: #ffffff;
+    border-color: #b2e0bf;
+  }
   table.calc-table tbody tr.group-header td {
     background: #f8fafc;
     color: #003366;
@@ -1031,7 +1047,8 @@ function recalc() {
   let payCodesCost = 0, payCodesCharge = 0;
   PAY_CODES.forEach(p => {
     const safeId = p.code.replace(/[^A-Za-z0-9]/g, '_');
-    const hrs = parseFloat((document.getElementById('hrs_' + safeId) || {}).value) || 0;
+    const hrsEl = document.getElementById('hrs_' + safeId);
+    const hrs = parseFloat((hrsEl || {}).value) || 0;
     // Cost: hours × hourly rate × EA multiplier (what RBD pays the worker).
     const cost = hrs * hourlyRate * p.mult;
     // Charge: hours × flat client rate for this hour-type (no multiplier:
@@ -1041,6 +1058,13 @@ function recalc() {
     document.getElementById('charge_' + safeId).textContent = '$' + charge.toFixed(2);
     payCodesCost   += cost;
     payCodesCharge += charge;
+    // Green highlight on the row when hours have been entered. Toggle on
+    // the parent <tr> so the whole row (label, mult, money cells)
+    // adopts the .has-data styling.
+    if (hrsEl) {
+      const tr = hrsEl.closest('tr');
+      if (tr) tr.classList.toggle('has-data', hrs > 0.001);
+    }
   });
   document.getElementById('paycodes-cost-total').textContent   = '$' + payCodesCost.toFixed(2);
   document.getElementById('paycodes-charge-total').textContent = '$' + payCodesCharge.toFixed(2);
@@ -1061,6 +1085,9 @@ function recalc() {
       document.getElementById('charge_a_' + rowId).textContent = '$' + charge.toFixed(2);
       allowCost   += cost;
       allowCharge += charge;
+      // Green highlight on the row when qty has been entered.
+      const tr = qtyEl.closest('tr');
+      if (tr) tr.classList.toggle('has-data', qty > 0.001);
     });
   });
   document.getElementById('allowances-cost-total').textContent   = '$' + allowCost.toFixed(2);
