@@ -367,6 +367,25 @@
         </select>
         <div id="preset-applied" style="display:none; margin-top:8px; padding:8px 12px; background:#e8f5e9; border-left:3px solid #1e7a3a; border-radius:6px; font-size:11.5px; color:#1e5a2a;"></div>
       </div>
+      <!-- Compact totals mirror — same numbers as the bottom totals grid
+           in Section 4, surfaced here so the PM can adjust rates and
+           watch the headline figures update without scrolling. Sits on
+           the LEFT column under the client-preset dropdown so the user's
+           eye flow is: pick client → see totals → adjust rates on the
+           right → totals on the left update live. -->
+      <div style="margin-top: 18px; padding: 12px 14px; background: linear-gradient(135deg, #f0f6fc, #e8f0fa); border-left: 4px solid #004a99; border-radius: 8px;">
+        <div style="display:grid; grid-template-columns: 1fr auto; gap: 4px 16px; font-size: 13px;">
+          <div style="color:#475568;">Total Cost to RBD</div>
+          <div id="total-cost-top" style="text-align:right; color:#003366; font-weight:700; font-variant-numeric: tabular-nums;">$0.00</div>
+          <div style="color:#475568;">Total Charge to Customer</div>
+          <div id="total-charge-top" style="text-align:right; color:#003366; font-weight:700; font-variant-numeric: tabular-nums;">$0.00</div>
+          <div style="color:#1e5a2a; font-weight:700;">Margin</div>
+          <div id="total-margin-top" style="text-align:right; color:#1e7a3a; font-weight:700; font-size:14px; font-variant-numeric: tabular-nums;">$0.00</div>
+        </div>
+        <div style="margin-top: 6px; font-size: 10.5px; color: #6b7c8d; font-style: italic; line-height: 1.4;">
+          Live totals (includes on-costs &amp; overhead). Detailed breakdown in Section 4 below.
+        </div>
+      </div>
     </div>
     <div>
       <h3>Rates &amp; Grade</h3>
@@ -428,24 +447,6 @@
       </div>
       <div class="rate-display" id="rate-summary">
         Select a Grade or enter rates manually to begin.
-      </div>
-      <!-- Compact totals mirror — same numbers as the bottom totals grid
-           in Section 4, surfaced here so the PM can adjust rates and
-           watch the headline figures update without scrolling. Style is
-           intentionally less prominent than the bottom totals (which are
-           the "primary" output) — smaller font, tighter padding. -->
-      <div style="margin-top: 10px; padding: 12px 14px; background: linear-gradient(135deg, #f0f6fc, #e8f0fa); border-left: 4px solid #004a99; border-radius: 8px;">
-        <div style="display:grid; grid-template-columns: 1fr auto; gap: 4px 16px; font-size: 13px;">
-          <div style="color:#475568;">Total Cost to RBD</div>
-          <div id="total-cost-top" style="text-align:right; color:#003366; font-weight:700; font-variant-numeric: tabular-nums;">$0.00</div>
-          <div style="color:#475568;">Total Charge to Customer</div>
-          <div id="total-charge-top" style="text-align:right; color:#003366; font-weight:700; font-variant-numeric: tabular-nums;">$0.00</div>
-          <div style="color:#1e5a2a; font-weight:700;">Margin</div>
-          <div id="total-margin-top" style="text-align:right; color:#1e7a3a; font-weight:700; font-size:14px; font-variant-numeric: tabular-nums;">$0.00</div>
-        </div>
-        <div style="margin-top: 6px; font-size: 10.5px; color: #6b7c8d; font-style: italic; line-height: 1.4;">
-          Live totals (includes on-costs &amp; overhead). Detailed breakdown in Section 4 below.
-        </div>
       </div>
     </div>
   </div>
