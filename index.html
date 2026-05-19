@@ -9,10 +9,184 @@
   <style>
     * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
     body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; background: linear-gradient(135deg, #e8eef5 0%, #f0f4f8 50%, #e8eef5 100%); padding: 12px; margin: 0; line-height: 1.5; min-height: 100vh; }
+    /* =================================================================
+       SHARED TOP NAV - keep in sync across all PM Tools pages.
+       Selectors only match when the GH_ONLY HTML below is present, so
+       worker-facing builds (which strip the HTML) carry these styles
+       but render nothing for them - harmless dead CSS.
+       ================================================================= */
+    .topnav {
+      background: #fff;
+      border-bottom: 1px solid #e6ebf0;
+      box-shadow: 0 1px 6px rgba(16,62,110,0.04);
+      position: sticky; top: 0;
+      z-index: 100;
+      margin: -12px -12px 16px;
+    }
+    .topnav-inner {
+      max-width: 1280px; margin: 0 auto;
+      padding: 14px 24px;
+      display: flex; align-items: center; gap: 24px;
+    }
+    .topnav .brand { display: flex; align-items: center; flex-shrink: 0; }
+    .topnav .brand img { height: 54px; width: auto; display: block; }
+    .topnav .navlinks { display: flex; align-items: center; gap: 4px; flex: 1; }
+    .topnav .navlink {
+      display: inline-flex; align-items: center; gap: 6px;
+      color: #103e6e; text-decoration: none;
+      font-size: 13.5px; font-weight: 700; letter-spacing: 0.1px;
+      padding: 10px 14px;
+      position: relative;
+      transition: color 0.15s;
+      cursor: pointer;
+      font-family: inherit;
+    }
+    .topnav .navlink::after {
+      content: ''; position: absolute;
+      left: 14px; right: 14px; bottom: 2px;
+      height: 3px; background: #f4c52e; border-radius: 2px;
+      transform: scaleX(0); transform-origin: center;
+      transition: transform 0.18s ease;
+    }
+    .topnav .navlink:hover::after,
+    .topnav .navitem.open > .navlink::after { transform: scaleX(1); }
+    .topnav .navitem { position: relative; }
+    .topnav .chev {
+      width: 9px; height: 9px;
+      border-right: 2px solid currentColor;
+      border-bottom: 2px solid currentColor;
+      transform: rotate(45deg); margin-top: -3px;
+      transition: transform 0.18s ease;
+    }
+    .topnav .navitem.open .navlink .chev,
+    .topnav .navitem:hover .navlink .chev {
+      transform: rotate(225deg); margin-top: 2px;
+    }
+    .topnav .dropdown {
+      position: absolute; top: calc(100% + 4px); left: 8px;
+      min-width: 250px;
+      background: #fff;
+      border: 1px solid #e6ebf0; border-radius: 10px;
+      box-shadow: 0 10px 30px rgba(16,62,110,0.14);
+      padding: 6px;
+      opacity: 0; visibility: hidden;
+      transform: translateY(-6px);
+      transition: opacity 0.15s, transform 0.18s, visibility 0.15s;
+      z-index: 50;
+    }
+    .topnav .navitem:hover .dropdown,
+    .topnav .navitem.open .dropdown {
+      opacity: 1; visibility: visible; transform: translateY(0);
+    }
+    .topnav .dropdown a {
+      display: flex; align-items: center; gap: 12px;
+      padding: 10px 12px; border-radius: 7px;
+      text-decoration: none; color: #1a2530;
+      font-size: 13.5px; font-weight: 600;
+      transition: background 0.12s;
+    }
+    .topnav .dropdown a:hover { background: #f1f4f7; }
+    .topnav .dropdown .dot {
+      width: 8px; height: 8px; border-radius: 50%;
+      background: #f4c52e; flex-shrink: 0;
+    }
+    /* Accordion dropdown (used by "Links" menu). Each section expands in
+       place when its header is clicked; sibling sections at the same level
+       auto-close so only one is open per level (compact menu height). */
+    .topnav .dropdown.links-stack { min-width: 260px; padding: 6px; max-height: 75vh; overflow: visible; }
+    .topnav .dropdown.links-stack .acc-item { position: relative; }
+    .topnav .dropdown.links-stack .acc-item > .acc-body {
+      display: none; position: absolute; top: -6px; left: 100%;
+      min-width: 240px; overflow: visible; padding: 6px;
+      background: #fff; border: 1px solid var(--line);
+      border-radius: 10px; box-shadow: 0 10px 30px rgba(16,62,110,0.14);
+      z-index: 60;
+    }
+    .topnav .dropdown.links-stack .acc-item:hover > .acc-body,
+    .topnav .dropdown.links-stack .acc-item.open  > .acc-body { display: block; }
+    .topnav .dropdown.links-stack .acc-toggle {
+      display: flex; align-items: center; cursor: pointer; gap: 10px;
+      font-weight: 700; color: #103e6e; padding: 8px 10px;
+      text-decoration: none; border-radius: 6px;
+    }
+    .topnav .dropdown.links-stack .acc-toggle:hover { background: #f1f4f7; }
+    .topnav .dropdown.links-stack .acc-item.open > .acc-toggle { background: #f1f4f7; }
+    .topnav .dropdown.links-stack .acc-toggle::after {
+      content: '\203A'; color: #8a96a3; font-size: 18px; font-weight: 600; line-height: 1;
+      margin-left: auto;
+    }
+    .topnav .dropdown.links-stack .acc-item.open > .acc-toggle::after { color: #103e6e; }
+    .topnav .dropdown.links-stack .acc-body .acc-toggle { font-weight: 600; font-size: 13px; }
+    .topnav .dropdown.links-stack .acc-body .acc-body .acc-toggle { font-weight: 500; font-size: 12.5px; }
+    .topnav .dropdown.links-stack .acc-body > a:not(.acc-toggle) { font-size: 12.5px; }
+    .topnav .dropdown.links-stack .acc-body .acc-body > a:not(.acc-toggle) { font-size: 12px; }
+    .topnav .dropdown.links-stack a.root-link {
+      font-weight: 700; color: #103e6e;
+      background: #fff9e6; border: 1px solid #f0d785;
+      margin: 4px 0 6px; padding: 6px 10px; border-radius: 6px;
+    }
+    .topnav .dropdown.links-stack a.root-link:hover { background: #fff2cc; }
+    .topnav .dropdown.links-stack a::before {
+      content: ''; width: 8px; height: 8px; border-radius: 50%;
+      background: #f4c52e; flex-shrink: 0; display: inline-block;
+    }
+    @media (max-width: 900px) {
+      .topnav .dropdown.links-stack { min-width: 260px; max-width: calc(100vw - 24px); max-height: 70vh; overflow-y: auto; }
+      .topnav .dropdown.links-stack .acc-item > .acc-body {
+        position: static; min-width: 0; padding-left: 12px; margin: 2px 6px 6px;
+        border: none; border-left: 2px solid #e6ebf0;
+        border-radius: 0; box-shadow: none; max-height: none; overflow: visible;
+      }
+      .topnav .dropdown.links-stack .acc-item.open > .acc-toggle::after { transform: rotate(90deg); transition: transform 0.2s ease; }
+    }
+    .topnav .user {
+      display: flex; align-items: center; gap: 14px;
+      font-size: 12.5px; color: #4a5868; flex-shrink: 0;
+    }
+    .topnav .user strong { color: #1a2530; font-weight: 700; }
+    .topnav .signout {
+      color: #4a5868; text-decoration: none;
+      font-size: 12px; font-weight: 700;
+      letter-spacing: 0.3px; text-transform: uppercase;
+      padding: 8px 16px;
+      border: 1px solid #e6ebf0; border-radius: 6px;
+      transition: all 0.15s;
+    }
+    .topnav .signout:hover {
+      background: #103e6e; color: #fff; border-color: #103e6e;
+    }
+    /* Mobile: single-row top nav - [brand] [Home Tools ▾] [SIGN OUT]. */
+    @media (max-width: 900px) {
+      .topnav-inner { padding: 10px 16px; gap: 10px; }
+      .topnav .brand img { height: 42px; }
+      .topnav .navlinks { flex: 1; justify-content: center; gap: 0; }
+      .topnav .navlink { padding: 6px 10px; font-size: 13px; }
+      .topnav .navlink::after { left: 10px; right: 10px; bottom: 0; height: 2px; }
+      .topnav .user { font-size: 12px; gap: 8px; }
+      .topnav .signout { padding: 6px 12px; font-size: 11px; letter-spacing: 0.2px; }
+      .topnav .dropdown { left: auto; right: 0; min-width: 220px; max-width: calc(100vw - 24px); }
+    }
+    @media (max-width: 520px) {
+      /* Body padding shrinks from 12px to 8px below 520px (see .card
+         media query further down); match the topnav's break-out margin. */
+      .topnav { margin: -8px -8px 12px; }
+      .topnav-inner { padding: 8px 12px; gap: 6px; }
+      .topnav .brand img { height: 38px; }
+      .topnav .user span { display: none; }
+      .topnav .navlink { padding: 6px 8px; font-size: 12.5px; }
+      .topnav .signout { padding: 5px 10px; font-size: 10.5px; }
+    }
+    @media (max-width: 380px) {
+      .topnav-inner { padding: 8px 10px; gap: 4px; }
+      .topnav .brand img { height: 34px; }
+      .topnav .navlink { padding: 5px 6px; font-size: 12px; }
+      .topnav .signout { padding: 5px 8px; font-size: 10px; }
+    }
+    @media print { .topnav { display: none !important; } }
     .card { background: white; max-width: 520px; margin: 0 auto; padding: 20px; border-radius: 20px; box-shadow: 0 4px 24px rgba(0,40,100,0.10), 0 1px 3px rgba(0,0,0,0.06); overflow: hidden; position: relative; }
     .card::before { content: ''; position: absolute; top: 0; left: 0; right: 0; height: 6px; background: linear-gradient(90deg, #003366, #004a99, #0066cc); }
     h2 { color: #003366; margin: 0; text-align: center; font-size: 21px; font-weight: 800; letter-spacing: -0.3px; }
-    /* Title row — logo + h2 inline, centred as a unit. Letterhead
+    /* Title row - logo + h2 inline, centred as a unit. Letterhead
       feel without taking too much vertical space. */
     .title-row {
       display: flex;
@@ -30,7 +204,7 @@
     .section-header { font-size: 11px; font-weight: 800; color: #003366; margin: 22px 0 10px; text-transform: uppercase; border-bottom: 2px solid #e8eef5; padding-bottom: 6px; letter-spacing: 1.2px; display: flex; align-items: center; justify-content: space-between; }
     .input-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 15px; }
     @media (max-width: 400px) { .input-grid { grid-template-columns: 1fr; } }
-    /* Mobile polish — tighten padding, font sizes, and spacing on
+    /* Mobile polish - tighten padding, font sizes, and spacing on
       phone-sized screens so more content fits without scrolling.
       Tap-target sizes stay above the iOS/Android 44dp recommendation. */
     @media (max-width: 520px) {
@@ -76,7 +250,7 @@
     }
     label { display: block; font-weight: 600; margin-bottom: 5px; font-size: 12px; color: #4a5568; }
     input[type="time"], input[type="text"], input[type="number"] { width: 100%; padding: 12px; border: 1.5px solid #d2dce6; border-radius: 10px; font-size: 16px; background: #f8fafc; appearance: none; transition: border-color 0.2s, box-shadow 0.2s; }
-    input:focus { border-color: #004a99; outline: none; background: #fff; box-shadow: 0 0 0 3px rgba(0,74,153,0.1); }
+    input:focus { border-color: #d4a818; outline: none; background: #fff; box-shadow: 0 0 0 3px rgba(244,197,46,0.22); }
     .route-box { background: linear-gradient(135deg, #f8fafc, #f0f5fa); padding: 12px; border-radius: 12px; border: 1.5px solid #d2dce6; margin-bottom: 18px; }
     .maps-btn { width: 100%; padding: 11px; background: linear-gradient(135deg, #004a99, #0058b3); color: white; border: none; border-radius: 10px; font-weight: 700; cursor: pointer; margin-bottom: 10px; font-size: 13px; transition: transform 0.1s, box-shadow 0.2s; box-shadow: 0 2px 8px rgba(0,74,153,0.25); }
     .maps-btn:active { transform: scale(0.98); }
@@ -143,7 +317,7 @@
       letter-spacing: 1.2px;
       white-space: nowrap;
     }
-    /* Time-input wrapper — provides a "Select time" placeholder overlay
+    /* Time-input wrapper - provides a "Select time" placeholder overlay
       when the native widget doesn't render its own --:-- prompt. iOS
       Safari and some Android browsers leave time inputs blank when
       empty; this overlay makes the field self-explanatory.
@@ -179,8 +353,8 @@
     .hidden { display: none !important; }
     .info-btn { width: 24px; height: 24px; border-radius: 50%; border: 1.5px solid #004a99; background: white; color: #004a99; font-size: 13px; font-weight: bold; font-style: italic; font-family: Georgia, serif; cursor: pointer; display: inline-flex; align-items: center; justify-content: center; padding: 0; line-height: 1; flex-shrink: 0; transition: all 0.15s; }
     /* Manual / Auto mode toggle pill in the Time Entries header.
-      Default state (Auto): green pill — bidirectional sync is on.
-      Active state (Manual): orange pill — sync disabled, full
+      Default state (Auto): green pill - bidirectional sync is on.
+      Active state (Manual): orange pill - sync disabled, full
       manual control. The colour shift is the user's reminder of
       which mode they're in. */
     .manual-mode-btn {
@@ -205,6 +379,26 @@
       background: #fdf3e8;
       color: #c0651e;
     }
+    /* Reset Day pill - same shape / typography as the Auto-mode pill
+       so the two header controls feel like a set, but in a red palette
+       so the destructive action is unmistakable. */
+    .reset-day-btn {
+      padding: 4px 10px;
+      border: 1.5px solid #b13838;
+      background: #fdecec;
+      color: #b13838;
+      border-radius: 14px;
+      font-weight: 700;
+      font-size: 10px;
+      text-transform: uppercase;
+      letter-spacing: 0.6px;
+      cursor: pointer;
+      transition: all 0.15s;
+      font-family: inherit;
+      line-height: 1.2;
+      white-space: nowrap;
+    }
+    .reset-day-btn:hover { filter: brightness(0.97); }
     /* Group the right-side header actions (mode toggle + info btn). */
     .section-header-right {
       display: inline-flex;
@@ -212,7 +406,7 @@
       gap: 8px;
       flex-shrink: 0;
     }
-    /* Right-side "open another tool" link button — same blue palette as
+    /* Right-side "open another tool" link button - same blue palette as
       info-btn but pill-shaped with a label. Used to launch the Travel
       Boundary tool. */
     .tool-link-btn { display: inline-flex; align-items: center; gap: 4px; font-size: 10px; font-weight: 800; color: #004a99; text-decoration: none; padding: 5px 9px; border: 1.5px solid #004a99; border-radius: 8px; background: white; text-transform: uppercase; letter-spacing: 0.6px; transition: all 0.15s; white-space: nowrap; line-height: 1; }
@@ -238,7 +432,7 @@
     .allow-item input[type="checkbox"] { width: 20px; height: 20px; accent-color: #004a99; cursor: pointer; flex-shrink: 0; }
     .allow-rate { color: #8899aa; font-size: 11px; white-space: nowrap; width: 65px; text-align: right; flex-shrink: 0; }
     .allow-input { width: 70px; min-width: 70px; max-width: 70px; padding: 8px 4px; border: 1.5px solid #d2dce6; border-radius: 8px; font-size: 11px; text-align: center; margin-left: 6px; flex-shrink: 0; flex-grow: 0; background: #f8fafc; transition: border-color 0.2s; }
-    .allow-input:focus { border-color: #004a99; box-shadow: 0 0 0 2px rgba(0,74,153,0.1); }
+    .allow-input:focus { border-color: #d4a818; box-shadow: 0 0 0 2px rgba(244,197,46,0.22); }
     @keyframes calcSpin { to { transform: rotate(360deg); } }
     @keyframes sectionFlash {
       0%  { background: #fff7d6; }
@@ -249,7 +443,7 @@
     @media print {
       /* Hide interactive / decorative elements */
       .no-print, .toggle-btn, input, label, .day-toggle-section, .route-box, .info-btn, .info-panel, .allow-panel, .divider-label, .toggle-section { display: none !important; }
-      /* Belt-and-braces — make sure the centred group dividers
+      /* Belt-and-braces - make sure the centred group dividers
         (Where you started/finished, Day type, Vehicle & allowances)
         and their pseudo-element gradient lines are fully suppressed
         in print. The group labels are screen-only UI grouping;
@@ -262,14 +456,14 @@
       .print-only { display: block !important; }
       /* Force the browser to keep background colours when printing.
         Without this the navy "ticked" checkbox squares in the
-        Settings Selected block come out blank — browsers strip
+        Settings Selected block come out blank - browsers strip
         background colours by default to save ink. */
       .print-only, .print-only * {
         -webkit-print-color-adjust: exact !important;
         color-adjust: exact !important;
         print-color-adjust: exact !important;
       }
-      /* Tighten vertical rhythm for print — on-screen spacing is
+      /* Tighten vertical rhythm for print - on-screen spacing is
         kept generous for usability; paper just needs compactness. */
       body { padding: 4px; }
       .title-row { gap: 8px; margin: 0 0 2px; }
@@ -290,7 +484,15 @@
         across page breaks when possible. */
       .print-only, #allowancesBlock { page-break-inside: avoid; }
     }
-  </style>
+  
+  .topnav .navlink.quicklink { border: 1.5px solid #103e6e; border-radius: 6px; padding: 6px 12px; margin-left: 4px; font-size: 12px; letter-spacing: 0.4px; }
+  .topnav .navlink.quicklink::after { display: none !important; }
+  .topnav .navlink.quicklink:hover { background: #103e6e; color: #fff; }
+  /* On phones, hide the inline cross-tool quicklinks - the Tools
+     dropdown still surfaces the same pages and the topnav stays
+     less cramped without them. */
+  @media (max-width: 900px) { .topnav .navlink.quicklink { display: none !important; } }
+</style>
   <!--
    Google Maps JavaScript API: required for the "Calculate time to
    destination" button and Places Autocomplete on the destination field.
@@ -311,6 +513,7 @@
   <script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyCJJtYddJaE3tYzw7CvjlvZRPTpb4vD2eo&libraries=places"></script>
 </head>
 <body>
+
 <div class="card">
   <div class="title-row">
     <!-- Logo loaded from the same repo as the HTML (rbd-logo.png) so
@@ -338,7 +541,7 @@
     <strong>How it works:</strong>
     <ul>
       <li><strong>Fully automatic.</strong> Every field in this section triggers a background Google Maps lookup as soon as you tab away: no button to press. Travel Hrs/Mins, Return Hrs/Mins, and any ticked km allowances (TK1, TK2, Kms Company Car) fill themselves in a second or two.</li>
-      <li>Select your <strong>start location</strong>: Devonport Office, Hobart Office, or Custom. If Custom, start typing the address or place name and pick from the Google Autocomplete dropdown (accommodation, other RBD office, meeting point, etc.). The dropdown is biased to Tasmania, so TAS results appear at the top.</li>
+      <li>Select your <strong>start location</strong>: Devonport Office, Hobart Office, or Custom. If Custom, start typing the address or place name and pick from the Google Autocomplete dropdown (accommodation, other RBD office, meeting point, etc.). The dropdown only shows Tasmanian results - for the rare mainland address, type the full street + town manually.</li>
       <li>Start typing the <strong>destination</strong> (site name or address) and pick from the Google Autocomplete dropdown. If the place you need isn't listed, type a street address or town + state instead.</li>
       <li>Tap <strong>Verify Route</strong> to open Google Maps in a new tab and visually sanity-check the route Google is using.</li>
       <li><strong>Bidirectional time sync.</strong> When the morning Travel Hrs/Mins arrive, the calculator fills in whichever time you haven't typed yourself: type "Left Workshop/Accom" and "Arrived on Site" auto-fills; type "Arrived on Site" (e.g. you left from home, not the workshop) and "Left Workshop/Accom" back-calculates. Same logic on the return leg with "Left Site" / "Arrived at Workshop/Accom".</li>
@@ -468,6 +671,7 @@
     <span>Time Entries</span>
     <span class="section-header-right">
       <button id="btnManualMode" class="manual-mode-btn" type="button" onclick="toggleManualMode()" aria-pressed="false" title="Auto mode: typing one time auto-fills its paired field from the Travel time. Manual mode: type all four times yourself, no auto-sync.">Auto</button>
+      <button id="btnResetDay" class="reset-day-btn" type="button" onclick="resetDailyForm()" title="Clear every field and start fresh.">Reset</button>
       <button class="info-btn no-print" onclick="toggleInfo('infoTime')">i</button>
     </span>
   </div>
@@ -486,6 +690,10 @@
       <li>Tap the <strong>Auto</strong> pill in the Time Entries header to flip to <strong>Manual</strong>. The pill turns orange.</li>
       <li>In Manual mode the calculator does not auto-fill anything. You're responsible for typing all four times accurately.</li>
       <li>Use this when your day didn't follow the standard pattern (e.g. you stopped for personal errands, route was diverted, or you want to log the exact times you were on the clock without the tool computing anything).</li>
+    </ul>
+    <strong>Reset:</strong>
+    <ul>
+      <li>The red <strong>Reset</strong> pill next to Auto / Manual clears everything you've typed and reloads the page back to factory defaults. Use when you want to start a brand-new day's calculation without any leftover values from the previous one. A confirm prompt protects against accidental clicks.</li>
     </ul>
     <p style="margin: 4px 0 6px; font-style: italic; color: #6b7c8d; font-size: 11px;">Either way, all four time fields are required for an accurate pay calculation. The Daily Timesheet stays hidden until they're all filled in.</p>
     <strong>Toggle buttons:</strong>
@@ -515,7 +723,7 @@
       <li><strong>Weekday overtime:</strong> first 2 hours at time-and-a-half (TH), then double time (DT) (Cl 62.2.a.i).</li>
       <li><strong>Weekend / PH / RDO overtime:</strong> all hours at double time (Cl 62.2.a.ii/iii) with a 4-hour minimum (Cl 62.3.a), or 2-hour minimum with 24h+ notice (Cl 62.3.b).</li>
       <li><strong>Meal break (Cl 60.a):</strong> 30-minute unpaid lunch for shifts of 5 to 12 hours. Shifts under 5 hours have no meal deduction. Shifts of 12+ hours get a paid meal break.</li>
-      <li><strong>Early travel (Cl 64.3.d):</strong> cross the boundary before 0630hrs AND have a site more than 1 hour beyond the boundary → claim 30 min TT and the ordinary workday is deemed to start at 0700 (conditional on safe driving).</li>
+      <li><strong>Early travel (Cl 64.3.d):</strong> cross the boundary before 0630hrs AND have a site more than 1 hour beyond the boundary → claim TT for the ordinary-time travel between boundary crossing and the deemed 07:00 start (pre-06:00 travel doesn't count), and the ordinary workday is deemed to start at 0700 (conditional on safe driving). If you arrive on-site before 07:00 the workday simply starts at your actual arrival.</li>
       <li><strong>Rounding (Cl 53.b):</strong> time is rounded to 15-minute intervals. 7 minutes rounds down; 8 minutes rounds up to 15.</li>
     </ul>
   </div>
@@ -618,7 +826,7 @@
       </ul>
       <strong>Allowance codes:</strong>
       <ul>
-        <li><strong>TAT</strong>: Travel Time Allowance (Cl 64.2). A flat daily unit equal to 25% of your all-purpose hourly rate, payable when your working day commences at a worksite. Not payable under Inc-1 accom↔site travel or when the early-travel rule fires. One unit per day maximum.</li>
+        <li><strong>TAT</strong>: Travel Time Allowance (Cl 64.2). A flat daily unit equal to 25% of your all-purpose hourly rate, payable when your working day commences at a worksite. Not payable under Inc-1 accom↔site travel (Cl 64.5.a.iii). One unit per day maximum. Payable on early-travel days alongside the Cl 64.3.d TT entitlement.</li>
         <li><strong>Fares (FTR)</strong>: Fares Allowance (Cl 64.1). $14.61/day when you travel in your own time/vehicle and no company transport was offered. Covers the 30-min Travel Boundary portion.</li>
         <li><strong>Meal Allow ($15.50)</strong>: Meal Allowance for unnotified overtime of 2+ hours (Cl 60.1.a). Any day type. Rate increases to $16.41 from 01/07/2026 and $20.00 from 01/07/2027.</li>
       </ul>
@@ -627,7 +835,7 @@
         <li><strong>Rounding</strong>: each component is rounded to 15 min (Cl 53.b: 7 min rounds down, 8 min rounds up). Rounding each component separately can differ from rounding totals only, by up to ±15 min.</li>
         <li><strong>Public Holiday (8h NT)</strong>: auto-added when PH is selected. Under s116 FW Act, PH NT only applies if you were rostered to work that day; untick PH if it falls on a non-rostered day.</li>
         <li><strong>Casual rates</strong>: the calculator uses full-time treatment. Casual PH pays at <strong>double time and a half</strong> (2.5× base, Cl 62.2.a.iv); not auto-calculated here. Apply the uplift manually if you're casual.</li>
-        <li><strong>Early-travel weekend/PH (Appendix Ex 23 to 25)</strong>: the 30-min TT+ and TAT-suppression rule for weekend/PH early starts isn't auto-detected (weekday only). If your weekend early-start fits Ex 22 to 25, manually reduce the forward TT+ to 30 min and untick TAT.</li>
+        <li><strong>Early-travel weekend/PH (Appendix Ex 23 to 25)</strong>: the weekend/PH version of the early-travel rule (substituting TT+ for TT) isn't auto-detected (weekday only). If your weekend early-start fits Ex 22 to 25, you may need to manually adjust the forward TT+ entry; TAT stays payable.</li>
       </ul>
     </div>
     <div id="calcOutput"></div>
@@ -675,10 +883,12 @@
     <pre id="explainText" style="font-family: 'Courier New', monospace; font-size: 11px; line-height: 1.5; color: #1a1a1a; background: white; padding: 12px; border-radius: 8px; border: 1px solid #e1e8ed; white-space: pre-wrap; margin: 0; max-height: 60vh; overflow-y: auto;"></pre>
   </div>
   <div class="footer-note" style="font-size: 9px; color: #999; text-align: center; margin-top: 20px; line-height: 1.5;">
-    <strong style="color:#666;">Disclaimer:</strong> This calculator is a guide only and does not override the RBD Enterprise Agreement 2025 or RBD Handbook Rev 8.0. Additional allowances can be selected under Extra Allowances. Some entitlements such as call-in, shift work, and overtime meal escalations may not be reflected. Always refer to the EA for definitive entitlements.
+    <strong style="color:#666;">Note:</strong> this is a guide only. The RBD EA 2025 and Handbook Rev 8.0 govern actual entitlements. Any issues please contact your Administrator.
   </div>
 </div>
 <script>
+  
+
   // ------------------------------------------------------------------
   // RBD Timesheet Calculator
   // Implements EA 2025 clauses: 60 (meal), 62 (overtime),
@@ -696,11 +906,11 @@
     LastDay: false,   // last day of Inc-1 trip (morning = Inc-1, return = standard)
     UnnotifiedOT: false, // triggers $15.50 meal allowance (Cl 60.1)
     Notified24h: false, // Sat/Sun/RDO/PH: 24h+ notice reduces min to 2h (Cl 62.3.b)
-    RDO: false,     // overlay: working a scheduled RDO (Cl 62.3.a) — DT + 4h/2h min
-    Callout: false,   // overlay: Cl 63.a recall to site — bundled work+travel at OT, 4h min
-    Shift: false,    // overlay: Cl 56.2.a continuous shift — auto-classify aft (15%) / night (30%) from finish time
-    Office: null,    // 'Dev' | 'Hob' | 'Custom' — morning origin
-    ReturnOffice: null  // 'Dev' | 'Hob' | 'Custom' — return destination (only when TK1 selected)
+    RDO: false,     // overlay: working a scheduled RDO (Cl 62.3.a) - DT + 4h/2h min
+    Callout: false,   // overlay: Cl 63.a recall to site - bundled work+travel at OT, 4h min
+    Shift: false,    // overlay: Cl 56.2.a continuous shift - auto-classify aft (15%) / night (30%) from finish time
+    Office: null,    // 'Dev' | 'Hob' | 'Custom' - morning origin
+    ReturnOffice: null  // 'Dev' | 'Hob' | 'Custom' - return destination (only when TK1 selected)
   };
   const OFFICES = {
     Dev: '3 Bay Drive, Quoiba, TAS 7310',
@@ -735,14 +945,14 @@
     { id: 'hvPrep', name: 'HV Prep & Documentation', rate: 100.00, unit: 'day', group: 'High Voltage', hideRate: true },
     // Other
     { id: 'onCall', name: 'On Call Allowance', rate: 45.71, unit: 'day', group: 'Other' },
-    // Shift loadings (Cl 56.2.a) — NT-only, auto-classified by Shift toggle.
+    // Shift loadings (Cl 56.2.a) - NT-only, auto-classified by Shift toggle.
     // hideRate: the AroFlo Per-Hour figure ($16.73/$33.45) is a reference rate
-    // for one specific grade — actual loading is calculated in Xero as
+    // for one specific grade - actual loading is calculated in Xero as
     // 0.15x / 0.30x of each employee's ordinary earnings rate. Showing
     // a single dollar figure here would be misleading across grades.
     // shiftAllowance: flagged so the rendering pipeline knows to:
     //  • gate visibility/enable on flags.Shift
-    //  • render an NT-only line (no OT/site split — loading is NT only
+    //  • render an NT-only line (no OT/site split - loading is NT only
     //   per Cl 62.2.b, OT rates substitute for shift premiums)
     { id: 'shiftAft15', name: 'Afternoon Shift Allowance 15%', rate: 16.73, rateLabel: '+15% / hr', unit: 'hr', group: 'Other', hideRate: false, shiftAllowance: 'afternoon', ntOnly: true },
     { id: 'shiftNgt30', name: 'Night Shift Allowance 30%',     rate: 33.45, rateLabel: '+30% / hr', unit: 'hr', group: 'Other', hideRate: false, shiftAllowance: 'night',     ntOnly: true },
@@ -799,7 +1009,7 @@
       }
       if (!a.hideRate) {
         if (a.rateLabel) {
-          // Custom rate label — used for shift loadings where the
+          // Custom rate label - used for shift loadings where the
           // "real" rate is a percentage of each employee's ordinary
           // rate (calculated in Xero), not the AroFlo per-hour
           // reference figure.
@@ -810,7 +1020,7 @@
         }
       }
       html += '</div>';
-      // Inline hint under Km's (Company Car) — only visible when that
+      // Inline hint under Km's (Company Car) - only visible when that
       // allowance is ticked. Explains the full-chain auto-fill.
       if (a.id === 'kmCompanyCar') {
         html += '<div id="ccKmNote" class="hidden" style="font-size: 10px; color: #888; font-style: italic; margin: -4px 0 6px; padding: 0 4px;">Auto-calculation: morning leg + every between-site leg + return leg, from Google Maps. Adjust manually if your day was asymmetric.</div>';
@@ -822,7 +1032,7 @@
   function toggleInfo(id) {
     document.getElementById(id).classList.toggle('open');
   }
-  // Dynamic label helpers — mirror the on-screen labels that change with
+  // Dynamic label helpers - mirror the on-screen labels that change with
   // the Start/Finish Workshop/Site toggles. Used by both the print-only
   // Time Entries block and the .txt download so every output matches
   // what the user sees on screen.
@@ -851,7 +1061,7 @@
       scheduleAutoCalculate();
     }
   }
-  // Return section — identical UI to the morning Office toggle, but
+  // Return section - identical UI to the morning Office toggle, but
   // scoped to the return leg (used when the TK1 allowance is ticked so
   // we can feed an asymmetric return into the km auto-fill).
   function setReturnOffice(code) {
@@ -878,14 +1088,14 @@
     const tk1Input = document.getElementById('km_tk1');
     if (tk1Input) tk1Input.value = '';
   }
-  // Called from the customReturn input — text change means the return
+  // Called from the customReturn input - text change means the return
   // destination has changed, so invalidate and refetch.
   function returnDestChanged() {
     invalidateReturnLeg();
     if (typeof syncAllowanceBoundUI === 'function') syncAllowanceBoundUI();
     scheduleAutoCalculate();
   }
-  // Morning Destination field change — invalidate every cached leg (morning,
+  // Morning Destination field change - invalidate every cached leg (morning,
   // between-sites, return all depend on this text) and schedule a full
   // refetch. For TK1-only cases the return origin is the morning Dest, so
   // returnLeg must re-fetch too.
@@ -895,7 +1105,7 @@
     lastLegs.betweenLegs = [];
     scheduleAutoCalculate();
   }
-  // Custom morning origin field change — invalidate morning + return legs.
+  // Custom morning origin field change - invalidate morning + return legs.
   function morningOriginChanged() {
     lastLegs.morning = null;
     lastLegs.returnLeg = null;
@@ -903,7 +1113,7 @@
     scheduleAutoCalculate();
   }
   // ----------------------------------------------------------------
-  // AUTOMATIC CALCULATE — debounced so rapid field changes don't spam
+  // AUTOMATIC CALCULATE - debounced so rapid field changes don't spam
   // the Google API. Fires ~400ms after the user stops interacting.
   // Silent mode skips alerts when prerequisites aren't met, so partial
   // states (e.g. typing mid-address) don't pop dialogs.
@@ -920,7 +1130,7 @@
   }
   // --- TK2 multi-site helpers -------------------------------------------
   // Count of extra site slots (2..5) currently visible. Site 1 is always
-  // the morning Destination field above — not counted here.
+  // the morning Destination field above - not counted here.
   function activeExtraSiteCount() {
     let n = 0;
     for (let i = 2; i <= 5; i++) {
@@ -966,7 +1176,7 @@
   // Fires when a site input loses focus (user finished typing). Kicks the
   // auto-calculate so TK2 km populates without requiring Calculate again.
   function siteInputChanged() {
-    // Invalidate cached between-site + return data — input text changed.
+    // Invalidate cached between-site + return data - input text changed.
     lastLegs.betweenLegs = [];
     lastLegs.returnLeg = null;
     syncAllowanceBoundUI();
@@ -1028,8 +1238,8 @@
   //  "Auto / Manual" button in the Time Entries section header.
   // -----------------------------------------------------------------
   let manualMode = false;
-  let lastEditedMorning = null; // 'lw' | 'as' — which morning field the user changed last
-  let lastEditedReturn = null; // 'ls' | 'aw' — same for return leg
+  let lastEditedMorning = null; // 'lw' | 'as' - which morning field the user changed last
+  let lastEditedReturn = null; // 'ls' | 'aw' - same for return leg
   function noteMorningEdit(field) { lastEditedMorning = field; syncMorningTimes(); }
   function noteReturnEdit(field) { lastEditedReturn = field; syncReturnTimes(); }
   function toggleManualMode() {
@@ -1040,10 +1250,19 @@
       btn.textContent = manualMode ? 'Manual': 'Auto';
       btn.setAttribute('aria-pressed', manualMode ? 'true': 'false');
     }
-    // No re-sync on toggle — current values stay as-is. The user can
+    // No re-sync on toggle - current values stay as-is. The user can
     // type freely in manual mode without auto-fill, and switching
     // back to auto won't disturb existing values until the next edit.
     calculate();
+  }
+  // Reset Day: hard-reload the page so every input snaps back to the
+  // factory defaults baked into the HTML. The daily calc doesn't
+  // persist form state to localStorage, so a reload IS a full reset.
+  // (Anything we do persist - the cost-calc handoff - lives under
+  // a separate key and isn't touched by this.)
+  function resetDailyForm() {
+    if (!confirm('Reset the day? All times, flags, allowances, and the travel tool will be cleared back to factory defaults.')) return;
+    location.reload();
   }
   function syncMorningTimes() {
     if (manualMode) {
@@ -1070,7 +1289,7 @@
     if (typeof syncTimePlaceholders === 'function') syncTimePlaceholders();
     calculate();
   }
-  // Backwards-compat alias — called by the Google Maps integration paths
+  // Backwards-compat alias - called by the Google Maps integration paths
   // that were written before the bidirectional refactor. Keeps callsites
   // working without rewriting them.
   function syncArriveTime() { syncMorningTimes(); }
@@ -1078,7 +1297,7 @@
     flags.Start = type;
     document.getElementById('btnStartWork').classList.toggle('active', type === 'Work');
     document.getElementById('btnStartSite').classList.toggle('active', type === 'Site');
-    // Always show "Arrived on Site" — needed for allowance calculations even when starting at workshop
+    // Always show "Arrived on Site" - needed for allowance calculations even when starting at workshop
     document.getElementById('startLabel').innerText = (type === 'Work') ? "Workshop Start:": "Left Workshop/Accom:";
     calculate();
   }
@@ -1090,7 +1309,7 @@
     document.getElementById('finishLabel').innerText = (type === 'Work') ? "Workshop Finish:": "Arrived at Workshop/Accom:";
     calculate();
   }
-  // Helper — penalty-rate day triggers DT + 4h/2h min (Cl 62.3.a)
+  // Helper - penalty-rate day triggers DT + 4h/2h min (Cl 62.3.a)
   // Covers Weekend, Public Holiday, or a Weekday with the RDO overlay on.
   function isPenaltyDay() {
     return flags.Day !== 'Weekday' || flags.RDO;
@@ -1120,7 +1339,7 @@
     if (id === 'RDO') syncNoticeRow();
     // Keep the "Other" header indicator in sync with its contents.
     if (['UnnotifiedOT', 'RDO', 'Callout', 'Shift'].indexOf(id) !== -1) syncOtherHeader();
-    // Company Car flag gates the km allowances — refresh the mutex.
+    // Company Car flag gates the km allowances - refresh the mutex.
     if (id === 'Co') syncAllowanceBoundUI();
     // Shift toggle controls the Extra Allowances shift entries (enable/auto-tick).
     if (id === 'Shift') {
@@ -1206,7 +1425,7 @@
   // Lightweight time-order validation. Catches fat-finger errors where
   // (e.g.) Left Site is typed before Arrived on Site. Only checks pairs
   // where both fields have a value (the && lw && as guards), so missing
-  // required fields don't generate false positives — the "Fill in" prompt
+  // required fields don't generate false positives - the "Fill in" prompt
   // in the results panel takes precedence for that case.
   function validateTimeOrder() {
     const warn = document.getElementById('timeOrderWarn');
@@ -1242,7 +1461,7 @@
     let mins = m % 60;
     return String(h).padStart(2, '0') + ":" + String(mins).padStart(2, '0');
   }
-  // diffMins — compute a positive duration between two "minutes-since-midnight"
+  // diffMins - compute a positive duration between two "minutes-since-midnight"
   // values. Handles shifts that cross midnight (e.g. left 22:00, arrived 01:00).
   // If `to` is strictly earlier than `from`, assume it's on the next day.
   function diffMins(from, to) {
@@ -1260,7 +1479,7 @@
   function calculate() {
     // Sync the "Select time" overlay state on each time input wrapper.
     syncTimePlaceholders();
-    // Time-order sanity check — show a yellow banner if any field is
+    // Time-order sanity check - show a yellow banner if any field is
     // out of order. Does not block calculation; the user can still
     // proceed (e.g. for legitimate midnight-wrap shifts).
     validateTimeOrder();
@@ -1294,14 +1513,14 @@
     // ----------------------------------------------------------
     // 1) EARLY TRAVEL DEEMING (Cl 64.3.d, Travel Appendix Ex 22)
     //  BOTH conditions required:
-    //   (a) travel boundary crossed before 0630 — proxied as
+    //   (a) travel boundary crossed before 0630 - proxied as
     //     `tLeftBase + 30 < 390` (boundary ≈ 30 min from base)
     //     i.e. the employee left before 0600.
     //   (b) worksite is > 1 hour from the travel boundary, i.e.
     //     total morning travel > 90 min (30 min boundary + 60+).
     //  When both engage → entitlement is 30 min TT only and the
     //  ordinary day is deemed to start at 0700 (weekday).
-    //  Weekday only — weekend/PH early-start edge cases (Ex 23/24)
+    //  Weekday only - weekend/PH early-start edge cases (Ex 23/24)
     //  are handled via the standard weekend/PH branch.
     // ----------------------------------------------------------
     let morningTravelTotal = (flags.Start === 'Site') ? diffMins(tLeftBase, tArriveSite): 0;
@@ -1321,7 +1540,7 @@
     // ----------------------------------------------------------
     // 2) MEAL BREAK (Cl 60.a / 60.b / 60.d)
     //  Meal break rules:
-    //  - Shifts < 5 hours: no meal break (Cl 60.a/60.b — meal break
+    //  - Shifts < 5 hours: no meal break (Cl 60.a/60.b - meal break
     //   applies once 5+ hours worked). No deduction.
     //  - Shifts ≥ 12 hours (workday/span, per Cl 60.a "works a
     //   12-hour day or greater" and Cl 60.d "workday exceeds 12
@@ -1352,25 +1571,42 @@
     //   branch lumps morningTT + morningTTPlus → TT+.
     //
     //  Early travel (Cl 64.3.d.i, Ex 22):
-    //   "The Employee may claim 30-minutes of Travel Time (TT)."
-    //   Entitlement is exactly 30 min TT — not the actual travel.
-    //   Plus deemed 07:00 ordinary-day start.
+    //   The Employee gets TT for the ordinary-time portion of the
+    //   morning travel between crossing the Travel Boundary and the
+    //   deemed 07:00 start of the ordinary day. Pre-06:00 travel is
+    //   outside ordinary hours and is not paid as TT under this rule.
+    //   Formula:  TT = max(0, min(arrival, 07:00) - max(boundary, 06:00))
+    //   Examples:
+    //     Leave 05:45 -> boundary 06:15 -> arrive 08:00 -> TT 45 min
+    //     Leave 05:00 -> boundary 05:30 -> arrive 08:00 -> TT 60 min
+    //                    (pre-06:00 doesn't count)
+    //     Leave 05:30 -> boundary 06:00 -> arrive 06:45 -> TT 45 min,
+    //                    day starts on-site at actual arrival 06:45.
+    //   When arrival is before 07:00 the work day starts at the actual
+    //   arrival time (not deemed); when arrival >= 07:00 the day is
+    //   deemed to start at 07:00.
     //
     //  Inc-1 morning (Cl 64.5.a): TT on weekdays; TT+ on weekends/PH
-    //   (Cl 64.5.a.ii weekends/PH clause — morning and return both
+    //   (Cl 64.5.a.ii weekends/PH clause - morning and return both
     //   elevated on penalty-rate days).
     // ----------------------------------------------------------
     let morningTTPlus = 0;
     let morningTT  = 0;
     if (flags.Start === 'Site') {
       if (inc1Morning) {
-        // Cl 64.5.a.i — Inc-1 morning: all TT, no boundary.
+        // Cl 64.5.a.i - Inc-1 morning: all TT, no boundary.
         let windowEnd = isEarlyTravel ? Math.min(420, tArriveSite): tArriveSite;
         morningTT = Math.max(0, windowEnd - tLeftBase);
         morningTTPlus = 0;
       } else if (isEarlyTravel) {
-        // Cl 64.3.d.i: 30 min TT only, deemed 07:00 start.
-        morningTT = 30;
+        // Cl 64.3.d.i: TT for ordinary-time portion of morning travel
+        // between boundary crossing and the deemed 07:00 start. Pre-
+        // 06:00 travel is unpaid. Rounded to the nearest 15 min per
+        // the EA's standard rounding rule.
+        const boundaryCrossTime = tLeftBase + 30;
+        const ttStart = Math.max(boundaryCrossTime, 360);  // 06:00
+        const ttEnd   = Math.min(tArriveSite, 420);        // 07:00
+        morningTT = roundTo15(Math.max(0, ttEnd - ttStart));
         morningTTPlus = 0;
       } else {
         // Standard: all outside-boundary forward travel = TT (weekday)
@@ -1385,14 +1621,14 @@
       : 0;
     // ----------------------------------------------------------
     // 4) TIME-OF-DAY SPLIT (Cl 55.a + Cl 62.2.a.i)
-    //  Ordinary hours are 6am–6pm (360–1080 min). Work outside
+    //  Ordinary hours are 6am-6pm (360-1080 min). Work outside
     //  that window is overtime by definition, regardless of
     //  total hours worked. This matters for short days with
     //  early starts or late finishes (e.g. 5am start, RDO afternoon).
     //
     //  Calculation:
-    //  a) Count net work minutes falling outside 6am–6pm = outsideOT
-    //  b) Count net work minutes within 6am–6pm
+    //  a) Count net work minutes falling outside 6am-6pm = outsideOT
+    //  b) Count net work minutes within 6am-6pm
     //  c) Within-window: first 8h = NT, excess = overtime
     //  d) Total OT = outsideOT + within-window excess
     //  e) OT split: first 2h = TH, rest = DT (Cl 62.2.a.i)
@@ -1401,8 +1637,10 @@
     let grossWorkMins = spanOfWork; // before meal deduction
     let mealRatio = grossWorkMins > 0 ? netWorkMins / grossWorkMins: 0;
     // When early travel deeming applies, the effective work start is
-    // 07:00 (420 min), not the actual arrival time on site.
-    let effectiveWorkStart = isEarlyTravel ? 420: paidWorkStart;
+    // the deemed 07:00 - but only when arrival is >= 07:00. If the
+    // worker arrived before 07:00 (rare but possible), the day starts
+    // at the actual arrival time on site (no deeming pulls them later).
+    let effectiveWorkStart = isEarlyTravel ? Math.min(tArriveSite, 420): paidWorkStart;
     // Minutes of work outside 6am-6pm (pre-6am + post-6pm)
     let pre6am = Math.max(0, Math.min(effectiveWorkStart + grossWorkMins, 360) - effectiveWorkStart);
     let post6pm = Math.max(0, (effectiveWorkStart + grossWorkMins) - Math.max(effectiveWorkStart, 1080));
@@ -1444,14 +1682,14 @@
     // Total overtime from work hours
     let totalWorkOT = outsideOT + withinOT;
     // NT top-up from travel pools (only TT, not TT+)
-    // Only applies on pure weekdays — weekends/RDO/PH have no NT concept,
+    // Only applies on pure weekdays - weekends/RDO/PH have no NT concept,
     // all work is DT and all outside-boundary travel is TT+ (Cl 64.3.c.iii).
     let topUpMorning = 0;
     let topUpReturn = 0;
     let returnTransitPayable = returnTransitGross;
     if (flags.Day === 'Weekday' && !flags.RDO) {
       let ntRemaining = Math.max(0, 480 - withinNT);
-      // Under Inc-1, travel is from temporary centre of employment —
+      // Under Inc-1, travel is from temporary centre of employment -
       // all travel stays as TT, no top-up into NT (Cl 64.5).
       topUpMorning = inc1Morning ? 0: Math.min(ntRemaining, morningTT);
       ntRemaining -= topUpMorning;
@@ -1475,7 +1713,7 @@
       results["TT+ (Morning)"] = roundTo15(morningTTPlus) / 60;
       // Return transit net of 30-min boundary deduction (non-Inc-1 only)
       let returnTransitNet = Math.max(0, returnTransitPayable - 30);
-      // Cl 64.3.c.ii / 64.5.a.ii — return leg is TT+ when the day's
+      // Cl 64.3.c.ii / 64.5.a.ii - return leg is TT+ when the day's
       // total "work + outside-boundary travel" exceeds 8 hours. We
       // count the FULL day including the return travel itself, not
       // just pre-return: a day where work is just under 8h with a
@@ -1486,9 +1724,9 @@
       //       + max(0, morningTravelTotal − 30)  morning OB
       //       + max(0, returnTransitGross − 30) return OB
       //  Inc-1:   netWorkMins + morningTravelTotal + returnTransitGross
-      //       (no boundary under Inc-1 — accom IS the centre)
+      //       (no boundary under Inc-1 - accom IS the centre)
       //
-      // Minutes of elapsed time (not rounded pay codes) — rounding and
+      // Minutes of elapsed time (not rounded pay codes) - rounding and
       // NT-capping can hide outside-boundary time and push marginal
       // shifts onto the wrong side of the 8h threshold.
       const morningOB = inc1Return ? morningTravelTotal: Math.max(0, morningTravelTotal - 30);
@@ -1525,15 +1763,15 @@
       if (flags.Day === 'PH') {
         results["NT (Public Holiday)"] = 8;
       }
-      // Morning travel — weekend/RDO/PH: ALL morning travel at TT+
-      //  Cl 64.3.c.iii — "time and one half (TT+) during weekends and public holidays"
-      //  Cl 64.5.a.ii — TT+ for Inc-1 travel "on weekends or public holidays"
+      // Morning travel - weekend/RDO/PH: ALL morning travel at TT+
+      //  Cl 64.3.c.iii - "time and one half (TT+) during weekends and public holidays"
+      //  Cl 64.5.a.ii - TT+ for Inc-1 travel "on weekends or public holidays"
       // Covers both standard (outside-boundary) and Inc-1 (accommodation→site) legs.
       // RDO is treated the same as weekend here for consistency with penalty-rate
       // days, though strict reading of 64.3.c.iii covers weekends and PH only.
       let weekendMorningMins = morningTT + morningTTPlus;
       results["TT+ (Morning)"] = roundTo15(weekendMorningMins) / 60;
-      // Return travel — weekend/RDO/PH
+      // Return travel - weekend/RDO/PH
       if (inc1Return) {
         // Inc-1 return: TT+ (Cl 64.5.a.ii weekends/PH). No boundary deduction.
         results["TT+ (Return)"] = roundTo15(returnTransitGross) / 60;
@@ -1547,11 +1785,13 @@
     // 6) ALLOWANCES
     //  TAT (Cl 64.2): one unit per day when working day commences
     //   at a worksite (standard rules). Not payable under Inc-1
-    //   (Cl 64.5.a.iii) or when early-travel engages
-    //   (Ex 22/23/24/25: "TAT is not applicable").
+    //   accom-to-site legs (Cl 64.5.a.iii). TAT stays payable on
+    //   early-travel days - Cl 64.3.d.i provides the 30-min TT
+    //   entitlement + deemed 07:00 start but does not displace
+    //   TAT (no explicit suppression in the EA text).
     //  First/Last Day exemption (Cl 64.5.b): Inc-1 suppressions
     //   do NOT apply to workshop↔site legs on the first/last day
-    //   of an Inc-1 trip — standard rules restore TAT/Fares on
+    //   of an Inc-1 trip - standard rules restore TAT/Fares on
     //   those legs.
     //  Fares/FTR (Cl 64.1): daily allowance when employee uses own
     //   vehicle and no company vehicle was offered.
@@ -1561,12 +1801,14 @@
     // rules vs Inc-1 accommodation rules:
     let morningIsStandard = !flags.Inc1 || flags.FirstDay;
     let returnIsStandard = !flags.Inc1 || flags.LastDay;
-    // TAT — only payable on the morning leg when it's a standard
-    // workshop↔site leg AND not an early-travel day.
-    if (morningIsStandard && flags.Start === 'Site' && !isEarlyTravel) {
+    // TAT - payable on the morning leg whenever it's a standard
+    // workshop↔site leg (i.e. not an Inc-1 accom-to-site leg). No
+    // longer suppressed on early-travel days; Cl 64.3.d.i doesn't
+    // explicitly displace TAT.
+    if (morningIsStandard && flags.Start === 'Site') {
       results.TAT = 1;
     }
-    // Fares — one unit per day when employee isn't provided a company
+    // Fares - one unit per day when employee isn't provided a company
     // vehicle AND at least one leg of the day is a standard
     // workshop↔site leg (Start Site morning OR Finish Site return).
     if (!flags.Co && (
@@ -1576,16 +1818,16 @@
       results["Fares (FTR)"] = 1;
     }
     // ----------------------------------------------------------
-    // 6a) CALLOUT OVERRIDE (Cl 63.a — Recall to site)
+    // 6a) CALLOUT OVERRIDE (Cl 63.a - Recall to site)
     //   When Callout is active, all normal pay codes are replaced:
     //    - Work + travel bundled into a single payable block
     //     (no boundary deduction, no meal deduction).
     //    - 4-hour minimum at "appropriate overtime rate".
     //    - Weekday callout: first 2h TH, rest DT (Cl 62.2.a.i).
     //    - Weekend/PH/RDO callout: all DT (Cl 62.2.a.ii/iii).
-    //    - PH entitlement (8h NT) preserved — independent of the
+    //    - PH entitlement (8h NT) preserved - independent of the
     //     callout itself.
-    //    - TT/TT+/TAT/Fares all suppressed — travel time is paid
+    //    - TT/TT+/TAT/Fares all suppressed - travel time is paid
     //     at the OT rate per Cl 63.a.ii.
     //   NOT modelled yet (flagged in info panel):
     //    - Cl 63.e/f on-call-roster variants (3h / 2h mins)
@@ -1594,7 +1836,7 @@
     if (flags.Callout) {
       let totalTime = diffMins(tLeftBase, tArriveBase);
       let paidTime = Math.max(240, roundTo15(totalTime));
-      // Reset all normal pay codes — callout bundles everything.
+      // Reset all normal pay codes - callout bundles everything.
       results.NT = 0;
       results.TH = 0;
       results.DT = 0;
@@ -1612,23 +1854,23 @@
         results.TH = Math.min(120, paidTime) / 60;
         results.DT = Math.max(0, paidTime - 120) / 60;
       }
-      // PH entitlement stays regardless (NES s116 — only if rostered).
+      // PH entitlement stays regardless (NES s116 - only if rostered).
       if (flags.Day === 'PH') results["NT (Public Holiday)"] = 8;
     }
-    // NT shortfall — show RDO/AL/LWOP gap on pure weekdays only
+    // NT shortfall - show RDO/AL/LWOP gap on pure weekdays only
     // (penalty-rate days and callouts don't have an 8h NT day to hit)
     if (flags.Day === 'Weekday' && !flags.RDO && !flags.Callout && results.NT > 0.001 && results.NT < 7.999) {
       results["NT (RDO, AL or LWOP)"] = Math.round((8 - results.NT) * 100) / 100;
     }
-    // Meal Allowance — unnotified 2+ hour OT (Cl 60.1.a).
-    // Cl 60.1 is not restricted to weekdays — unnotified OT can
+    // Meal Allowance - unnotified 2+ hour OT (Cl 60.1.a).
+    // Cl 60.1 is not restricted to weekdays - unnotified OT can
     // happen any day.
     let totalOT = (results.TH || 0) + (results.DT || 0);
     if (flags.UnnotifiedOT && totalOT >= 2) {
       results["Meal Allow ($15.50)"] = 1;
     }
     // ----------------------------------------------------------
-    // 6b) SHIFT ALLOWANCE (Cl 56.2.a — continuous shift work)
+    // 6b) SHIFT ALLOWANCE (Cl 56.2.a - continuous shift work)
     //   Refresh the Extra Allowances shift entries every recalc so
     //   the auto-tick keeps tracking the current finish time + day
     //   type. The actual loading dollar value is calculated in
@@ -1636,7 +1878,7 @@
     //   (0.15x or 0.30x). The on-screen line just shows hours.
     //
     //   Cl 62.2.b: OT, weekend, Sunday, PH rates SUBSTITUTE for the
-    //   shift premium — they don't stack. So:
+    //   shift premium - they don't stack. So:
     //    • Day Type Weekend or PH → loading suppressed
     //    • RDO overlay (DT-rate day per Cl 62.3.a) → suppressed
     //    • Callout overlay (Cl 63.a OT bundle) → suppressed
@@ -1655,14 +1897,24 @@
     let projApplicable = projDay || projDate || '';
     let html = '';
     if (projName || projApplicable) {
+      // Project name + applicable text come from user text inputs. Escape
+      // them before they reach innerHTML so a user typing `<script>` or
+      // similar can't break the printed summary or get arbitrary HTML
+      // rendered. projDate is generated from toLocaleDateString and is
+      // already safe, but we route everything through esc() to be defensive.
+      const esc = function(s) {
+        return String(s == null ? '' : s).replace(/[&<>"']/g, function(c) {
+          return ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'})[c];
+        });
+      };
       html += '<div style="margin-bottom: 4px; padding-bottom: 2px; border-bottom: 2px solid #004a99;">';
-      if (projName) html += '<div style="font-weight:bold; font-size:14px; color:#004a99;">' + projName + '</div>';
-      if (projApplicable) html += '<div style="font-size:12px; color:#555;">Timesheet summary applicable for: <strong>' + projApplicable + '</strong></div>';
+      if (projName) html += '<div style="font-weight:bold; font-size:14px; color:#004a99;">' + esc(projName) + '</div>';
+      if (projApplicable) html += '<div style="font-size:12px; color:#555;">Timesheet summary applicable for: <strong>' + esc(projApplicable) + '</strong></div>';
       html += '</div>';
     }
     // Print-only Time Entries block (hidden on screen, visible on print).
     // Mirrors the four time inputs so the printed page always shows what
-    // times the totals are based on — the raw inputs themselves are
+    // times the totals are based on - the raw inputs themselves are
     // hidden by the print stylesheet.
     const timeLabels = [
       [getStartLabel(),  'leftWorkshop'],
@@ -1688,9 +1940,9 @@
     // on every printer (older inkjets and thermal printers sometimes
     // mis-render the Unicode symbols).
     const stgCellStyle = 'padding: 2px 8px 2px 0; vertical-align: top; width: 33%;';
-    // Off (unticked) state — empty square outline.
+    // Off (unticked) state - empty square outline.
     const stgBoxOff = 'display:inline-block; width:11px; height:11px; line-height:11px; text-align:center; border:1px solid #333; margin-right:4px; vertical-align:middle; box-sizing:border-box; font-size:10px; font-weight:700; color:transparent;';
-    // On (ticked) state — navy fill + white ✓ inside. The ✓ glyph means
+    // On (ticked) state - navy fill + white ✓ inside. The ✓ glyph means
     // the tick is still readable on printers that strip background
     // colours despite the print-color-adjust:exact hint above.
     const stgBoxOn = 'display:inline-block; width:11px; height:11px; line-height:11px; text-align:center; border:1px solid #004a99; margin-right:4px; vertical-align:middle; box-sizing:border-box; font-size:10px; font-weight:700; background:#004a99; color:#fff;';
@@ -1703,25 +1955,25 @@
     html += '<div class="print-only" style="margin-bottom: 6px; padding: 4px 8px; background: #f8fafc; border-left: 5px solid #004a99; border-radius: 6px;">';
     html += '<div style="font-weight: 700; color: #004a99; font-size: 12px; margin-bottom: 2px;">Settings Selected</div>';
     html += '<table style="width: 100%; font-size: 12px; border-collapse: collapse; table-layout: fixed;"><tbody>';
-    // Day type — 3 items, 1 per cell
+    // Day type - 3 items, 1 per cell
     html += '<tr>';
     html += stgCell('Weekday',    flags.Day === 'Weekday');
     html += stgCell('Weekend',    flags.Day === 'Weekend');
     html += stgCell('Public Holiday', flags.Day === 'PH');
     html += '</tr>';
-    // Main flags — 2 items + empty
+    // Main flags - 2 items + empty
     html += '<tr>';
     html += stgCell('Company Car',  flags.Co);
     html += stgCell('Incidentals-1', flags.Inc1);
     html += stgCell(null);
     html += '</tr>';
-    // Other flags — 3 items per row
+    // Other flags - 3 items per row
     html += '<tr>';
     html += stgCell('Unnotified OT', flags.UnnotifiedOT);
     html += stgCell('RDO (worked)',  flags.RDO);
     html += stgCell('Callout',    flags.Callout);
     html += '</tr>';
-    // Shift row — labels with the auto-classified type so the printed
+    // Shift row - labels with the auto-classified type so the printed
     // summary tells payroll which loading is going to fire (or why it
     // was suppressed).
     if (flags.Shift) {
@@ -1754,7 +2006,7 @@
       html += '</tr>';
     }
     html += '</tbody></table>';
-    // Start / Finish — always shown, on its own line below the grid
+    // Start / Finish - always shown, on its own line below the grid
     html += '<div style="margin-top: 3px; font-size: 12px;">';
     html += '<span style="margin-right: 20px;">Start: <strong>' + (flags.Start === 'Work' ? 'Workshop': 'Site') + '</strong></span>';
     html += '<span>Finish: <strong>' + (flags.Fin === 'Work' ? 'Workshop': 'Site') + '</strong></span>';
@@ -1763,17 +2015,17 @@
     // -------------------------------------------------------------------
     // Required-fields gate. All four time fields must have values for
     // an accurate calc:
-    //  • LW + AS — used for morning travel (SS) or paidWorkStart (SW)
+    //  • LW + AS - used for morning travel (SS) or paidWorkStart (SW)
     //   and grossSiteMins (allowance hours regardless of Start mode).
-    //  • LS + AoW/A — used for paidWorkEnd, return travel, on-site
+    //  • LS + AoW/A - used for paidWorkEnd, return travel, on-site
     //   duration (allowance hours).
     // Bidirectional sync means the user only needs to type some of them
-    // — the rest auto-fill from Travel time. But until all four have
+    // - the rest auto-fill from Travel time. But until all four have
     // values, we replace the timesheet rows + notes + allowances with
     // a friendly "Fill in X" prompt so the user never sees nonsense
     // numbers from blank-field treatment as 00:00.
     // -------------------------------------------------------------------
-    // Helper — a field is "active" only when its wrapper is visible
+    // Helper - a field is "active" only when its wrapper is visible
     // on screen. The Left Site wrap is hidden in Finish=Workshop mode
     // (the workday continues past the site visit, so LS isn't a
     // boundary for pay calc), so the gate shouldn't ask for it.
@@ -1818,12 +2070,17 @@
     }
     // Status notes
     let notes = [];
-    if (isEarlyTravel) notes.push("Early travel rule applied (Cl 64.3.d): 30m TT + deemed 0700 start; TAT suppressed.");
+    if (isEarlyTravel) {
+      const _earlyTtHrs = (morningTT / 60).toFixed(2);
+      const _earlyEnd = Math.min(tArriveSite, 420);
+      const _earlyEndHHMM = String(Math.floor(_earlyEnd / 60)).padStart(2, '0') + String(_earlyEnd % 60).padStart(2, '0');
+      notes.push("Early travel rule applied (Cl 64.3.d): " + _earlyTtHrs + "h TT (boundary crossing to " + _earlyEndHHMM + ").");
+    }
     if (flags.Day === 'Weekday' && !flags.RDO && outsideOT > 0) notes.push("Work outside ordinary hours (6am to 6pm) detected: " + (outsideOT/60).toFixed(2) + "h paid as overtime (Cl 55.a).");
     if (mealDeduct === 0 && spanOfWork >= 720) notes.push("12+ hours worked: meal break paid (Cl 60.a).");
     if (mealDeduct === 0 && spanOfWork > 0 && spanOfWork < 300) notes.push("Less than 5h worked: no meal break deducted (Cl 60.a/b).");
     if (flags.Start === 'Site' && morningTravelTotal > 0 && morningTravelTotal <= 30) {
-      notes.push("Morning travel within 30-min Travel Boundary: no TT (Cl 64.1).");
+      notes.push("Morning travel within 30-min Travel Boundary: no paid travel time (Cl 64.1).");
     }
     if (flags.Inc1) {
       let tripNote = "Incidentals-1 active";
@@ -1841,7 +2098,7 @@
     if (flags.Callout) {
       notes.push("Callout (Cl 63.a): bundled work+travel at OT rate, 4h min, TT/TT+/TAT/Fares suppressed. On-call roster variants (Cl 63.e/f) and TK1 km allowance (Cl 63.a.iii) not auto-calculated.");
     }
-    // Shift status note — surface what the auto-classifier decided
+    // Shift status note - surface what the auto-classifier decided
     // so the user can sanity-check before submitting.
     if (flags.Shift) {
       const shiftCls = classifyShift();
@@ -1873,14 +2130,14 @@
       html += `<div class="notes">${notes.join('<br>')}</div>`;
     }
     // ----------------------------------------------------------
-    // 8) EXTRA ALLOWANCES — render selected items
+    // 8) EXTRA ALLOWANCES - render selected items
     //  Per-hour allowances auto-split into (NT) and (OT) lines
     //  to match AroFlo overhead entries.
     // ----------------------------------------------------------
     let allowNT = results.NT || 0;
     let allowOT = (results.TH || 0) + (results.DT || 0);
     // Site-only hours: time on site (arrive → leave), minus meal break if unpaid.
-    // NT/OT split follows the timesheet — if NT was partly used before
+    // NT/OT split follows the timesheet - if NT was partly used before
     // arriving on site (workshop/travel), only the remaining NT applies on site.
     let grossSiteMins = diffMins(tArriveSite, tLeaveSite);
     let netSiteMins = roundTo15(Math.max(0, grossSiteMins - mealDeduct));
@@ -1892,7 +2149,7 @@
     let siteOTmins = netSiteMins - siteNTmins;
     let siteNT = siteNTmins / 60;
     let siteOT = siteOTmins / 60;
-    // Supervisor travel components — split rather than summed
+    // Supervisor travel components - split rather than summed
     // so payroll reviewers can audit each rate factor individually.
     let supTH  = results.TH || 0;
     let supDT  = results.DT || 0;
@@ -1992,7 +2249,7 @@
     if (dlProjName) lines.push('Project: ' + dlProjName);
     if (dlApplicable) lines.push('Applicable for: ' + dlApplicable);
     lines.push('');
-    // Time entries — raw HH:MM from the four time inputs.
+    // Time entries - raw HH:MM from the four time inputs.
     // Labels track the on-screen Start/Finish toggles.
     const dlTimeLabels = [
       [getStartLabel(),  'leftWorkshop'],
@@ -2005,7 +2262,7 @@
       const v = (document.getElementById(pair[1]) || {}).value || '-';
       lines.push('• ' + pair[0] + ': ' + v);
     });
-    // Travel Details — bridging the inputs to the outputs so payroll can
+    // Travel Details - bridging the inputs to the outputs so payroll can
     // see what the km / TT hours were based on.
     const manualH = (document.getElementById('manualHours')  || {}).value || '0';
     const manualM = (document.getElementById('manualMinutes') || {}).value || '0';
@@ -2014,7 +2271,7 @@
       lines.push('Travel (Morning leg)');
       lines.push('• Travel time: ' + parseInt(manualH,10) + ' hr ' + parseInt(manualM,10) + ' min');
     }
-    // Per-leg route summary — present when the Google Maps tool has
+    // Per-leg route summary - present when the Google Maps tool has
     // fetched leg data. Gives payroll the raw route numbers for audit.
     if (lastLegs && lastLegs.morning && lastLegs.morning.km != null) {
       lines.push('');
@@ -2161,7 +2418,7 @@
     URL.revokeObjectURL(url);
   }
   // ------------------------------------------------------------------
-  // EXPLAIN — generates a plain-text walk-through of how each pay code
+  // EXPLAIN - generates a plain-text walk-through of how each pay code
   // was computed. Useful for sending to team members when their
   // timesheet looks wrong, so they can see the EA-clause-by-EA-clause
   // reasoning behind each total.
@@ -2265,7 +2522,7 @@
       });
       lines.push('');
     }
-    // ---- "Detailed breakdown" divider — everything below is optional reading ----
+    // ---- "Detailed breakdown" divider - everything below is optional reading ----
     hr();
     lines.push('DETAILED BREAKDOWN (HOW THE NUMBERS ABOVE WERE WORKED OUT)');
     hr();
@@ -2362,7 +2619,7 @@
       hr(); lines.push('ROUTE (FROM GOOGLE MAPS)'); hr();
       if (flags.Office)    lines.push(' Origin:    ' + officeText);
       if (destinationVal)   lines.push(' Destination:  ' + destinationVal);
-      // Multi-site chain — list any extra sites filled in
+      // Multi-site chain - list any extra sites filled in
       for (let i = 2; i <= 5; i++) {
         const w = document.getElementById('siteWrap' + i);
         const s = document.getElementById('site' + i);
@@ -2529,7 +2786,7 @@
   // Render the plain-text explanation as HTML for the on-screen panel,
   // wrapping the PAY CODES and EXTRA ALLOWANCES sections in <strong>
   // tags so the key payroll output blocks stand out visually. <strong>
-  // works inside <pre> — the surrounding whitespace and line breaks
+  // works inside <pre> - the surrounding whitespace and line breaks
   // are preserved, the marked content just renders bold.
   //
   // Escape HTML special chars first so any user-supplied content (e.g.
@@ -2614,17 +2871,17 @@
   }
   
   // ------------------------------------------------------------------
-  // GOOGLE MAPS — Auto-fill Travel Hrs/Mins from Distance Matrix
+  // GOOGLE MAPS - Auto-fill Travel Hrs/Mins from Distance Matrix
   //
   //  Destination field uses Places Autocomplete (biased to Australia)
   //  so users pick a real indexed place rather than typing free-form
   //  text that Google may not geocode. When a place is selected we
-  //  remember its place_id and pass that to Distance Matrix — the
+  //  remember its place_id and pass that to Distance Matrix - the
   //  most reliable form of route lookup Google offers.
   //
   //  If the user types without selecting from the dropdown (or Places
   //  Autocomplete isn't available for any reason), we fall back to
-  //  sending the raw text to Distance Matrix — the same behaviour as
+  //  sending the raw text to Distance Matrix - the same behaviour as
   //  before Autocomplete was added.
   //
   //  Requires API key loaded in <head> with the following enabled:
@@ -2647,19 +2904,24 @@
     if (!window.google || !google.maps || !google.maps.places) return;
     const input = document.getElementById(inputId);
     if (!input) return;
-    // Tasmania bounding box — covers mainland TAS plus King Island,
-    // Flinders Island, Maria Island, Bruny etc. Used as a soft bias so
-    // TAS results float to the top of the dropdown, but mainland results
-    // still appear if the user types something specific (e.g. a Melbourne
-    // address). Country restriction stays AU as a hard outer fence.
+    // Tasmania bounding box - covers mainland TAS plus King Island,
+    // Flinders Island, Maria Island, Bruny etc. strictBounds: true means
+    // the dropdown ONLY shows TAS results, so a search like "38 Alexander
+    // Street" surfaces TAS matches (Burnie, Shearwater, …) instead of
+    // being diluted by NSW/QLD streets sharing the same name.
+    //
+    // If a PM ever needs a mainland address (rare - out-of-state job site
+    // or interstate accommodation), they can still type the full address
+    // manually: the Distance Matrix call resolves any AU address, the
+    // dropdown just won't auto-suggest it.
     const tasBounds = new google.maps.LatLngBounds(
       new google.maps.LatLng(-43.80, 143.80), // SW (off King Island)
       new google.maps.LatLng(-39.20, 148.70)  // NE (past Flinders Is)
     );
     const autocomplete = new google.maps.places.Autocomplete(input, {
       componentRestrictions: { country: 'au' }, // Restrict to Australia
-      bounds: tasBounds,             // Bias toward Tasmania
-      // strictBounds: false (default) — bias only, mainland still reachable
+      bounds: tasBounds,
+      strictBounds: true,            // Tasmania only
       fields: ['place_id', 'name', 'formatted_address', 'geometry'],
       types: [] // all place types (addresses + establishments + POIs)
     });
@@ -2672,7 +2934,7 @@
       setterFn((p && p.place_id) ? p: null);
       if (typeof scheduleAutoCalculate === 'function') scheduleAutoCalculate();
     });
-    // Any real keystroke invalidates the stored place — they might be
+    // Any real keystroke invalidates the stored place - they might be
     // editing to search for something else. (Widget-driven input
     // events don't fire keydown, so this only catches user typing.)
     input.addEventListener('keydown', function() { setterFn(null); });
@@ -2728,7 +2990,7 @@
     if (returnSec && !flags.ReturnOffice && flags.Office) {
       setReturnOffice(flags.Office);
     }
-    // Add Site button — always visible when there's room for another
+    // Add Site button - always visible when there's room for another
     // slot. The button is no longer gated by TK2 because chained-site
     // days happen with Company Car too: the return leg needs to start
     // from the last site in the chain (Site 2/3/4/5), not from the
@@ -2749,8 +3011,8 @@
       });
     }
     // If the user ticked TK1 / TK2 AFTER an earlier successful Calculate
-    // press — OR changed a Return-related field so the cached leg is
-    // stale — fire the silent background refetch so the km fields
+    // press - OR changed a Return-related field so the cached leg is
+    // stale - fire the silent background refetch so the km fields
     // populate without requiring a second Calculate press.
     if (lastLegs && lastLegs.morning) {
       // Chain detection is allowance-agnostic: if there are extra
@@ -2761,7 +3023,7 @@
       const needReturn = !lastLegs.returnLeg && (tk1Ticked || hasExtras);
       const needBetween = hasExtras && (lastLegs.betweenLegs || []).length === 0;
       if (hasExtras && (needReturn || needBetween)) {
-        // Chain helper — fetches between-legs + return leg together.
+        // Chain helper - fetches between-legs + return leg together.
         backgroundFetchTk2Legs();
       } else if (needReturn) {
         // No-chain path (TK1 ticked, return missing): just the return leg.
@@ -2774,11 +3036,11 @@
   //
   //  classifyShift() inspects the current Day Type, Callout/RDO state,
   //  and finish time, and returns one of:
-  //   'afternoon' — afternoon shift, 15% loading on NT
-  //   'night'   — night shift, 30% loading on NT
-  //   'none'    — finish time falls inside ordinary day window
-  //          (6am–6pm), no loading
-  //   'suppressed' — weekend/PH/Callout/RDO — Cl 56.2.c / 62.2.b
+  //   'afternoon' - afternoon shift, 15% loading on NT
+  //   'night'   - night shift, 30% loading on NT
+  //   'none'    - finish time falls inside ordinary day window
+  //          (6am-6pm), no loading
+  //   'suppressed' - weekend/PH/Callout/RDO - Cl 56.2.c / 62.2.b
   //          cause penalty/OT rates to substitute for the
   //          shift premium (loading not paid)
   //
@@ -2788,31 +3050,31 @@
   //   • Finish Workshop mode → Arrived at Workshop time (AW)
   //
   //  The classification is identical whether Shift toggle is ticked
-  //  or not — the toggle just controls whether the result is APPLIED
+  //  or not - the toggle just controls whether the result is APPLIED
   //  (loading added to the timesheet) and the auto-tick of the
   //  matching Extra Allowance entry.
   // ---------------------------------------------------------------
   function classifyShift() {
-    // Cl 56.2.c — weekend/PH penalty rates substitute for shift premium.
-    // Cl 62.2.b — OT rates substitute for shift premium. RDO and Callout
+    // Cl 56.2.c - weekend/PH penalty rates substitute for shift premium.
+    // Cl 62.2.b - OT rates substitute for shift premium. RDO and Callout
     // both bundle pay at OT rate, so loading is suppressed in those cases.
     if (flags.Day !== 'Weekday' || flags.RDO || flags.Callout) {
       return 'suppressed';
     }
-    // Finish time source — depends on which way the day ends.
+    // Finish time source - depends on which way the day ends.
     const finishId = (flags.Fin === 'Work') ? 'arriveWorkshop': 'leaveSite';
     const finishVal = (document.getElementById(finishId) || {}).value || '';
     if (!finishVal) return 'none';
     const finMin = timeToMin(finishVal);
-    // Cl 5 — Afternoon = finish > 6pm and ≤ midnight; Night = finish > midnight and ≤ 8am.
+    // Cl 5 - Afternoon = finish > 6pm and ≤ midnight; Night = finish > midnight and ≤ 8am.
     // 1080 = 18:00, 1440 = 24:00, 480 = 08:00
     // We treat 00:00 (midnight exactly) as afternoon ("at or before midnight"),
-    // and anything in (00:00, 08:00] as night. The input value is in 0–1439
+    // and anything in (00:00, 08:00] as night. The input value is in 0-1439
     // (clock minutes since midnight), so we check both ranges directly:
     //  afternoon → finMin > 1080 (i.e. after 6pm); also 00:00 entered as
     //        midnight has finMin === 0 but in practice users entering
     //        midnight do so as either 23:59 or 00:00 depending on UI
-    //        — treat 00:00 as the boundary AT midnight → afternoon.
+    //        - treat 00:00 as the boundary AT midnight → afternoon.
     if (finMin > 1080) return 'afternoon';      // 18:01 → 23:59
     if (finMin === 0) return 'afternoon';      // exactly midnight = "at or before midnight" (Cl 5)
     if (finMin > 0 && finMin <= 480) return 'night'; // 00:01 → 08:00
@@ -2831,7 +3093,7 @@
     if (!aftCb || !ngtCb) return;
     const cls = classifyShift();
     const shiftOn = !!flags.Shift;
-    // Gate availability — when Shift toggle is off, untick + disable.
+    // Gate availability - when Shift toggle is off, untick + disable.
     if (!shiftOn) {
       aftCb.checked = false;
       ngtCb.checked = false;
@@ -2843,7 +3105,7 @@
       if (ngtRow) { ngtRow.classList.add('disabled'); ngtRow.title = 'Disabled: enable the Rostered Shift toggle (under "Other") to claim shift loading.'; }
       return;
     }
-    // Shift toggle is on — enable both rows, auto-tick the matching one.
+    // Shift toggle is on - enable both rows, auto-tick the matching one.
     aftCb.disabled = false;
     ngtCb.disabled = false;
     const aftRow = aftCb.closest ? aftCb.closest('.allow-item'): null;
@@ -2854,7 +3116,7 @@
     aftCb.checked = (cls === 'afternoon');
     ngtCb.checked = (cls === 'night');
   }
-  // Helper — build an origin / destination spec from the current field
+  // Helper - build an origin / destination spec from the current field
   // state (mirrors the logic in calculateRouteTime so we can reuse it for
   // opportunistic background fetches).
   function currentMorningOriginSpec() {
@@ -2905,7 +3167,7 @@
     };
     // TK1-only case: return origin = morning destination (same as what
     // calculateRouteTime does when the "Returning from" field is hidden).
-    // If TK2 is active with extras we skip — those go through the TK2
+    // If TK2 is active with extras we skip - those go through the TK2
     // helper instead, which owns the whole multi-leg chain.
     const tk2Cb = document.getElementById('allow_tk2');
     const tk2Ticked = !!(tk2Cb && tk2Cb.checked);
@@ -2926,12 +3188,12 @@
         });
         if (typeof calculate === 'function') calculate();
       })
-      .catch(function() { /* silent — errors surface on explicit recalc */ })
+      .catch(function() { /* silent - errors surface on explicit recalc */ })
       .then(function() { _bgReturnInFlight = false; setCalcInFlight(false); });
   }
   // Fire between-site legs + return leg in the background whenever the
   // chain has changed (e.g. user added a site after the main Calculate
-  // already ran). Allowance-agnostic — fires for Company Car days too,
+  // already ran). Allowance-agnostic - fires for Company Car days too,
   // not just TK2. Requires every visible site slot to have text;
   // otherwise no-ops. Function name retained for backwards compat with
   // existing callsites; semantically it's just "fetch chain legs".
@@ -3006,7 +3268,7 @@
     if (status) status.classList.toggle('hidden', _inFlightCount === 0);
   }
   // 30-min Travel Boundary (Cl 64.1). Used to compute TK1 outside-boundary km
-  // via the ratio method — km × (totalMin − BOUNDARY) ÷ totalMin when trip > 30 min.
+  // via the ratio method - km × (totalMin − BOUNDARY) ÷ totalMin when trip > 30 min.
   const TRAVEL_BOUNDARY_MIN = 30;
   // Pull distance (meters) and duration (seconds) from a DistanceMatrix
   // response element. Returns null if the element is missing or errored.
@@ -3020,7 +3282,7 @@
       km:   distObj && typeof distObj.value === 'number' ? distObj.value / 1000: null
     };
   }
-  // Outside-boundary km via the ratio method (Cl 64.3.c — km outside the
+  // Outside-boundary km via the ratio method (Cl 64.3.c - km outside the
   // 30-min Travel Boundary). Returns 0 for trips within the boundary.
   function outsideBoundaryKm(leg) {
     if (!leg || leg.km == null || leg.minutes <= TRAVEL_BOUNDARY_MIN) return 0;
@@ -3030,7 +3292,7 @@
   // Mirrors syncArriveTime() for the morning side. Reads the user-visible
   // Return Hrs/Mins inputs (which are auto-populated when a return leg is
   // fetched, but the user can also edit them manually).
-  // Bidirectional return-leg sync — mirrors syncMorningTimes(). LS is
+  // Bidirectional return-leg sync - mirrors syncMorningTimes(). LS is
   // analogous to LW (departure), AoW/A is analogous to AS (arrival).
   function syncReturnTimes() {
     if (manualMode) {
@@ -3059,7 +3321,7 @@
   }
   // Backwards-compat alias.
   function syncArriveWorkshopTime() { syncReturnTimes(); }
-  // Verify Return Route — opens Google Maps with directions from the
+  // Verify Return Route - opens Google Maps with directions from the
   // last site of the day to the return office. Mirrors checkRoute() for
   // the morning leg.
   function checkReturnRoute() {
@@ -3077,7 +3339,7 @@
     // Return origin = last visible & filled site in the chain. Walk
     // Site 5 → Site 2 looking for the last one that's both visible and
     // has a value; if none found, fall back to the morning Destination.
-    // Allowance-agnostic — the chain dictates the return origin
+    // Allowance-agnostic - the chain dictates the return origin
     // regardless of which km allowance (or none) is ticked.
     let originText = '';
     for (let i = 5; i >= 2; i--) {
@@ -3201,7 +3463,7 @@
       if (flags.ReturnOffice === 'Custom') {
         const crText = document.getElementById('customReturn').value.trim();
         if (!crText) {
-          // Custom selected but address not yet typed — skip return
+          // Custom selected but address not yet typed - skip return
           // leg silently. Morning leg still fetches.
           returnSkipped = true;
         } else {
@@ -3230,7 +3492,7 @@
       document.getElementById('manualHours').value  = Math.floor(totalMinutes / 60);
       document.getElementById('manualMinutes').value = totalMinutes % 60;
       if (typeof syncArriveTime === 'function') syncArriveTime();
-      // 2. Between-site legs — fetched whenever there are extra sites
+      // 2. Between-site legs - fetched whenever there are extra sites
       //  in the chain, regardless of which km allowance is ticked.
       //  Kms (Company Car) needs the between-leg km to total the
       //  full day correctly, and TK2 km auto-fill uses the same data.
@@ -3240,7 +3502,7 @@
         const leg = await distanceMatrixLeg(activeSites[i], activeSites[i + 1], matrixOptions, label);
         betweenLegs.push(leg);
       }
-      // 3. Return leg — only when we have a complete spec. Skipped
+      // 3. Return leg - only when we have a complete spec. Skipped
       //  silently when Custom return is selected but the address
       //  field is still blank (returnSkipped flag set above).
       let returnLeg = null;
@@ -3271,12 +3533,12 @@
     }
   }
   // Pre-fill km allowance fields based on the legs we just fetched.
-  //  • Km's (Company Car) — morning km × 1 (per the inline note).
-  //  • TK1 — outside-boundary km (ratio method), morning + return.
+  //  • Km's (Company Car) - morning km × 1 (per the inline note).
+  //  • TK1 - outside-boundary km (ratio method), morning + return.
   //      Only fills when BOTH legs are known so we never show an
   //      incomplete one-leg-only figure.
   //
-  // `options.onlyIfEmpty = true` makes the fill non-destructive — we won't
+  // `options.onlyIfEmpty = true` makes the fill non-destructive - we won't
   // overwrite a value the user has already typed or edited. This is what
   // we want when the user ticks an allowance AFTER the tool has run; the
   // direct "Calculate" flow passes `onlyIfEmpty = false` to always apply.
@@ -3289,7 +3551,7 @@
       if (onlyIfEmpty && input.value && String(input.value).trim() !== '') return;
       input.value = value;
     };
-    // Km's (Company Car) — full day's km. The driver covers every leg,
+    // Km's (Company Car) - full day's km. The driver covers every leg,
     // so we sum morning + every between-site leg + return. Falls back
     // gracefully when only some legs have been fetched.
     const ccCb = document.getElementById('allow_kmCompanyCar');
@@ -3303,7 +3565,7 @@
     // REVENUE-PROTECTION REMINDER: when Company Car is on AND any km
     // were travelled today, auto-tick the Kms (CC) allowance so the
     // claim isn't missed. Only fires when the row is "pristine" (not
-    // ticked AND km input empty) — respects a prior manual untick.
+    // ticked AND km input empty) - respects a prior manual untick.
     if (flags.Co && ccTotalKm > 0 &&
       ccCb && !ccCb.checked && ccInput &&
       (!ccInput.value || String(ccInput.value).trim() === '')) {
@@ -3313,7 +3575,7 @@
     if (ccCb && ccCb.checked && ccInput && ccTotalKm > 0) {
       setIf(ccInput, Math.round(ccTotalKm));
     }
-    // TK1 — requires both legs so the ratio-method total is accurate.
+    // TK1 - requires both legs so the ratio-method total is accurate.
     // If user ticks TK1 after running the tool with only a morning call,
     // we'll leave TK1 empty; pressing Calculate again (once the Return
     // section is filled) will complete the auto-fill.
@@ -3324,7 +3586,7 @@
       const returnOB = outsideBoundaryKm(returnLeg);
       setIf(tk1Input, Math.round(morningOB + returnOB));
     }
-    // TK2 — sum of between-site km (Cl 64.4). Only populated when at
+    // TK2 - sum of between-site km (Cl 64.4). Only populated when at
     // least one between-site leg is known.
     const tk2Cb = document.getElementById('allow_tk2');
     const tk2Input = document.getElementById('km_tk2');
@@ -3345,7 +3607,7 @@
     initAutocomplete('destination', function(p) { selectedPlaces.destination = p; });
     initAutocomplete('customOrigin', function(p) { selectedPlaces.customOrigin = p; });
     initAutocomplete('customReturn', function(p) { selectedPlaces.customReturn = p; });
-    // TK2 extra site inputs — each pre-rendered hidden; Autocomplete
+    // TK2 extra site inputs - each pre-rendered hidden; Autocomplete
     // attaches to the DOM node and works fine when the slot becomes
     // visible via addNextSite().
     for (let i = 2; i <= 5; i++) {
